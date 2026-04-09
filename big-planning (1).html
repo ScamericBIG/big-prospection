@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>BIG Planning Équipes</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#002D9C;--blue2:#001e7a;--dark:#1a1a1a;--dark4:#3a3a3a;
+  --light:#f5f5f3;--light2:#ececea;--light3:#e0e0de;
+  --text:#1a1a1a;--text2:#4a4a4a;--text3:#888;--white:#fff;
+  --shadow:0 2px 10px rgba(0,0,0,.1);--shadow2:0 4px 20px rgba(0,0,0,.15);
+  /* Couleurs activités */
+  --c-jour:#e6c300;    /* Chantier jour — jaune */
+  --c-nuit:#002D9C;    /* Chantier nuit — bleu BIG */
+  --c-mixte:#7a1ac4;   /* Chantier mixte — violet */
+  --c-arret:#c0392b;   /* Arrêt — rouge */
+  --c-conge:#1a8c4a;   /* Congé — vert */
+  --c-formation:#0e8fa0; /* Formation — cyan */
+  --c-soustraitance:#e67e22; /* Sous-traitance — orange */
+  --c-ferie:#2c3e50;   /* Férié — anthracite */
+  /* Couleurs équipes */
+  --eq-geoffroy:#1a6fc4;
+  --eq-nicolas:#1a8c4a;
+  --eq-anthony:#c47a1a;
+  --eq-alain:#7a1ac4;
+  --eq-st:#888;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);color:var(--text);font-size:13px}
+
+/* ── AUTH ── */
+#auth-screen{position:fixed;inset:0;background:var(--dark);display:flex;align-items:center;justify-content:center;z-index:9999}
+.auth-card{background:var(--white);width:380px;max-width:92vw;box-shadow:var(--shadow2)}
+.auth-header{background:var(--blue);padding:24px 28px 18px}
+.auth-logo-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.auth-logo-box{background:var(--white);padding:4px 8px}
+.auth-logo-text{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;color:var(--blue)}
+.auth-tagline{font-size:10px;color:rgba(255,255,255,.7);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.auth-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;color:var(--white);margin-top:2px}
+.auth-body{padding:22px 28px}
+.auth-field{margin-bottom:12px}
+.auth-field label{display:block;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.auth-field input{width:100%;padding:9px 12px;border:1.5px solid var(--light3);font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border .2s}
+.auth-field input:focus{border-color:var(--blue)}
+.auth-btn{width:100%;padding:11px;background:var(--blue);color:var(--white);font-weight:700;font-size:14px;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase}
+.auth-btn:hover{background:var(--blue2)}
+.auth-err{color:#c0392b;font-size:11px;text-align:center;margin-top:8px;display:none;font-weight:600}
+
+/* ── LAYOUT ── */
+#app{display:none;height:100vh;flex-direction:column}
+#app.visible{display:flex}
+
+/* ── TOPBAR ── */
+#topbar{height:54px;background:var(--dark);display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0;border-bottom:3px solid var(--blue)}
+.tl-logo-box{background:var(--blue);padding:3px 7px}
+.tl-logo-text{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;color:var(--white);letter-spacing:1px}
+.tl-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.5px}
+.tl-sep{width:1px;height:26px;background:var(--dark4)}
+.tl-spacer{flex:1}
+.tl-btn{padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid var(--dark4);background:transparent;color:rgba(255,255,255,.65);transition:all .2s;font-family:'Barlow Condensed',sans-serif;letter-spacing:.4px;text-transform:uppercase}
+.tl-btn:hover{border-color:rgba(255,255,255,.35);color:var(--white)}
+.tl-btn.active{background:var(--blue);color:var(--white);border-color:var(--blue)}
+#user-name{font-size:11px;color:rgba(255,255,255,.5);font-weight:600;font-family:'Barlow Condensed',sans-serif}
+.logout-btn{padding:3px 8px;background:transparent;border:1.5px solid var(--dark4);color:rgba(255,255,255,.35);font-size:10px;cursor:pointer}
+.logout-btn:hover{border-color:#c0392b;color:#c0392b}
+
+/* ── ONGLETS ── */
+#tab-bar{background:var(--white);border-bottom:2px solid var(--light3);display:flex;flex-shrink:0;padding:0 14px;gap:2px}
+.tab{padding:10px 16px;font-size:12px;font-weight:800;cursor:pointer;color:var(--text3);border-bottom:3px solid transparent;transition:all .2s;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;margin-bottom:-2px}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab:hover:not(.active){color:var(--text2)}
+
+/* ── MAIN ── */
+#main-content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.tab-content{flex:1;overflow:auto;display:none}
+.tab-content.active{display:flex;flex-direction:column}
+
+/* ── PLANNING ── */
+#planning-toolbar{padding:10px 14px;background:var(--white);border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.month-nav{display:flex;align-items:center;gap:8px}
+.month-nav button{width:28px;height:28px;background:var(--light);border:1.5px solid var(--light3);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.month-nav button:hover{border-color:var(--blue);color:var(--blue)}
+#month-label{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;color:var(--text);min-width:160px;text-align:center;text-transform:uppercase;letter-spacing:.5px}
+.legend-row{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.3px;color:var(--text2)}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.btn-add-chantier{padding:6px 14px;background:var(--blue);color:var(--white);font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px}
+.btn-add-chantier:hover{background:var(--blue2)}
+
+/* ── GRILLE PLANNING ── */
+#planning-grid-wrap{flex:1;overflow:auto}
+#planning-grid{min-width:max-content}
+.pg-header{display:flex;background:var(--dark);color:var(--white);position:sticky;top:0;z-index:20}
+.pg-team-col{width:140px;flex-shrink:0;padding:8px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-right:1px solid var(--dark4);display:flex;align-items:center}
+.pg-days{display:flex;flex:1}
+.pg-day-header{min-width:34px;text-align:center;padding:4px 2px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;border-right:1px solid var(--dark4);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;transition:background .15s}
+.pg-day-header:hover{background:var(--dark4)}
+.pg-day-header.weekend{background:#2a2a2a;color:rgba(255,255,255,.4)}
+.pg-day-header.today{background:var(--blue)}
+.pg-day-header.ferie{background:#2c3e50}
+.pg-day-num{font-size:12px;font-weight:800}
+.pg-day-wd{font-size:8px;opacity:.7}
+.pg-row{display:flex;border-bottom:1px solid var(--light3);min-height:52px}
+.pg-row:hover{background:#fafafa}
+.pg-team-label{width:140px;flex-shrink:0;padding:6px 10px;border-right:1px solid var(--light3);display:flex;flex-direction:column;justify-content:center;gap:2px}
+.pg-team-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+.pg-team-members{font-size:10px;color:var(--text3);font-weight:600}
+.pg-team-base{font-size:9px;color:var(--text3)}
+.pg-cells{display:flex;flex:1;position:relative}
+.pg-cell{min-width:34px;border-right:1px solid var(--light3);position:relative;cursor:pointer;transition:background .1s}
+.pg-cell:hover{background:var(--light2)}
+.pg-cell.weekend{background:#f8f8f6}
+.pg-cell.ferie{background:#f0f0ee}
+.pg-block{position:absolute;top:4px;bottom:4px;border-radius:3px;display:flex;align-items:center;padding:0 6px;cursor:pointer;z-index:5;overflow:hidden;transition:opacity .15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.pg-block:hover{opacity:.85;z-index:10}
+.pg-block-text{font-size:10px;font-weight:800;color:var(--pg-block-text-color,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.3px}
+.pg-block-icon{font-size:9px;margin-right:3px;flex-shrink:0}
+
+/* ── MODAL CHANTIER ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:800;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow2)}
+.modal-header{background:var(--blue);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;color:var(--white);text-transform:uppercase;letter-spacing:.5px}
+.modal-close{background:transparent;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;line-height:1}
+.modal-body{padding:16px}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--light3);display:flex;gap:8px;justify-content:flex-end;background:var(--light)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.form-row.full{grid-template-columns:1fr}
+.form-group label{display:block;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;font-family:'Barlow Condensed',sans-serif}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:7px 10px;border:1.5px solid var(--light3);font-size:12px;font-family:'Barlow',sans-serif;outline:none;transition:border .2s;background:var(--white)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue)}
+.form-group textarea{resize:vertical;min-height:60px}
+.section-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px;font-family:'Barlow Condensed',sans-serif;padding-bottom:3px;border-bottom:1px solid var(--light3)}
+.btn{padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;transition:all .2s}
+.btn-primary{background:var(--blue);color:var(--white)}
+.btn-primary:hover{background:var(--blue2)}
+.btn-secondary{background:var(--light);color:var(--text2);border:1.5px solid var(--light3)}
+.btn-danger{background:#c0392b;color:var(--white)}
+.type-selector{display:flex;flex-wrap:wrap;gap:6px}
+.type-chip{padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--light3);background:var(--white);color:var(--text2);transition:all .2s;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;display:flex;align-items:center;gap:4px}
+.type-chip.selected{color:var(--white);border-color:transparent}
+.team-checkbox-row{display:flex;flex-wrap:wrap;gap:8px}
+.team-cb{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid var(--light3);cursor:pointer;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;transition:all .2s}
+.team-cb.selected{color:var(--white)}
+.team-cb input{display:none}
+
+/* ── STATS ── */
+#stats-content{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.stat-card{background:var(--white);border:1px solid var(--light3);padding:14px}
+.stat-card-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:6px}
+.stat-kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stat-kpi{background:var(--light);padding:8px 10px;text-align:center}
+.stat-kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--blue);line-height:1}
+.stat-kpi-lbl{font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.stat-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.stat-bar-label{font-size:10px;font-weight:700;color:var(--text2);width:80px;flex-shrink:0;text-align:right;font-family:'Barlow Condensed',sans-serif}
+.stat-bar-track{flex:1;height:16px;background:var(--light2);overflow:visible;position:relative}
+.stat-bar-fill{height:100%;position:relative;min-width:2px;transition:width .5s}
+.stat-bar-n{font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;white-space:nowrap;position:absolute;left:calc(100% + 4px);top:50%;transform:translateY(-50%);color:var(--text2)}
+.stat-bar-n.inside{left:auto;right:4px;color:#fff}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:16px;right:16px;background:var(--dark);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:var(--white);font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:270px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-left-color:#1a8c4a}
+#toast.error{border-left-color:#c0392b}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo-row">
+        <div class="auth-logo-box"><div class="auth-logo-text">BIG</div></div>
+        <div><div class="auth-tagline">Bordas Industrial Group</div><div class="auth-title">Planning Équipes</div></div>
+      </div>
+    </div>
+    <div class="auth-body">
+      <div class="auth-field"><label>Email</label><input type="email" id="auth-email" placeholder="votre@big-france.com"/></div>
+      <div class="auth-field"><label>Mot de passe</label><input type="password" id="auth-password" placeholder="••••••••"/></div>
+      <button class="auth-btn" onclick="doLogin()">Accéder au planning</button>
+      <div class="auth-err" id="auth-err">Email ou mot de passe incorrect</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="topbar">
+    <div class="tl-logo-box"><div class="tl-logo-text">BIG</div></div>
+    <div class="tl-sep"></div>
+    <div class="tl-title">Planning Équipes</div>
+    <div class="tl-spacer"></div>
+    <div id="user-name"></div>
+    <a href="index.html" class="tl-btn">← Carte</a>
+    <button class="logout-btn" onclick="doLogout()">Déco.</button>
+  </div>
+
+  <div id="tab-bar">
+    <div class="tab active" onclick="showTab('planning')" id="tab-planning">📅 Planning</div>
+    <div class="tab" onclick="showTab('stats')" id="tab-stats">📊 Stats équipes</div>
+    <div class="tab" onclick="showTab('equipes')" id="tab-equipes">👷 Équipes</div>
+  </div>
+
+  <div id="main-content">
+
+    <!-- PLANNING -->
+    <div class="tab-content active" id="content-planning">
+      <div id="planning-toolbar">
+        <div class="month-nav">
+          <button onclick="changeMonth(-1)">‹</button>
+          <div id="month-label">Janvier 2026</div>
+          <button onclick="changeMonth(1)">›</button>
+        </div>
+        <select id="filter-equipe" onchange="renderPlanning()" style="padding:5px 10px;border:1.5px solid var(--light3);font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;background:var(--white);cursor:pointer">
+          <option value="all">Toutes les équipes</option>
+        </select>
+        <button class="btn-add-chantier" onclick="openModal()">+ Ajouter chantier</button>
+        <div class="legend-row">
+          <div class="leg-item"><div class="leg-dot" style="background:#e6c300;border:1px solid #ccc"></div>Chantier Jour</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--c-nuit)"></div>Chantier Nuit</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--c-mixte)"></div>Mixte</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--c-arret)"></div>Arrêt</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--c-conge)"></div>Congé</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--c-formation)"></div>Formation</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--c-soustraitance)"></div>Sous-traitance</div>
+        </div>
+      </div>
+      <div id="planning-grid-wrap">
+        <div id="planning-grid"></div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="tab-content" id="content-stats">
+      <div style="padding:12px 14px;background:var(--white);border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;text-transform:uppercase">Statistiques équipes</div>
+        <select id="stats-period" onchange="renderStats()" style="padding:5px 10px;border:1.5px solid var(--light3);font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;background:var(--white);cursor:pointer">
+          <option value="month">Ce mois</option>
+          <option value="year">Cette année</option>
+          <option value="all">Tout</option>
+        </select>
+        <select id="stats-month-sel" onchange="renderStats()" style="padding:5px 10px;border:1.5px solid var(--light3);font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;background:var(--white);cursor:pointer">
+        </select>
+      </div>
+      <div id="stats-content" style="overflow-y:auto;flex:1"></div>
+    </div>
+
+    <!-- ÉQUIPES -->
+    <div class="tab-content" id="content-equipes">
+      <div style="padding:12px 14px;background:var(--white);border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;text-transform:uppercase">Gestion des équipes</div>
+        <button class="btn-add-chantier" onclick="openModalEquipe()">+ Nouvelle équipe</button>
+      </div>
+      <div id="equipes-list" style="padding:14px;overflow-y:auto;flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL CHANTIER -->
+<div class="modal-overlay" id="modal-chantier">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-chantier-title">Nouveau chantier</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="section-title" style="margin-top:0">Informations principales</div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Client / Site *</label>
+          <input type="text" id="ch-client" placeholder="Ex: Carrefour Mondeville" list="clients-list"/>
+          <datalist id="clients-list"></datalist>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Adresse / Ville *</label>
+          <input type="text" id="ch-adresse" placeholder="Ex: Mondeville (14)"/>
+        </div>
+        <div class="form-group">
+          <label>Référence chantier</label>
+          <input type="text" id="ch-ref" placeholder="Ex: BIG-2026-001"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date début *</label>
+          <input type="date" id="ch-date-debut"/>
+        </div>
+        <div class="form-group">
+          <label>Date fin *</label>
+          <input type="date" id="ch-date-fin"/>
+        </div>
+      </div>
+
+      <div class="section-title">Type d'activité</div>
+      <div class="type-selector" id="type-selector">
+        <div class="type-chip" data-type="jour" data-color="#e6c300" onclick="selectType(this)" style="color:#1a1a1a">☀️ Jour</div>
+        <div class="type-chip" data-type="nuit" data-color="#002D9C" onclick="selectType(this)">🌙 Nuit</div>
+        <div class="type-chip" data-type="mixte" data-color="#7a1ac4" onclick="selectType(this)">☀️🌙 Mixte</div>
+        <div class="type-chip" data-type="arret" data-color="#c0392b" onclick="selectType(this)">⛔ Arrêt</div>
+        <div class="type-chip" data-type="conge" data-color="#1a8c4a" onclick="selectType(this)">🏖 Congé</div>
+        <div class="type-chip" data-type="formation" data-color="#0e8fa0" onclick="selectType(this)">📚 Formation</div>
+        <div class="type-chip" data-type="ferie" data-color="#2c3e50" onclick="selectType(this)">🗓 Férié</div>
+        <div class="type-chip" data-type="soustraitance" data-color="#e67e22" onclick="selectType(this)">🔧 Sous-traitance</div>
+      </div>
+
+      <div class="section-title">Équipes assignées</div>
+      <div class="team-checkbox-row" id="team-checkboxes"></div>
+
+      <div class="section-title">Détails</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nb nuits prévues</label>
+          <input type="number" id="ch-nuits" min="0" placeholder="0"/>
+        </div>
+        <div class="form-group">
+          <label>Superficie (m²)</label>
+          <input type="number" id="ch-surface" min="0" placeholder="Ex: 5000"/>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Description / Remarques</label>
+          <textarea id="ch-desc" placeholder="Type de travaux, contraintes, matériel nécessaire…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-danger" id="btn-delete-ch" style="display:none" onclick="deleteChantier()">Supprimer</button>
+      <button class="btn btn-primary" onclick="saveChantier()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ÉQUIPE -->
+<div class="modal-overlay" id="modal-equipe">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-eq-title">Nouvelle équipe</div>
+      <button class="modal-close" onclick="closeModalEquipe()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row full">
+        <div class="form-group"><label>Nom de l'équipe / Chef d'équipe *</label>
+          <input type="text" id="eq-nom" placeholder="Ex: Geoffroy"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Technicien(s)</label>
+          <input type="text" id="eq-membres" placeholder="Ex: David, Marc"/></div>
+        <div class="form-group"><label>Ville de base *</label>
+          <input type="text" id="eq-ville" placeholder="Ex: Peltre"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Code postal base</label>
+          <input type="text" id="eq-cp" placeholder="Ex: 57245"/></div>
+        <div class="form-group"><label>Type</label>
+          <select id="eq-type">
+            <option value="interne">Équipe interne</option>
+            <option value="soustraitant">Sous-traitant</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group"><label>Couleur</label>
+          <input type="color" id="eq-couleur" value="#1a6fc4" style="height:36px;cursor:pointer"/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModalEquipe()">Annuler</button>
+      <button class="btn btn-danger" id="btn-delete-eq" style="display:none" onclick="deleteEquipe()">Supprimer</button>
+      <button class="btn btn-primary" onclick="saveEquipe()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DÉTAIL CHANTIER (lecture) -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal" style="width:440px">
+    <div class="modal-header" id="detail-header">
+      <div class="modal-title" id="detail-title">Détail chantier</div>
+      <button class="modal-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDetail()">Fermer</button>
+      <button class="btn btn-primary" onclick="editFromDetail()">✏ Modifier</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL  = "https://lrwfhcdecxrpmacowmfx.supabase.co";
+const SUPABASE_ANON = "sb_publishable_RArVRufwMCuS8lCz_pQ3-A_64csz8QJ";
+
+const USERS = {
+  "enieps@big-france.com":    {name:"Emeric",    role:"admin"},
+  "emeric@big-france.com":    {name:"Emeric",    role:"admin"},
+  "mpineau@big-france.com":   {name:"Mathis",    role:"admin"},
+  "mguerreiro@big-france.com":{name:"Marie",     role:"admin"},
+  "cdragne@big-france.com":   {name:"C. Dragne", role:"admin"},
+  "admin@big-france.com":     {name:"Admin",     role:"admin"},
+  "test@big-france.com":      {name:"Test",      role:"admin"},
+};
+
+// Équipes par défaut (peuvent être modifiées dans l'onglet Équipes)
+const EQUIPES_DEFAULT = [
+  {id:"eq-geoffroy", nom:"Geoffroy", membres:"David", ville:"Peltre", cp:"57245", couleur:"#1a6fc4", type:"interne"},
+  {id:"eq-nicolas",  nom:"Nicolas",  membres:"Aimé",  ville:"Nantes", cp:"44000", couleur:"#1a8c4a", type:"interne"},
+  {id:"eq-anthony",  nom:"Anthony",  membres:"Jessim",ville:"Ternay", cp:"69360", couleur:"#c47a1a", type:"interne"},
+  {id:"eq-alain",    nom:"Alain",    membres:"—",     ville:"Ternay", cp:"69360", couleur:"#7a1ac4", type:"interne"},
+  {id:"eq-st-marchal",nom:"A. Marchal",membres:"",   ville:"Belgique",cp:"BE",    couleur:"#888",    type:"soustraitant"},
+];
+
+const TYPE_CONFIG = {
+  jour:          {label:"Chantier Jour",   icon:"☀️",  color:"#e6c300"},
+  nuit:          {label:"Chantier Nuit",   icon:"🌙",  color:"#002D9C"},
+  mixte:         {label:"Chantier Mixte",  icon:"☀️🌙",color:"#7a1ac4"},
+  arret:         {label:"Arrêt",           icon:"⛔",  color:"#c0392b"},
+  conge:         {label:"Congé",           icon:"🏖",  color:"#1a8c4a"},
+  formation:     {label:"Formation",       icon:"📚",  color:"#0e8fa0"},
+  ferie:         {label:"Férié",           icon:"🗓",  color:"#2c3e50"},
+  soustraitance: {label:"Sous-traitance",  icon:"🔧",  color:"#e67e22"},
+};
+
+const JOURS_FR = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const MOIS_FR  = ['Janvier','Février','Mars','Avril','Mai','Juin',
+                  'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+// ── STATE ──
+let currentUser = null;
+let equipes = JSON.parse(localStorage.getItem('big_equipes') || 'null') || EQUIPES_DEFAULT;
+let chantiers = [];
+let currentMonth, currentYear;
+let currentChantierEdit = null;
+let currentEquipeEdit = null;
+let currentDetailId = null;
+let selectedType = 'jour';
+let selectedEquipes = new Set();
+
+// ── AUTH ──
+function doLogin(){
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('auth-password').value;
+  const user  = USERS[email];
+  if(user && pass.length >= 4){
+    currentUser = {email, ...user};
+    localStorage.setItem('big_user', JSON.stringify(currentUser));
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    document.getElementById('user-name').textContent = currentUser.name;
+    initApp();
+  } else {
+    const e = document.getElementById('auth-err');
+    e.style.display = 'block';
+    setTimeout(()=>e.style.display='none', 3000);
+  }
+}
+document.getElementById('auth-password').addEventListener('keydown', e=>{if(e.key==='Enter')doLogin();});
+
+function doLogout(){
+  localStorage.removeItem('big_user');
+  currentUser = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+// ── INIT ──
+function initApp(){
+  const now = new Date();
+  currentMonth = now.getMonth();
+  currentYear  = now.getFullYear();
+  loadChantiers().then(()=>{
+    renderPlanning();
+    buildEquipeSelect();
+    buildTeamCheckboxes();
+    renderEquipes();
+    renderStats();
+    populateClientsDatalist();
+    populateStatsMonthSel();
+  });
+}
+
+// ── SUPABASE ──
+function sbHeaders(write=false){
+  const h = {"apikey":SUPABASE_ANON,"Authorization":"Bearer "+SUPABASE_ANON};
+  if(write) h["Content-Type"] = "application/json";
+  return h;
+}
+
+async function loadChantiers(){
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/chantiers?order=date_debut.asc&limit=500`,
+      {headers: sbHeaders()});
+    if(r.ok) chantiers = await r.json();
+  } catch(e){ console.warn('Chargement hors-ligne', e); }
+}
+
+async function saveChantierDB(ch){
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/chantiers`,{
+    method:'POST',
+    headers:{...sbHeaders(true),"Prefer":"resolution=merge-duplicates"},
+    body:JSON.stringify(ch)
+  });
+  return r.ok;
+}
+
+async function updateChantierDB(id, data){
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/chantiers?id=eq.${encodeURIComponent(id)}`,{
+    method:'PATCH',
+    headers:{...sbHeaders(true),"Prefer":"return=minimal"},
+    body:JSON.stringify(data)
+  });
+  return r.ok;
+}
+
+async function deleteChantierDB(id){
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/chantiers?id=eq.${encodeURIComponent(id)}`,{
+    method:'DELETE', headers:sbHeaders()
+  });
+  return r.ok;
+}
+
+// ── NAVIGATION MOIS ──
+function changeMonth(delta){
+  currentMonth += delta;
+  if(currentMonth > 11){currentMonth=0;currentYear++;}
+  if(currentMonth < 0) {currentMonth=11;currentYear--;}
+  renderPlanning();
+}
+
+function getDaysInMonth(y, m){
+  return new Date(y, m+1, 0).getDate();
+}
+
+function isFerie(d, m, y){
+  const FERIES = [
+    `01-01`,`05-01`,`05-08`,`07-14`,`08-15`,`11-01`,`11-11`,`12-25`,
+  ];
+  const key = `${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  // Pâques approximatif
+  return FERIES.includes(key);
+}
+
+// ── RENDU PLANNING ──
+function renderPlanning(){
+  const nb = getDaysInMonth(currentYear, currentMonth);
+  document.getElementById('month-label').textContent =
+    `${MOIS_FR[currentMonth]} ${currentYear}`;
+
+  const filterEq = document.getElementById('filter-equipe')?.value || 'all';
+  const equipesFiltered = filterEq==='all' ? equipes : equipes.filter(e=>e.id===filterEq);
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  let html = `<div class="pg-header">
+    <div class="pg-team-col">Équipe</div>
+    <div class="pg-days">`;
+
+  for(let d=1;d<=nb;d++){
+    const date = new Date(currentYear, currentMonth, d);
+    const wd   = date.getDay();
+    const isWE = wd===0||wd===6;
+    const isFer = isFerie(d, currentMonth, currentYear);
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr===todayStr;
+    html += `<div class="pg-day-header ${isWE?'weekend':''} ${isToday?'today':''} ${isFer?'ferie':''}"
+      onclick="quickAdd(${d})" title="${isFer?'Jour férié':'Cliquer pour ajouter'}">
+      <div class="pg-day-wd">${JOURS_FR[wd]}</div>
+      <div class="pg-day-num">${d}</div>
+    </div>`;
+  }
+  html += `</div></div>`;
+
+  // Lignes par équipe
+  equipesFiltered.forEach(eq=>{
+    html += `<div class="pg-row">
+      <div class="pg-team-label" style="${eq.type==='soustraitant'?'background:#fdf8f0;border-left:3px solid #e67e22;':''}">
+        <div class="pg-team-name" style="color:${eq.couleur}">${eq.type==='soustraitant'?'🔧 ':''} ${eq.nom}</div>
+        ${eq.membres&&eq.membres!=='—'?`<div class="pg-team-members">${eq.membres}</div>`:''}
+        <div class="pg-team-base" style="${eq.type==='soustraitant'?'color:#e67e22;font-weight:700;':''}">${eq.type==='soustraitant'?'Sous-traitant · ':''} ${eq.ville}</div>
+      </div>
+      <div class="pg-cells" style="position:relative">`;
+
+    // Cellules de fond
+    for(let d=1;d<=nb;d++){
+      const date = new Date(currentYear, currentMonth, d);
+      const wd   = date.getDay();
+      const isWE = wd===0||wd===6;
+      const isFer = isFerie(d, currentMonth, currentYear);
+      html += `<div class="pg-cell ${isWE?'weekend':''} ${isFer?'ferie':''}"
+        style="min-width:34px"
+        onclick="quickAdd(${d},'${eq.id}')"></div>`;
+    }
+
+    // Blocs chantiers pour cette équipe ce mois
+    const monthChantiers = chantiers.filter(ch=>{
+      if(!ch.equipes||!ch.equipes.includes(eq.id))return false;
+      const deb = new Date(ch.date_debut);
+      const fin = new Date(ch.date_fin);
+      const mDeb = new Date(currentYear, currentMonth, 1);
+      const mFin = new Date(currentYear, currentMonth, nb);
+      return deb<=mFin && fin>=mDeb;
+    });
+
+    monthChantiers.forEach(ch=>{
+      const deb = new Date(ch.date_debut);
+      const fin = new Date(ch.date_fin);
+      // Calculer position et largeur
+      const startDay = Math.max(1, deb.getMonth()===currentMonth&&deb.getFullYear()===currentYear ? deb.getDate() : 1);
+      const endDay   = Math.min(nb, fin.getMonth()===currentMonth&&fin.getFullYear()===currentYear ? fin.getDate() : nb);
+      const left  = (startDay-1)*34;
+      const width = (endDay-startDay+1)*34 - 2;
+      const tc = TYPE_CONFIG[ch.type] || TYPE_CONFIG.jour;
+      html += `<div class="pg-block"
+        style="left:${left}px;width:${width}px;background:${tc.color}"
+        onclick="openDetail('${ch.id}')"
+        title="${ch.client} · ${tc.label}">
+        <span class="pg-block-icon">${tc.icon}</span>
+        <span class="pg-block-text">${ch.client}</span>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  document.getElementById('planning-grid').innerHTML = html;
+}
+
+// ── MODAL CHANTIER ──
+function openModal(prefillDate=null, prefillEquipeId=null){
+  currentChantierEdit = null;
+  document.getElementById('modal-chantier-title').textContent = 'Nouveau chantier';
+  document.getElementById('btn-delete-ch').style.display = 'none';
+  document.getElementById('ch-client').value = '';
+  document.getElementById('ch-adresse').value = '';
+  document.getElementById('ch-ref').value = '';
+  document.getElementById('ch-nuits').value = '';
+  document.getElementById('ch-surface').value = '';
+  document.getElementById('ch-desc').value = '';
+  const today = prefillDate || new Date().toISOString().split('T')[0];
+  document.getElementById('ch-date-debut').value = today;
+  document.getElementById('ch-date-fin').value = today;
+  selectedType = 'jour';
+  document.querySelectorAll('.type-chip').forEach(c=>c.classList.remove('selected'));
+  const defaultChip = document.querySelector('.type-chip[data-type="jour"]');
+  if(defaultChip){defaultChip.classList.add('selected');defaultChip.style.background='#1a8c4a';}
+  selectedEquipes = prefillEquipeId ? new Set([prefillEquipeId]) : new Set();
+  updateTeamCheckboxes();
+  document.getElementById('modal-chantier').classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('modal-chantier').classList.remove('open');
+}
+
+function quickAdd(day, equipeId=null){
+  const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  openModal(dateStr, equipeId);
+}
+
+function selectType(el){
+  document.querySelectorAll('.type-chip').forEach(c=>{
+    c.classList.remove('selected');
+    c.style.background = '';
+    c.style.color = '';
+    c.style.borderColor = '';
+  });
+  el.classList.add('selected');
+  el.style.background = el.dataset.color;
+  el.style.color = '#fff';
+  el.style.borderColor = el.dataset.color;
+  selectedType = el.dataset.type;
+}
+
+function buildTeamCheckboxes(){
+  const container = document.getElementById('team-checkboxes');
+  container.innerHTML = equipes.map(eq=>`
+    <div class="team-cb" id="tcb-${eq.id}" data-eq-id="${eq.id}"
+         onclick="toggleTeamCb('${eq.id}')"
+         style="border-color:${eq.couleur}">
+      <div style="width:8px;height:8px;border-radius:50%;background:${eq.couleur}"></div>
+      <span>${eq.nom}${eq.membres&&eq.membres!=='—'?' + '+eq.membres:''}</span>
+    </div>`).join('');
+}
+
+function toggleTeamCb(eqId){
+  const el = document.getElementById('tcb-'+eqId);
+  const eq = equipes.find(e=>e.id===eqId);
+  if(!eq)return;
+  if(selectedEquipes.has(eqId)){
+    selectedEquipes.delete(eqId);
+    el.classList.remove('selected');
+    el.style.background = '';
+    el.style.color = '';
+  }else{
+    selectedEquipes.add(eqId);
+    el.classList.add('selected');
+    el.style.background = eq.couleur;
+    el.style.color = '#fff';
+  }
+}
+
+function updateTeamCheckboxes(){
+  equipes.forEach(eq=>{
+    const el = document.getElementById('tcb-'+eq.id);
+    if(!el)return;
+    if(selectedEquipes.has(eq.id)){
+      el.classList.add('selected');
+      el.style.background = eq.couleur;
+      el.style.color = '#fff';
+    }else{
+      el.classList.remove('selected');
+      el.style.background = '';
+      el.style.color = '';
+    }
+  });
+}
+
+async function saveChantier(){
+  const client = document.getElementById('ch-client').value.trim();
+  const debut  = document.getElementById('ch-date-debut').value;
+  const fin    = document.getElementById('ch-date-fin').value;
+  if(!client||!debut||!fin){showToast('Client et dates obligatoires','error');return;}
+  if(selectedEquipes.size===0){showToast('Sélectionnez au moins une équipe','error');return;}
+
+  const ch = {
+    id:           currentChantierEdit?.id || `ch-${Date.now()}`,
+    client,
+    adresse:      document.getElementById('ch-adresse').value.trim(),
+    ref:          document.getElementById('ch-ref').value.trim(),
+    type:         selectedType,
+    date_debut:   debut,
+    date_fin:     fin,
+    nuits:        parseInt(document.getElementById('ch-nuits').value)||0,
+    surface:      parseInt(document.getElementById('ch-surface').value)||0,
+    description:  document.getElementById('ch-desc').value.trim(),
+    equipes:      [...selectedEquipes],
+    created_by:   currentUser?.email,
+  };
+
+  // Calculer km depuis base équipe
+  ch.km_total = await calculerKmChantier(ch);
+
+  if(currentChantierEdit){
+    const ok = await updateChantierDB(ch.id, ch);
+    if(ok){
+      const idx = chantiers.findIndex(c=>c.id===ch.id);
+      if(idx>=0) chantiers[idx] = ch;
+      showToast('Chantier mis à jour','success');
+    }
+  }else{
+    const ok = await saveChantierDB(ch);
+    if(ok){chantiers.push(ch);showToast('Chantier ajouté','success');}
+  }
+  closeModal();
+  renderPlanning();
+  renderStats();
+}
+
+async function calculerKmChantier(ch){
+  if(!ch.adresse)return 0;
+  // Pour chaque équipe, calculer distance base → chantier via OSRM
+  let totalKm = 0;
+  for(const eqId of ch.equipes){
+    const eq = equipes.find(e=>e.id===eqId);
+    if(!eq||!eq.cp)continue;
+    try{
+      // Géocoder base équipe et chantier
+      const [rBase, rCh] = await Promise.all([
+        fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(eq.ville+' '+eq.cp)}&limit=1`),
+        fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(ch.adresse)}&limit=1`)
+      ]);
+      const [dBase, dCh] = await Promise.all([rBase.json(), rCh.json()]);
+      if(!dBase.features?.length||!dCh.features?.length)continue;
+      const [lngB,latB] = dBase.features[0].geometry.coordinates;
+      const [lngC,latC] = dCh.features[0].geometry.coordinates;
+      const osrm = await fetch(`https://router.project-osrm.org/route/v1/driving/${lngB},${latB};${lngC},${latC}?overview=false`);
+      const od = await osrm.json();
+      if(od.code==='Ok') totalKm += Math.round(od.routes[0].distance/1000);
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,100));
+  }
+  return totalKm;
+}
+
+async function deleteChantier(){
+  if(!currentChantierEdit||!confirm('Supprimer ce chantier ?'))return;
+  const ok = await deleteChantierDB(currentChantierEdit.id);
+  if(ok){
+    chantiers = chantiers.filter(c=>c.id!==currentChantierEdit.id);
+    closeModal();renderPlanning();renderStats();
+    showToast('Chantier supprimé');
+  }
+}
+
+// ── MODAL DÉTAIL ──
+function openDetail(id){
+  const ch = chantiers.find(c=>c.id===id);
+  if(!ch)return;
+  currentDetailId = id;
+  const tc = TYPE_CONFIG[ch.type]||TYPE_CONFIG.jour;
+  const eqNames = (ch.equipes||[]).map(eqId=>{
+    const eq=equipes.find(e=>e.id===eqId);
+    return eq?eq.nom+(eq.membres&&eq.membres!=='—'?' + '+eq.membres:''):'?';
+  }).join(', ');
+  const dDays = Math.round((new Date(ch.date_fin)-new Date(ch.date_debut))/(1000*86400))+1;
+  document.getElementById('detail-header').style.background = tc.color;
+  document.getElementById('detail-title').textContent = `${tc.icon} ${ch.client}`;
+  document.getElementById('detail-body').innerHTML = `
+    <div style="background:var(--light);padding:10px;margin-bottom:12px;border-left:3px solid ${tc.color}">
+      <div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:4px">${tc.label}</div>
+      <div style="font-size:16px;font-weight:800;font-family:'Barlow Condensed',sans-serif">${ch.client}</div>
+      ${ch.adresse?`<div style="font-size:12px;color:var(--text2);margin-top:2px">📍 ${ch.adresse}</div>`:''}
+      ${ch.ref?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Réf. ${ch.ref}</div>`:''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">
+      <div style="background:var(--light);padding:8px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--blue);font-family:'Barlow Condensed',sans-serif">${dDays}</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:700">Jours</div>
+      </div>
+      <div style="background:var(--light);padding:8px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--blue);font-family:'Barlow Condensed',sans-serif">${ch.nuits||0}</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:700">Nuits</div>
+      </div>
+      <div style="background:var(--light);padding:8px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--blue);font-family:'Barlow Condensed',sans-serif">${ch.km_total||'—'}</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-weight:700">km A/R</div>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Dates</div>
+    <div style="font-size:12px;margin-bottom:10px">${new Date(ch.date_debut).toLocaleDateString('fr-FR')} → ${new Date(ch.date_fin).toLocaleDateString('fr-FR')}</div>
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Équipes</div>
+    <div style="font-size:12px;font-weight:600;margin-bottom:10px">${eqNames||'—'}</div>
+    ${ch.surface?`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Superficie</div>
+    <div style="font-size:12px;margin-bottom:10px">${ch.surface.toLocaleString('fr-FR')} m²</div>`:''}
+    ${ch.description?`<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Description</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.5">${ch.description}</div>`:''}`;
+  document.getElementById('modal-detail').classList.add('open');
+}
+
+function closeDetail(){document.getElementById('modal-detail').classList.remove('open');}
+
+function editFromDetail(){
+  closeDetail();
+  const ch = chantiers.find(c=>c.id===currentDetailId);
+  if(!ch)return;
+  currentChantierEdit = ch;
+  document.getElementById('modal-chantier-title').textContent = 'Modifier le chantier';
+  document.getElementById('btn-delete-ch').style.display = 'block';
+  document.getElementById('ch-client').value   = ch.client||'';
+  document.getElementById('ch-adresse').value  = ch.adresse||'';
+  document.getElementById('ch-ref').value      = ch.ref||'';
+  document.getElementById('ch-date-debut').value = ch.date_debut||'';
+  document.getElementById('ch-date-fin').value   = ch.date_fin||'';
+  document.getElementById('ch-nuits').value   = ch.nuits||'';
+  document.getElementById('ch-surface').value = ch.surface||'';
+  document.getElementById('ch-desc').value    = ch.description||'';
+  selectedType = ch.type||'jour';
+  document.querySelectorAll('.type-chip').forEach(c=>{
+    c.classList.remove('selected');c.style.background='';c.style.color='';c.style.borderColor='';
+    if(c.dataset.type===selectedType){
+      c.classList.add('selected');c.style.background=c.dataset.color;
+      c.style.color='#fff';c.style.borderColor=c.dataset.color;
+    }
+  });
+  selectedEquipes = new Set(ch.equipes||[]);
+  updateTeamCheckboxes();
+  document.getElementById('modal-chantier').classList.add('open');
+}
+
+// ── GESTION ÉQUIPES ──
+function buildEquipeSelect(){
+  const sel = document.getElementById('filter-equipe');
+  sel.innerHTML = '<option value="all">Toutes les équipes</option>' +
+    equipes.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
+}
+
+function renderEquipes(){
+  document.getElementById('equipes-list').innerHTML = equipes.map(eq=>`
+    <div style="background:var(--white);border:1px solid var(--light3);padding:14px;border-top:3px solid ${eq.couleur}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;text-transform:uppercase;color:${eq.couleur}">${eq.nom}</div>
+        <span style="font-size:9px;padding:2px 7px;background:${eq.type==='soustraitant'?'#fdf0f2':'#e6f5ed'};color:${eq.type==='soustraitant'?'#c0392b':'#1a8c4a'};font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase">${eq.type==='soustraitant'?'Sous-traitant':'Interne'}</span>
+      </div>
+      ${eq.membres&&eq.membres!=='—'?`<div style="font-size:11px;color:var(--text2);margin-bottom:4px">👷 Technicien : ${eq.membres}</div>`:''}
+      <div style="font-size:11px;color:var(--text3)">📍 Base : ${eq.ville} (${eq.cp})</div>
+      <button onclick="openModalEquipe('${eq.id}')" style="margin-top:10px;padding:4px 10px;font-size:10px;font-weight:700;background:var(--light);border:1.5px solid var(--light3);cursor:pointer;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase">✏ Modifier</button>
+    </div>`).join('');
+}
+
+function openModalEquipe(eqId=null){
+  currentEquipeEdit = eqId ? equipes.find(e=>e.id===eqId) : null;
+  document.getElementById('modal-eq-title').textContent = currentEquipeEdit?'Modifier l\'équipe':'Nouvelle équipe';
+  document.getElementById('btn-delete-eq').style.display = currentEquipeEdit?'block':'none';
+  document.getElementById('eq-nom').value     = currentEquipeEdit?.nom||'';
+  document.getElementById('eq-membres').value = currentEquipeEdit?.membres||'';
+  document.getElementById('eq-ville').value   = currentEquipeEdit?.ville||'';
+  document.getElementById('eq-cp').value      = currentEquipeEdit?.cp||'';
+  document.getElementById('eq-type').value    = currentEquipeEdit?.type||'interne';
+  document.getElementById('eq-couleur').value = currentEquipeEdit?.couleur||'#1a6fc4';
+  document.getElementById('modal-equipe').classList.add('open');
+}
+
+function closeModalEquipe(){document.getElementById('modal-equipe').classList.remove('open');}
+
+function saveEquipe(){
+  const nom = document.getElementById('eq-nom').value.trim();
+  if(!nom){showToast('Nom obligatoire','error');return;}
+  const eq = {
+    id:      currentEquipeEdit?.id || `eq-${Date.now()}`,
+    nom,
+    membres: document.getElementById('eq-membres').value.trim()||'—',
+    ville:   document.getElementById('eq-ville').value.trim(),
+    cp:      document.getElementById('eq-cp').value.trim(),
+    type:    document.getElementById('eq-type').value,
+    couleur: document.getElementById('eq-couleur').value,
+  };
+  if(currentEquipeEdit){
+    const idx = equipes.findIndex(e=>e.id===eq.id);
+    if(idx>=0) equipes[idx]=eq;
+  }else{
+    equipes.push(eq);
+  }
+  localStorage.setItem('big_equipes', JSON.stringify(equipes));
+  closeModalEquipe();
+  buildEquipeSelect();
+  buildTeamCheckboxes();
+  renderEquipes();
+  renderPlanning();
+  showToast('Équipe enregistrée','success');
+}
+
+function deleteEquipe(){
+  if(!currentEquipeEdit||!confirm('Supprimer cette équipe ?'))return;
+  equipes = equipes.filter(e=>e.id!==currentEquipeEdit.id);
+  localStorage.setItem('big_equipes', JSON.stringify(equipes));
+  closeModalEquipe();
+  buildEquipeSelect();buildTeamCheckboxes();renderEquipes();renderPlanning();
+  showToast('Équipe supprimée');
+}
+
+// ── STATS ──
+function populateStatsMonthSel(){
+  const sel = document.getElementById('stats-month-sel');
+  sel.innerHTML = MOIS_FR.map((m,i)=>`<option value="${i}" ${i===new Date().getMonth()?'selected':''}>${m}</option>`).join('');
+}
+
+function getChantiersPeriod(){
+  const period = document.getElementById('stats-period')?.value||'month';
+  const mSel   = parseInt(document.getElementById('stats-month-sel')?.value??new Date().getMonth());
+  const now    = new Date();
+  return chantiers.filter(ch=>{
+    const d = new Date(ch.date_debut);
+    if(period==='month') return d.getMonth()===mSel && d.getFullYear()===now.getFullYear();
+    if(period==='year')  return d.getFullYear()===now.getFullYear();
+    return true;
+  });
+}
+
+function renderStats(){
+  const periodChantiers = getChantiersPeriod();
+  const period = document.getElementById('stats-period')?.value||'month';
+
+  // Stats globales
+  const totalJours    = periodChantiers.reduce((s,c)=>s+Math.round((new Date(c.date_fin)-new Date(c.date_debut))/(1000*86400))+1,0);
+  const totalNuits    = periodChantiers.reduce((s,c)=>s+(c.nuits||0),0);
+  const totalKm       = periodChantiers.reduce((s,c)=>s+(c.km_total||0),0);
+  const totalChantiers= periodChantiers.length;
+
+  // Par type
+  const typeCount = {};
+  periodChantiers.forEach(c=>{typeCount[c.type]=(typeCount[c.type]||0)+1;});
+
+  // Par équipe
+  const eqStats = equipes.map(eq=>{
+    const eqCh = periodChantiers.filter(c=>c.equipes?.includes(eq.id));
+    const jours = eqCh.reduce((s,c)=>s+Math.round((new Date(c.date_fin)-new Date(c.date_debut))/(1000*86400))+1,0);
+    const nuits = eqCh.reduce((s,c)=>s+(c.nuits||0),0);
+    const km    = eqCh.reduce((s,c)=>s+(c.km_total||0),0);
+    const chDiff= new Set(eqCh.map(c=>c.client)).size;
+    return {eq, nb:eqCh.length, jours, nuits, km, chDiff};
+  }).sort((a,b)=>b.nb-a.nb);
+
+  const maxJours = Math.max(...eqStats.map(e=>e.jours),1);
+
+  // Chantiers par mois (courbe)
+  const parMois = {};
+  chantiers.forEach(c=>{
+    const m=new Date(c.date_debut).getMonth();
+    parMois[m]=(parMois[m]||0)+1;
+  });
+
+  document.getElementById('stats-content').innerHTML = `
+  <!-- KPI globaux -->
+  <div class="stat-card" style="grid-column:1/-1">
+    <div class="stat-card-title">📊 Vue d'ensemble ${period==='month'?MOIS_FR[parseInt(document.getElementById('stats-month-sel')?.value||0)]:period==='year'?new Date().getFullYear():'Tout'}</div>
+    <div class="stat-kpi-grid">
+      <div class="stat-kpi"><div class="stat-kpi-val">${totalChantiers}</div><div class="stat-kpi-lbl">Chantiers</div></div>
+      <div class="stat-kpi"><div class="stat-kpi-val">${totalJours}</div><div class="stat-kpi-lbl">Jours terrain</div></div>
+      <div class="stat-kpi"><div class="stat-kpi-val">${totalNuits}</div><div class="stat-kpi-lbl">Nuits travaillées</div></div>
+      <div class="stat-kpi"><div class="stat-kpi-val">${totalKm.toLocaleString('fr-FR')}</div><div class="stat-kpi-lbl">km parcourus</div></div>
+    </div>
+  </div>
+
+  <!-- Par équipe -->
+  <div class="stat-card" style="grid-column:1/-1">
+    <div class="stat-card-title">👷 Activité par équipe</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:var(--light)">
+          <th style="padding:6px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;color:var(--text3);text-transform:uppercase">Équipe</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);font-weight:700">Chantiers</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);font-weight:700">Clients différents</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);font-weight:700">Jours terrain</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--blue);font-weight:700">🌙 Nuits</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);font-weight:700">km estimés</th>
+        </tr></thead>
+        <tbody>
+          ${eqStats.map((es,i)=>`
+          <tr style="border-top:1px solid var(--light3);${i%2?'background:var(--light)':''}">
+            <td style="padding:6px 8px;font-weight:700;color:${es.eq.couleur};font-family:'Barlow Condensed',sans-serif">${es.eq.nom}${es.eq.membres&&es.eq.membres!=='—'?' + '+es.eq.membres:''}</td>
+            <td style="padding:6px 8px;text-align:center;font-weight:700">${es.nb}</td>
+            <td style="padding:6px 8px;text-align:center">${es.chDiff}</td>
+            <td style="padding:6px 8px;text-align:center">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="flex:1;height:12px;background:var(--light2);overflow:visible;position:relative">
+                  <div style="width:${Math.round(es.jours/maxJours*100)}%;height:100%;background:${es.eq.couleur};position:relative;min-width:2px">
+                    <span style="position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;color:var(--text2);white-space:nowrap">${es.jours}j</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td style="padding:6px 8px;text-align:center;color:#002D9C;font-weight:700">${es.nuits}</td>
+            <td style="padding:6px 8px;text-align:center;color:var(--text2)">${es.km>0?es.km.toLocaleString('fr-FR')+' km':'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Par type d'activité -->
+  <div class="stat-card">
+    <div class="stat-card-title">🏷 Par type d'activité</div>
+    ${Object.entries(TYPE_CONFIG).map(([type, tc])=>{
+      const n=typeCount[type]||0;
+      const pct=totalChantiers>0?Math.round(n/totalChantiers*100):0;
+      return `<div class="stat-bar-row">
+        <div class="stat-bar-label">${tc.icon} ${tc.label.replace('Chantier ','')}</div>
+        <div class="stat-bar-track">
+          <div class="stat-bar-fill" style="width:${pct}%;background:${tc.color}">
+            <span class="stat-bar-n${pct>=20?' inside':''}">${n}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <!-- Répartition par mois -->
+  <div class="stat-card">
+    <div class="stat-card-title">📅 Chantiers par mois (année en cours)</div>
+    ${MOIS_FR.map((m,i)=>{
+      const n=parMois[i]||0;
+      const maxM=Math.max(...Object.values(parMois),1);
+      const pct=Math.round(n/maxM*100);
+      return `<div class="stat-bar-row">
+        <div class="stat-bar-label">${m.substring(0,4)}.</div>
+        <div class="stat-bar-track">
+          <div class="stat-bar-fill" style="width:${pct}%;background:var(--blue)">
+            <span class="stat-bar-n${pct>=20?' inside':''}">${n}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── DIVERS ──
+function populateClientsDatalist(){
+  // Charger les sites depuis Supabase pour l'autocomplétion
+  fetch(`${SUPABASE_URL}/rest/v1/sites?select=nom,ville&order=nom&limit=500`,{headers:sbHeaders()})
+    .then(r=>r.json())
+    .then(sites=>{
+      document.getElementById('clients-list').innerHTML =
+        sites.map(s=>`<option value="${s.nom}${s.ville?' - '+s.ville:''}">`).join('');
+    }).catch(()=>{});
+}
+
+function showTab(name){
+  ['planning','stats','equipes'].forEach(t=>{
+    document.getElementById('content-'+t).classList.toggle('active',t===name);
+    document.getElementById('tab-'+t).classList.toggle('active',t===name);
+  });
+  if(name==='stats') renderStats();
+  if(name==='equipes') renderEquipes();
+}
+
+let toastTimer;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');t.textContent=msg;t.className='show '+(type||'');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.className='',3200);
+}
+
+// Fermer modals au clic extérieur
+['modal-chantier','modal-equipe','modal-detail'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{
+    if(e.target.id===id) e.target.classList.remove('open');
+  });
+});
+
+// Vérifier session persistante
+const savedUser = localStorage.getItem('big_user');
+if(savedUser){
+  try{
+    currentUser=JSON.parse(savedUser);
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').classList.add('visible');
+    document.getElementById('user-name').textContent=currentUser.name;
+    initApp();
+  }catch(e){localStorage.removeItem('big_user');}
+}
+</script>
+</body>
+</html>
