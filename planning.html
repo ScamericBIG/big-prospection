@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>BIG — Planning Équipes</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#002D9C;--blue2:#001e7a;--blue-light:#e8eefb;
+  --dark:#111;--dark2:#1a1a1a;--dark3:#252525;--dark4:#333;
+  --light:#f5f5f3;--light2:#ececea;--light3:#e0e0de;
+  --text:#1a1a1a;--text2:#4a4a4a;--text3:#888;--white:#fff;
+  --shadow:0 2px 8px rgba(0,0,0,.1);--shadow2:0 4px 20px rgba(0,0,0,.15);
+  /* Couleurs types */
+  --c-jour:#e6c300;
+  --c-nuit:#002D9C;
+  --c-mixte:#7a1ac4;
+  --c-arret:#c0392b;
+  --c-conge:#1a8c4a;
+  --c-formation:#0e8fa0;
+  --c-ferie:#2c3e50;
+  --c-soustraitance:#e67e22;
+  --c-attente:#888;
+  /* Couleurs équipes */
+  --eq-geoffroy:#1a6fc4;
+  --eq-nicolas:#1a8c4a;
+  --eq-anthony:#c47a1a;
+  --eq-alain:#7a1ac4;
+  --eq-st:#e67e22;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);color:var(--text);font-size:13px}
+
+/* ── TOPBAR ── */
+#topbar{height:52px;background:var(--dark2);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;border-bottom:3px solid var(--blue);z-index:100}
+.tl-logo-box{background:var(--blue);padding:3px 8px;flex-shrink:0}
+.tl-logo-txt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:#fff;letter-spacing:1px}
+.tl-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px}
+.tl-sep{width:1px;height:24px;background:var(--dark4);flex-shrink:0}
+.tl-spacer{flex:1}
+.tl-btn{padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid var(--dark4);background:transparent;color:rgba(255,255,255,.55);font-family:'Barlow Condensed',sans-serif;letter-spacing:.4px;text-transform:uppercase;transition:all .2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center}
+.tl-btn:hover{border-color:rgba(255,255,255,.3);color:#fff}
+.tl-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+#tl-user{font-size:11px;color:rgba(255,255,255,.35);font-family:'Barlow Condensed',sans-serif;font-weight:600}
+
+/* ── TABS ── */
+#tab-bar{background:#fff;border-bottom:2px solid var(--light3);display:flex;padding:0 12px;gap:2px;flex-shrink:0}
+.tab{padding:10px 14px;font-size:11px;font-weight:800;cursor:pointer;color:var(--text3);border-bottom:3px solid transparent;transition:all .2s;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;margin-bottom:-2px}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab:hover:not(.active){color:var(--text2)}
+
+/* ── LAYOUT ── */
+#app{display:flex;flex-direction:column;height:100vh}
+.tab-content{flex:1;overflow:hidden;display:none;flex-direction:column}
+.tab-content.active{display:flex}
+
+/* ── TOOLBAR PLANNING ── */
+#plan-toolbar{padding:8px 12px;background:#fff;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.month-nav{display:flex;align-items:center;gap:6px}
+.mnav-btn{width:26px;height:26px;background:var(--light);border:1.5px solid var(--light3);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;font-weight:700;color:var(--text2)}
+.mnav-btn:hover{border-color:var(--blue);color:var(--blue)}
+#month-label{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:17px;color:var(--text);min-width:150px;text-align:center;text-transform:uppercase;letter-spacing:.5px}
+.view-toggle{display:flex;border:1.5px solid var(--light3);overflow:hidden}
+.vt-btn{padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;background:#fff;border:none;color:var(--text3);font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.3px;transition:all .15s}
+.vt-btn.active{background:var(--blue);color:#fff}
+.btn-add{padding:6px 14px;background:var(--blue);color:#fff;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px;transition:background .2s}
+.btn-add:hover{background:var(--blue2)}
+.filter-sel{padding:4px 8px;border:1.5px solid var(--light3);font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;background:#fff;cursor:pointer;color:var(--text2)}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.leg-item{display:flex;align-items:center;gap:3px;font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;color:var(--text2)}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* ── GRILLE PLANNING ── */
+#plan-wrap{flex:1;overflow:auto;position:relative}
+#plan-grid{min-width:max-content;user-select:none}
+.pg-head{display:flex;background:var(--dark2);position:sticky;top:0;z-index:30}
+.pg-team-col{width:150px;flex-shrink:0;padding:6px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-right:1px solid var(--dark4);color:rgba(255,255,255,.6);display:flex;align-items:center}
+.pg-days-head{display:flex;flex:1}
+.pg-week-group{display:flex;flex-direction:column}
+.pg-week-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-align:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1);letter-spacing:.3px}
+.pg-week-days{display:flex}
+.pg-day-h{min-width:32px;max-width:32px;text-align:center;padding:3px 1px;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;border-right:1px solid var(--dark4);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
+.pg-day-h:hover{background:var(--dark4)}
+.pg-day-h.we{background:#1c1c1c;color:rgba(255,255,255,.3)}
+.pg-day-h.today{background:var(--blue)}
+.pg-day-h.ferie{background:#1e2a35;color:rgba(255,255,255,.4)}
+.pg-day-num{font-size:11px;font-weight:800;color:#fff}
+.pg-day-wd{font-size:7px;opacity:.7;color:rgba(255,255,255,.7)}
+
+/* Ligne équipe */
+.pg-row{display:flex;border-bottom:1px solid var(--light3);min-height:50px}
+.pg-row.st-row{background:rgba(230,126,34,.03)}
+.pg-team-lbl{width:150px;flex-shrink:0;padding:5px 10px;border-right:1px solid var(--light3);display:flex;flex-direction:column;justify-content:center;gap:1px;position:sticky;left:0;background:#fff;z-index:10}
+.pg-row.st-row .pg-team-lbl{background:#fefcf9}
+.pg-team-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+.pg-team-members{font-size:10px;color:var(--text3);font-weight:600}
+.pg-team-base{font-size:9px;color:var(--text3)}
+.pg-cells-wrap{display:flex;flex:1;position:relative}
+.pg-cell{min-width:32px;max-width:32px;border-right:1px solid var(--light3);cursor:pointer;transition:background .1s;position:relative}
+.pg-cell:hover{background:var(--light2)}
+.pg-cell.we{background:#f8f8f6}
+.pg-cell.ferie{background:#f3f2f0}
+.pg-cell.we_travaille{background:rgba(231,76,60,.06)}
+.pg-blocks{position:absolute;inset:0;pointer-events:none}
+/* Bloc chantier */
+.pg-block{position:absolute;top:3px;bottom:3px;border-radius:2px;display:flex;align-items:center;padding:0 5px;cursor:pointer;z-index:5;overflow:hidden;transition:opacity .15s;box-shadow:0 1px 3px rgba(0,0,0,.15);pointer-events:all}
+.pg-block:hover{opacity:.85;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.pg-block-txt{font-size:9px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.2px}
+.pg-block-icon{font-size:8px;margin-right:2px;flex-shrink:0}
+/* Hachures pour sans commande */
+.pg-block.hachure{background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.3) 4px,rgba(255,255,255,.3) 8px)!important}
+/* Pointillés pour date non validée */
+.pg-block.pointille{border:2px dashed rgba(255,255,255,.7)!important;background-image:none!important}
+/* WE/férié travaillé */
+.pg-block.we-worked::after{content:'★';position:absolute;top:1px;right:2px;font-size:7px;color:rgba(255,255,255,.8)}
+
+/* Vue annuelle */
+#annual-grid{flex:1;overflow:auto;padding:12px}
+.annual-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.annual-month{background:#fff;border:1px solid var(--light3)}
+.annual-month-title{background:var(--dark2);color:#fff;padding:6px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.annual-mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;padding:6px;background:var(--light2)}
+.annual-day-h{font-size:8px;font-weight:700;text-align:center;color:var(--text3);font-family:'Barlow Condensed',sans-serif;padding:2px}
+.annual-day{min-height:28px;background:#fff;font-size:9px;font-weight:600;padding:2px 3px;cursor:pointer;position:relative;overflow:hidden}
+.annual-day:hover{background:var(--light)}
+.annual-day.we{background:#fafafa;color:var(--text3)}
+.annual-day.ferie{background:#f0f0ee;color:var(--text3)}
+.annual-day.today{outline:2px solid var(--blue);outline-offset:-2px}
+.annual-day-num{font-size:9px;color:var(--text3);line-height:1}
+.annual-dots{display:flex;flex-wrap:wrap;gap:1px;margin-top:1px}
+.annual-dot{width:5px;height:5px;border-radius:1px}
+
+/* ── STATS ── */
+#stats-wrap{flex:1;overflow-y:auto;padding:14px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.stat-card{background:#fff;border:1px solid var(--light3);padding:14px}
+.stat-card-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--light3)}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px}
+.kpi{background:var(--light);padding:8px 6px;text-align:center}
+.kpi-val{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--blue);line-height:1}
+.kpi-lbl{font-size:8px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.stat-bar-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.sbl{font-size:10px;font-weight:700;color:var(--text2);width:80px;flex-shrink:0;text-align:right;font-family:'Barlow Condensed',sans-serif}
+.sbtrack{flex:1;height:14px;background:var(--light2);overflow:visible;position:relative}
+.sbfill{height:100%;position:relative;min-width:2px;transition:width .5s}
+.sbn{font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;white-space:nowrap;position:absolute;left:calc(100% + 4px);top:50%;transform:translateY(-50%);color:var(--text2)}
+.sbn.inside{left:auto;right:4px;color:#fff}
+.eq-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--light3)}
+.eq-row:last-child{border-bottom:none}
+.eq-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.eq-name{font-weight:700;font-size:11px;flex:1;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase}
+.eq-stats{display:flex;gap:12px}
+.eq-stat{text-align:center}
+.eq-stat-val{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;color:var(--blue)}
+.eq-stat-lbl{font-size:8px;color:var(--text3);font-weight:700;text-transform:uppercase}
+
+/* ── ÉQUIPES ── */
+#equipes-wrap{flex:1;overflow-y:auto;padding:14px}
+.equipes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.eq-card{background:#fff;border:1px solid var(--light3);padding:14px;border-top:3px solid}
+.eq-card-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;text-transform:uppercase;margin-bottom:6px}
+.eq-card-info{font-size:11px;color:var(--text2);margin-bottom:3px}
+.eq-card-badge{display:inline-block;font-size:9px;padding:2px 7px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;margin-bottom:8px}
+.btn-sm{padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--light3);background:var(--light);font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.3px;transition:all .2s}
+.btn-sm:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:none;align-items:center;justify-content:center;padding:12px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;width:560px;max-width:98vw;max-height:94vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25);display:flex;flex-direction:column}
+.modal-head{background:var(--blue);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:2;flex-shrink:0}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;color:#fff;text-transform:uppercase;letter-spacing:.5px}
+.modal-close{background:transparent;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px}
+.modal-close:hover{color:#fff}
+.modal-body{padding:16px;flex:1}
+.modal-foot{padding:12px 18px;border-top:1px solid var(--light3);display:flex;gap:8px;justify-content:flex-end;background:var(--light);flex-shrink:0}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.form-row.full{grid-template-columns:1fr}
+.form-row.tri{grid-template-columns:1fr 1fr 1fr}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'Barlow Condensed',sans-serif}
+.fg input,.fg select,.fg textarea{padding:7px 10px;border:1.5px solid var(--light3);font-size:12px;font-family:'Barlow',sans-serif;outline:none;transition:border .2s;width:100%;background:#fff}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--blue)}
+.fg textarea{resize:vertical;min-height:60px}
+.section-hd{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--light3);font-family:'Barlow Condensed',sans-serif}
+.type-chips{display:flex;flex-wrap:wrap;gap:5px}
+.type-chip{padding:5px 9px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--light3);background:#fff;color:var(--text2);transition:all .2s;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;display:flex;align-items:center;gap:3px}
+.type-chip.sel{color:#fff;border-color:transparent}
+.team-chips{display:flex;flex-wrap:wrap;gap:6px}
+.team-chip{padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid var(--light3);background:#fff;color:var(--text2);transition:all .2s;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;display:flex;align-items:center;gap:5px}
+.team-chip.sel{color:#fff}
+.checkbox-row{display:flex;align-items:center;gap:8px;padding:6px 0}
+.checkbox-row input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--blue)}
+.checkbox-row label{font-size:12px;font-weight:600;cursor:pointer;color:var(--text)}
+.check-hint{font-size:10px;color:var(--text3);margin-left:23px;margin-top:2px;line-height:1.4}
+.btn{padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;border:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;transition:all .2s}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue2)}
+.btn-secondary{background:var(--light);color:var(--text2);border:1.5px solid var(--light3)}
+.btn-danger{background:#c0392b;color:#fff}
+
+/* ── DETAIL MODAL ── */
+.detail-info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
+.di{background:var(--light);padding:8px;text-align:center}
+.di-val{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--blue);line-height:1}
+.di-lbl{font-size:8px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase}
+.badge-warn{background:#fff3cd;color:#856404}
+.badge-ok{background:#d1f2eb;color:#1a8c4a}
+.badge-danger{background:#fdf0f2;color:#c0392b}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-left-color:#1a8c4a}
+#toast.error{border-left-color:#c0392b}
+
+/* Stats toolbar */
+.stats-toolbar{padding:8px 12px;background:#fff;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <div class="tl-logo-box"><div class="tl-logo-txt">BIG</div></div>
+    <div class="tl-sep"></div>
+    <div class="tl-title">Planning Équipes</div>
+    <div class="tl-spacer"></div>
+    <span id="tl-user"></span>
+    <a href="index.html" class="tl-btn">⊞ Accueil</a>
+    <a href="prospection.html" class="tl-btn">🗺 Prospection</a>
+  </div>
+
+  <div id="tab-bar">
+    <div class="tab active" onclick="showTab('planning')" id="tab-planning">📅 Planning</div>
+    <div class="tab" onclick="showTab('stats')" id="tab-stats">📊 Statistiques</div>
+    <div class="tab" onclick="showTab('equipes')" id="tab-equipes">👷 Équipes</div>
+  </div>
+
+  <!-- PLANNING -->
+  <div class="tab-content active" id="content-planning">
+    <div id="plan-toolbar">
+      <div class="month-nav">
+        <button class="mnav-btn" onclick="nav(-1)">‹</button>
+        <div id="month-label">—</div>
+        <button class="mnav-btn" onclick="nav(1)">›</button>
+      </div>
+      <div class="view-toggle">
+        <button class="vt-btn active" id="vt-month" onclick="setView('month')">Mois</button>
+        <button class="vt-btn" id="vt-year" onclick="setView('year')">Année</button>
+      </div>
+      <select class="filter-sel" id="filter-eq" onchange="renderPlanning()">
+        <option value="all">Toutes les équipes</option>
+      </select>
+      <button class="btn-add" onclick="openModal()">+ Ajouter chantier</button>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#e6c300;border:1px solid #ccc"></div>Jour</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#002D9C"></div>Nuit</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#7a1ac4"></div>Mixte</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#c0392b"></div>Arrêt</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#1a8c4a"></div>Congé</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#0e8fa0"></div>Formation</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#e67e22"></div>Sous-traitance</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#888"></div>Sans commande</div>
+      </div>
+    </div>
+    <div id="plan-wrap">
+      <div id="plan-grid"></div>
+      <div id="annual-grid" style="display:none"><div class="annual-wrap" id="annual-wrap"></div></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="tab-content" id="content-stats">
+    <div class="stats-toolbar">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;text-transform:uppercase">Statistiques équipes</div>
+      <select class="filter-sel" id="stats-period" onchange="renderStats()">
+        <option value="month">Ce mois-ci</option>
+        <option value="year">Cette année</option>
+        <option value="all">Tout</option>
+      </select>
+      <select class="filter-sel" id="stats-month" onchange="renderStats()"></select>
+      <select class="filter-sel" id="stats-ca" onchange="renderStats()">
+        <option value="all">Tous chargés d'affaires</option>
+        <option value="Emeric">Emeric</option>
+        <option value="Mathis">Mathis</option>
+        <option value="Marie">Marie</option>
+        <option value="Christophe">Christophe</option>
+      </select>
+    </div>
+    <div id="stats-wrap"><div class="stats-grid" id="stats-grid"></div></div>
+  </div>
+
+  <!-- ÉQUIPES -->
+  <div class="tab-content" id="content-equipes">
+    <div style="padding:10px 12px;background:#fff;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;text-transform:uppercase">Gestion des équipes</div>
+      <button class="btn-add" onclick="openModalEquipe()">+ Nouvelle équipe</button>
+    </div>
+    <div id="equipes-wrap"><div class="equipes-grid" id="equipes-grid"></div></div>
+  </div>
+</div>
+
+<!-- MODAL CHANTIER -->
+<div class="modal-overlay" id="modal-ch">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-ch-title">Nouveau chantier</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Client + Adresse -->
+      <div class="section-hd" style="margin-top:0">Informations chantier</div>
+      <div class="form-row full">
+        <div class="fg">
+          <label>Client / Site *</label>
+          <input type="text" id="ch-client" placeholder="Ex: Vivien Paille - Arles" list="clients-dl" autocomplete="off"/>
+          <datalist id="clients-dl"></datalist>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Adresse / Ville *</label>
+          <input type="text" id="ch-adresse" placeholder="Ex: Arles (13)"/>
+        </div>
+        <div class="fg">
+          <label>Référence chantier</label>
+          <input type="text" id="ch-ref" placeholder="Ex: BIG-2026-042"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Chargé d'affaires *</label>
+          <select id="ch-ca">
+            <option value="">Sélectionner…</option>
+            <option>Emeric</option>
+            <option>Mathis</option>
+            <option>Marie</option>
+            <option>Christophe</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Type de travaux</label>
+          <input type="text" id="ch-travaux" placeholder="Ex: Réparation dallage béton"/>
+        </div>
+      </div>
+
+      <!-- Dates -->
+      <div class="section-hd">Dates</div>
+      <div class="form-row tri">
+        <div class="fg">
+          <label>Date début *</label>
+          <input type="date" id="ch-debut"/>
+        </div>
+        <div class="fg">
+          <label>Date fin prévue *</label>
+          <input type="date" id="ch-fin"/>
+        </div>
+        <div class="fg">
+          <label>Date fin réelle</label>
+          <input type="date" id="ch-fin-reel" title="Renseigner si le chantier s'est terminé avant la date prévue"/>
+        </div>
+      </div>
+
+      <!-- Statut commande -->
+      <div class="section-hd">Statut de la commande</div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="ch-commande" onchange="updateChStyles()"/>
+        <label for="ch-commande">Commande reçue</label>
+      </div>
+      <div class="check-hint" id="hint-commande" style="color:#c0392b">⚠ Sans commande — apparaîtra en hachuré sur le planning</div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="ch-date-ok" onchange="updateChStyles()"/>
+        <label for="ch-date-ok">Date confirmée par le client</label>
+      </div>
+      <div class="check-hint" id="hint-date" style="color:#c47a1a">⚠ Date non confirmée — apparaîtra en pointillés sur le planning</div>
+      <div class="checkbox-row" style="margin-top:4px">
+        <input type="checkbox" id="ch-we" />
+        <label for="ch-we">Inclut un/des samedi(s), dimanche(s) ou jour(s) férié(s) travaillé(s)</label>
+      </div>
+
+      <!-- Type activité -->
+      <div class="section-hd">Type d'activité</div>
+      <div class="type-chips" id="type-chips">
+        <div class="type-chip" data-type="jour" data-color="#e6c300" data-txtcolor="#1a1a1a" onclick="selectType(this)">☀️ Jour</div>
+        <div class="type-chip" data-type="nuit" data-color="#002D9C" data-txtcolor="#fff" onclick="selectType(this)">🌙 Nuit</div>
+        <div class="type-chip" data-type="mixte" data-color="#7a1ac4" data-txtcolor="#fff" onclick="selectType(this)">☀️🌙 Mixte</div>
+        <div class="type-chip" data-type="arret" data-color="#c0392b" data-txtcolor="#fff" onclick="selectType(this)">⛔ Arrêt</div>
+        <div class="type-chip" data-type="conge" data-color="#1a8c4a" data-txtcolor="#fff" onclick="selectType(this)">🏖 Congé</div>
+        <div class="type-chip" data-type="formation" data-color="#0e8fa0" data-txtcolor="#fff" onclick="selectType(this)">📚 Formation</div>
+        <div class="type-chip" data-type="ferie" data-color="#2c3e50" data-txtcolor="#fff" onclick="selectType(this)">🗓 Férié</div>
+        <div class="type-chip" data-type="soustraitance" data-color="#e67e22" data-txtcolor="#fff" onclick="selectType(this)">🔧 Sous-traitance</div>
+      </div>
+
+      <!-- Équipes -->
+      <div class="section-hd">Équipes assignées *</div>
+      <div class="team-chips" id="team-chips"></div>
+      <div style="margin-top:8px;font-size:10px;color:var(--text3)">💡 Sélectionnez une ou plusieurs équipes — vous pouvez mixer des équipes différentes sur le même chantier</div>
+
+      <!-- Nuits -->
+      <div class="section-hd">Informations complémentaires</div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Nuits travaillées prévues</label>
+          <input type="number" id="ch-nuits" min="0" placeholder="0"/>
+        </div>
+        <div class="fg">
+          <label>Nuits réellement travaillées</label>
+          <input type="number" id="ch-nuits-reel" min="0" placeholder="0"/>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="fg">
+          <label>Description / Remarques</label>
+          <textarea id="ch-desc" placeholder="Nature des travaux, contraintes d'accès, matériel…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-danger" id="btn-del-ch" style="display:none" onclick="deleteCh()">Supprimer</button>
+      <button class="btn btn-primary" onclick="saveCh()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DÉTAIL -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal" style="width:480px">
+    <div class="modal-head" id="detail-head">
+      <div class="modal-title" id="detail-title">Détail chantier</div>
+      <button class="modal-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeDetail()">Fermer</button>
+      <button class="btn btn-primary" onclick="editFromDetail()">✏ Modifier</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ÉQUIPE -->
+<div class="modal-overlay" id="modal-eq">
+  <div class="modal" style="width:420px">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-eq-title">Nouvelle équipe</div>
+      <button class="modal-close" onclick="closeModalEquipe()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row full" style="margin-top:0">
+        <div class="fg"><label>Chef d'équipe / Nom *</label><input type="text" id="eq-nom" placeholder="Ex: Geoffroy"/></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Technicien(s)</label><input type="text" id="eq-membres" placeholder="Ex: David"/></div>
+        <div class="fg"><label>Ville de base *</label><input type="text" id="eq-ville" placeholder="Ex: Peltre"/></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Code postal</label><input type="text" id="eq-cp" placeholder="Ex: 57245"/></div>
+        <div class="fg"><label>Type</label>
+          <select id="eq-type">
+            <option value="interne">Équipe interne</option>
+            <option value="soustraitant">Sous-traitant</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Couleur</label><input type="color" id="eq-couleur" value="#1a6fc4" style="height:34px;cursor:pointer"/></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModalEquipe()">Annuler</button>
+      <button class="btn btn-danger" id="btn-del-eq" style="display:none" onclick="deleteEq()">Supprimer</button>
+      <button class="btn btn-primary" onclick="saveEq()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ──
+const SB_URL  = "https://lrwfhcdecxrpmacowmfx.supabase.co";
+const SB_ANON = "sb_publishable_RArVRufwMCuS8lCz_pQ3-A_64csz8QJ";
+
+const USERS = {
+  "enieps@big-france.com":    {name:"Emeric",    sector:"nord"},
+  "emeric@big-france.com":    {name:"Emeric",    sector:"nord"},
+  "mpineau@big-france.com":   {name:"Mathis",    sector:"ouest"},
+  "mguerreiro@big-france.com":{name:"Marie",     sector:"sudest"},
+  "cdragne@big-france.com":   {name:"Christophe",sector:"all"},
+  "admin@big-france.com":     {name:"Admin",     sector:"all"},
+  "test@big-france.com":      {name:"Test",      sector:"nord"},
+};
+
+const EQ_DEFAULT = [
+  {id:"eq-geoffroy", nom:"Geoffroy",   membres:"David",  ville:"Peltre",  cp:"57245", couleur:"#1a6fc4", type:"interne"},
+  {id:"eq-nicolas",  nom:"Nicolas",    membres:"Aimé",   ville:"Nantes",  cp:"44000", couleur:"#1a8c4a", type:"interne"},
+  {id:"eq-anthony",  nom:"Anthony",    membres:"Jessim", ville:"Ternay",  cp:"69360", couleur:"#c47a1a", type:"interne"},
+  {id:"eq-alain",    nom:"Alain",      membres:"—",      ville:"Ternay",  cp:"69360", couleur:"#7a1ac4", type:"interne"},
+  {id:"eq-marchal",  nom:"A. Marchal", membres:"",       ville:"Belgique",cp:"BE",    couleur:"#e67e22", type:"soustraitant"},
+];
+
+const TYPE_CFG = {
+  jour:          {label:"Chantier Jour",    icon:"☀️",  color:"#e6c300", tc:"#1a1a1a"},
+  nuit:          {label:"Chantier Nuit",    icon:"🌙",  color:"#002D9C", tc:"#fff"},
+  mixte:         {label:"Chantier Mixte",   icon:"☀️🌙",color:"#7a1ac4", tc:"#fff"},
+  arret:         {label:"Arrêt",            icon:"⛔",  color:"#c0392b", tc:"#fff"},
+  conge:         {label:"Congé",            icon:"🏖",  color:"#1a8c4a", tc:"#fff"},
+  formation:     {label:"Formation",        icon:"📚",  color:"#0e8fa0", tc:"#fff"},
+  ferie:         {label:"Férié",            icon:"🗓",  color:"#2c3e50", tc:"#fff"},
+  soustraitance: {label:"Sous-traitance",   icon:"🔧",  color:"#e67e22", tc:"#fff"},
+};
+
+const JOURS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const MOIS  = ['Janvier','Février','Mars','Avril','Mai','Juin',
+               'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const FERIES_FIXES = ['01-01','05-01','05-08','07-14','08-15','11-01','11-11','12-25'];
+
+// ── STATE ──
+let currentUser = null;
+let equipes = JSON.parse(localStorage.getItem('big_equipes') || 'null') || EQ_DEFAULT;
+let chantiers = [];
+let currentM, currentY, currentView = 'month';
+let editId = null, editEqId = null, detailId = null;
+let selectedType = 'jour', selEquipes = new Set();
+
+// ── HELPERS ──
+function sbH(write=false){
+  const h={"apikey":SB_ANON,"Authorization":"Bearer "+SB_ANON};
+  if(write) h["Content-Type"]="application/json";
+  return h;
+}
+function isFerie(d,m,y){
+  const key=`${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  if(FERIES_FIXES.includes(key)) return true;
+  // Pâques simplifié
+  const Y=y,a=Y%19,b=Math.floor(Y/100),c=Y%100,d2=Math.floor(b/4),e=b%4,
+        f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d2-g+15)%30,
+        i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,
+        m2=Math.floor((a+11*h+22*l)/451),
+        month2=Math.floor((h+l-7*m2+114)/31),day2=(h+l-7*m2+114)%31+1;
+  const easter=`${String(month2).padStart(2,'0')}-${String(day2).padStart(2,'0')}`;
+  const lundi=`${String(month2).padStart(2,'0')}-${String(day2+1).padStart(2,'0')}`;
+  const ascension=new Date(y,month2-1,day2+39);
+  const pentecote=new Date(y,month2-1,day2+50);
+  const asc=`${String(ascension.getMonth()+1).padStart(2,'0')}-${String(ascension.getDate()).padStart(2,'0')}`;
+  const pen=`${String(pentecote.getMonth()+1).padStart(2,'0')}-${String(pentecote.getDate()).padStart(2,'0')}`;
+  return [easter,lundi,asc,pen].includes(key);
+}
+function dateStr(y,m,d){
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
+function weekNum(d){
+  const date=new Date(d);
+  date.setHours(0,0,0,0);
+  date.setDate(date.getDate()+4-(date.getDay()||7));
+  const yearStart=new Date(date.getFullYear(),0,1);
+  return Math.ceil(((date-yearStart)/86400000+1)/7);
+}
+function fmt(n){ return n.toLocaleString('fr-FR'); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000)+1; }
+let toastT;
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show '+(type||'');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.className='',3200);
+}
+
+// ── AUTH / INIT ──
+function initApp(){
+  const saved=localStorage.getItem('big_user');
+  if(!saved){ window.location.href='index.html'; return; }
+  try{ currentUser=JSON.parse(saved); }
+  catch(e){ window.location.href='index.html'; return; }
+  document.getElementById('tl-user').textContent=currentUser.name;
+  const now=new Date(); currentM=now.getMonth(); currentY=now.getFullYear();
+  buildEqSelect();
+  buildTeamChips();
+  buildEquipesGrid();
+  populateStatsMths();
+  loadChantiers().then(()=>{
+    renderPlanning();
+    renderStats();
+  });
+  loadClients();
+}
+
+// ── SUPABASE ──
+async function loadChantiers(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/chantiers?order=date_debut.asc&limit=1000`,{headers:sbH()});
+    if(r.ok) chantiers=await r.json();
+  }catch(e){ toast('Chargement hors-ligne',''); }
+}
+
+async function saveChDB(ch){
+  const r=await fetch(`${SB_URL}/rest/v1/chantiers`,{
+    method:'POST',
+    headers:{...sbH(true),"Prefer":"resolution=merge-duplicates,return=minimal"},
+    body:JSON.stringify(ch)
+  });
+  if(!r.ok){const txt=await r.text();console.error('saveChDB error:',r.status,txt);}
+  return r.ok||r.status===201||r.status===204;
+}
+async function updateChDB(id,data){
+  const r=await fetch(`${SB_URL}/rest/v1/chantiers?id=eq.${encodeURIComponent(id)}`,{
+    method:'PATCH',headers:{...sbH(true),"Prefer":"return=minimal"},body:JSON.stringify(data)
+  });
+  return r.ok;
+}
+async function deleteChDB(id){
+  const r=await fetch(`${SB_URL}/rest/v1/chantiers?id=eq.${encodeURIComponent(id)}`,{
+    method:'DELETE',headers:sbH()
+  });
+  return r.ok;
+}
+
+async function loadClients(){
+  try{
+    // Charger par pages pour avoir les 22000 sites
+    let allSites=[], page=0;
+    while(true){
+      const r=await fetch(`${SB_URL}/rest/v1/sites?select=nom,ville&order=nom&limit=1000`,{
+        headers:{...sbH(),"Range-Unit":"items","Range":`${page*1000}-${page*1000+999}`}
+      });
+      if(!r.ok)break;
+      const data=await r.json();
+      if(!data.length)break;
+      allSites=allSites.concat(data);
+      if(data.length<1000)break;
+      page++;
+    }
+    if(allSites.length){
+      document.getElementById('clients-dl').innerHTML=
+        allSites.map(s=>`<option value="${s.nom}${s.ville?' — '+s.ville:''}">`).join('');
+    }
+  }catch(e){}
+}
+
+// ── NAVIGATION ──
+function nav(delta){
+  currentM+=delta;
+  if(currentM>11){currentM=0;currentY++;}
+  if(currentM<0){currentM=11;currentY--;}
+  renderPlanning();
+}
+function setView(v){
+  currentView=v;
+  document.getElementById('vt-month').classList.toggle('active',v==='month');
+  document.getElementById('vt-year').classList.toggle('active',v==='year');
+  // En vue annuelle on réutilise plan-grid (même format, mois empilés)
+  document.getElementById('plan-grid').style.display='block';
+  document.getElementById('annual-grid').style.display='none';
+  renderPlanning();
+}
+function showTab(name){
+  ['planning','stats','equipes'].forEach(t=>{
+    document.getElementById('content-'+t).classList.toggle('active',t===name);
+    document.getElementById('tab-'+t).classList.toggle('active',t===name);
+  });
+  if(name==='stats') renderStats();
+  if(name==='equipes') buildEquipesGrid();
+}
+
+// ── RENDU PLANNING MENSUEL ──
+function renderPlanning(){
+  if(currentView==='year'){
+    document.getElementById('annual-grid').style.display='none';
+    renderAnnuel();
+    return;
+  }
+
+  const nb=daysInMonth(currentY,currentM);
+  document.getElementById('month-label').textContent=`${MOIS[currentM]} ${currentY}`;
+
+  const filterEq=document.getElementById('filter-eq')?.value||'all';
+  const eqs=filterEq==='all'?equipes:equipes.filter(e=>e.id===filterEq);
+
+  const todayStr=dateStr(new Date().getFullYear(),new Date().getMonth(),new Date().getDate());
+
+  // Construire groupes de semaines
+  let weeks=[]; // [{weekNum, days:[{d,wd,isWE,isFer,str}]}]
+  let curWeek=null;
+  for(let d=1;d<=nb;d++){
+    const date=new Date(currentY,currentM,d);
+    const wd=date.getDay();
+    const isWE=wd===0||wd===6;
+    const isFer=isFerie(d,currentM,currentY);
+    const wn=weekNum(date);
+    if(!curWeek||curWeek.wn!==wn){
+      curWeek={wn,days:[]};weeks.push(curWeek);
+    }
+    curWeek.days.push({d,wd,isWE,isFer,str:dateStr(currentY,currentM,d)});
+  }
+
+  // Header
+  let html=`<div class="pg-head">
+    <div class="pg-team-col">Équipe</div>
+    <div class="pg-days-head">`;
+  weeks.forEach(w=>{
+    html+=`<div class="pg-week-group">
+      <div class="pg-week-label">S${w.wn}</div>
+      <div class="pg-week-days">`;
+    w.days.forEach(({d,wd,isWE,isFer,str})=>{
+      const cls=[isWE?'we':'',str===todayStr?'today':'',isFer?'ferie':''].filter(Boolean).join(' ');
+      html+=`<div class="pg-day-h ${cls}" onclick="quickAdd('${str}')">
+        <div class="pg-day-wd">${JOURS[wd]}</div>
+        <div class="pg-day-num">${d}</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+  html+=`</div></div>`;
+
+  // Lignes équipes
+  eqs.forEach(eq=>{
+    const isST=eq.type==='soustraitant';
+    html+=`<div class="pg-row${isST?' st-row':''}">
+      <div class="pg-team-lbl">
+        <div class="pg-team-name" style="color:${eq.couleur}">${isST?'🔧 ':''}${eq.nom}</div>
+        ${eq.membres&&eq.membres!=='—'?`<div class="pg-team-members">${eq.membres}</div>`:''}
+        <div class="pg-team-base">${isST?'<span style="color:var(--c-soustraitance);font-weight:700">Sous-traitant</span> · ':''} ${eq.ville}</div>
+      </div>
+      <div class="pg-cells-wrap">`;
+
+    // Cellules fond
+    weeks.forEach(w=>{
+      html+=`<div style="display:flex">`;
+      w.days.forEach(({d,wd,isWE,isFer,str})=>{
+        const cls=[isWE?'we':'',isFer?'ferie':''].filter(Boolean).join(' ');
+        html+=`<div class="pg-cell ${cls}" onclick="quickAdd('${str}','${eq.id}')"></div>`;
+      });
+      html+=`</div>`;
+    });
+
+    // Blocs chantiers
+    const mCh=chantiers.filter(ch=>{
+      if(!ch.equipes||!ch.equipes.includes(eq.id))return false;
+      const deb=new Date(ch.date_debut);
+      const fin=new Date(ch.date_fin_reel||ch.date_fin);
+      const mDeb=new Date(currentY,currentM,1);
+      const mFin=new Date(currentY,currentM,nb);
+      return deb<=mFin&&fin>=mDeb;
+    });
+
+    html+=`<div class="pg-blocks">`;
+    mCh.forEach(ch=>{
+      const deb=new Date(ch.date_debut);
+      const fin=new Date(ch.date_fin_reel||ch.date_fin);
+      const sd=Math.max(1,deb.getMonth()===currentM&&deb.getFullYear()===currentY?deb.getDate():1);
+      const ed=Math.min(nb,fin.getMonth()===currentM&&fin.getFullYear()===currentY?fin.getDate():nb);
+      const left=(sd-1)*32;
+      const width=(ed-sd+1)*32-2;
+      const tc=TYPE_CFG[ch.type]||TYPE_CFG.jour;
+      // Style selon statut
+      let extraCls='';
+      if(!ch.commande) extraCls='hachure';
+      else if(!ch.date_ok) extraCls='pointille';
+      if(ch.we_travaille) extraCls+=' we-worked';
+      html+=`<div class="pg-block ${extraCls}"
+        style="left:${left}px;width:${width}px;background:${tc.color}"
+        onclick="openDetail('${ch.id}')"
+        title="${ch.client}${ch.commande?'':' [Sans commande]'}${ch.date_ok?'':' [Date non validée]'}">
+        <span class="pg-block-icon">${tc.icon}</span>
+        <span class="pg-block-txt" style="color:${tc.tc}">${ch.client}</span>
+      </div>`;
+    });
+    html+=`</div></div></div>`;
+  });
+
+  document.getElementById('plan-grid').innerHTML=html;
+}
+
+// ── VUE ANNUELLE ──
+function renderAnnuel(){
+  // Vue annuelle = même format que mensuelle, un tableau par mois, empilés verticalement
+  document.getElementById('month-label').textContent=currentY.toString();
+  const container=document.getElementById('plan-grid');
+  const filterEq=document.getElementById('filter-eq')?.value||'all';
+  const eqs=filterEq==='all'?equipes:equipes.filter(e=>e.id===filterEq);
+  const todayStr=dateStr(new Date().getFullYear(),new Date().getMonth(),new Date().getDate());
+
+  let html='';
+  for(let m=0;m<12;m++){
+    const nb=daysInMonth(currentY,m);
+    // Groupes de semaines pour ce mois
+    let weeks=[];let curW=null;
+    for(let d=1;d<=nb;d++){
+      const date=new Date(currentY,m,d);
+      const wd=date.getDay();
+      const wn=weekNum(date);
+      if(!curW||curW.wn!==wn){curW={wn,days:[]};weeks.push(curW);}
+      curW.days.push({d,wd,isWE:wd===0||wd===6,isFer:isFerie(d,m,currentY),str:dateStr(currentY,m,d)});
+    }
+
+    // Titre du mois
+    html+=`<div style="background:var(--blue);color:#fff;padding:6px 12px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;z-index:25;border-bottom:2px solid var(--blue2)">${MOIS[m]} ${currentY}</div>`;
+
+    // Header jours
+    html+=`<div class="pg-head" style="position:sticky;top:28px;z-index:24">
+      <div class="pg-team-col">Équipe</div>
+      <div class="pg-days-head">`;
+    weeks.forEach(w=>{
+      html+=`<div class="pg-week-group">
+        <div class="pg-week-label">S${w.wn}</div>
+        <div class="pg-week-days">`;
+      w.days.forEach(({d,wd,isWE,isFer,str})=>{
+        const cls=[isWE?'we':'',str===todayStr?'today':'',isFer?'ferie':''].filter(Boolean).join(' ');
+        html+=`<div class="pg-day-h ${cls}" onclick="quickAdd('${str}')">
+          <div class="pg-day-wd">${JOURS[wd]}</div>
+          <div class="pg-day-num">${d}</div>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    });
+    html+=`</div></div>`;
+
+    // Lignes équipes
+    eqs.forEach(eq=>{
+      const isST=eq.type==='soustraitant';
+      html+=`<div class="pg-row${isST?' st-row':''}">
+        <div class="pg-team-lbl">
+          <div class="pg-team-name" style="color:${eq.couleur}">${isST?'🔧 ':''}${eq.nom}</div>
+          ${eq.membres&&eq.membres!=='—'?`<div class="pg-team-members">${eq.membres}</div>`:''}
+          <div class="pg-team-base">${eq.ville}</div>
+        </div>
+        <div class="pg-cells-wrap">`;
+
+      // Cellules fond
+      weeks.forEach(w=>{
+        html+=`<div style="display:flex">`;
+        w.days.forEach(({d,wd,isWE,isFer,str})=>{
+          html+=`<div class="pg-cell ${[isWE?'we':'',isFer?'ferie':''].filter(Boolean).join(' ')}" onclick="quickAdd('${str}','${eq.id}')"></div>`;
+        });
+        html+=`</div>`;
+      });
+
+      // Blocs chantiers
+      const mCh=chantiers.filter(ch=>{
+        if(!ch.equipes||!ch.equipes.includes(eq.id))return false;
+        const deb=new Date(ch.date_debut);
+        const fin=new Date(ch.date_fin_reel||ch.date_fin);
+        const mDeb=new Date(currentY,m,1);
+        const mFin=new Date(currentY,m,nb);
+        return deb<=mFin&&fin>=mDeb;
+      });
+
+      html+=`<div class="pg-blocks">`;
+      mCh.forEach(ch=>{
+        const deb=new Date(ch.date_debut);
+        const fin=new Date(ch.date_fin_reel||ch.date_fin);
+        const sd=Math.max(1,deb.getMonth()===m&&deb.getFullYear()===currentY?deb.getDate():1);
+        const ed=Math.min(nb,fin.getMonth()===m&&fin.getFullYear()===currentY?fin.getDate():nb);
+        const left=(sd-1)*32;
+        const width=(ed-sd+1)*32-2;
+        const tc=TYPE_CFG[ch.type]||TYPE_CFG.jour;
+        let extraCls='';
+        if(!ch.commande)extraCls='hachure';
+        else if(!ch.date_ok)extraCls='pointille';
+        if(ch.we_travaille)extraCls+=' we-worked';
+        html+=`<div class="pg-block ${extraCls}"
+          style="left:${left}px;width:${width}px;background:${tc.color}"
+          onclick="openDetail('${ch.id}')"
+          title="${ch.client}">
+          <span class="pg-block-icon">${tc.icon}</span>
+          <span class="pg-block-txt" style="color:${tc.tc}">${ch.client}</span>
+        </div>`;
+      });
+      html+=`</div></div></div>`;
+    });
+
+    // Séparateur entre mois
+    html+=`<div style="height:16px;background:var(--light2);border-top:2px solid var(--light3)"></div>`;
+  }
+  container.innerHTML=html;
+}
+
+// ── MODAL CHANTIER ──
+function openModal(prefDate=null,prefEqId=null){
+  editId=null;
+  document.getElementById('modal-ch-title').textContent='Nouveau chantier';
+  document.getElementById('btn-del-ch').style.display='none';
+  ['ch-client','ch-adresse','ch-ref','ch-travaux','ch-desc'].forEach(id=>document.getElementById(id).value='');
+  ['ch-nuits','ch-nuits-reel'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ch-fin-reel').value='';
+  const today=prefDate||new Date().toISOString().split('T')[0];
+  document.getElementById('ch-debut').value=today;
+  document.getElementById('ch-fin').value=today;
+  document.getElementById('ch-ca').value='';
+  document.getElementById('ch-commande').checked=true;
+  document.getElementById('ch-date-ok').checked=true;
+  document.getElementById('ch-we').checked=false;
+  selectedType='jour';
+  document.querySelectorAll('.type-chip').forEach(c=>{
+    c.classList.remove('sel');c.style.background='';c.style.color='';
+    if(c.dataset.type==='jour'){
+      c.classList.add('sel');c.style.background=c.dataset.color;c.style.color=c.dataset.txtcolor;
+    }
+  });
+  selEquipes=prefEqId?new Set([prefEqId]):new Set();
+  updateTeamChipsSel();
+  updateChStyles();
+  document.getElementById('modal-ch').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('modal-ch').classList.remove('open'); }
+
+function quickAdd(dateStr,eqId=null){
+  const d=new Date(dateStr+'T00:00:00');
+  currentM=d.getMonth(); currentY=d.getFullYear();
+  openModal(dateStr,eqId);
+}
+
+function selectType(el){
+  document.querySelectorAll('.type-chip').forEach(c=>{
+    c.classList.remove('sel');c.style.background='';c.style.color='';c.style.borderColor='';
+  });
+  el.classList.add('sel');
+  el.style.background=el.dataset.color;
+  el.style.color=el.dataset.txtcolor;
+  selectedType=el.dataset.type;
+}
+
+function updateChStyles(){
+  const commande=document.getElementById('ch-commande').checked;
+  const dateOk=document.getElementById('ch-date-ok').checked;
+  document.getElementById('hint-commande').style.display=commande?'none':'block';
+  document.getElementById('hint-date').style.display=(!commande||dateOk)?'none':'block';
+}
+
+function buildTeamChips(){
+  const cont=document.getElementById('team-chips');
+  cont.innerHTML=equipes.map(eq=>`
+    <div class="team-chip" id="tc-${eq.id}" data-eq="${eq.id}" onclick="toggleTeamChip('${eq.id}')">
+      <div style="width:7px;height:7px;border-radius:50%;background:${eq.couleur}"></div>
+      ${eq.nom}${eq.membres&&eq.membres!=='—'?' + '+eq.membres:''}
+    </div>`).join('');
+}
+
+function toggleTeamChip(id){
+  const eq=equipes.find(e=>e.id===id);
+  const el=document.getElementById('tc-'+id);
+  if(!eq||!el)return;
+  if(selEquipes.has(id)){
+    selEquipes.delete(id);el.classList.remove('sel');el.style.background='';el.style.color='';
+  }else{
+    selEquipes.add(id);el.classList.add('sel');el.style.background=eq.couleur;el.style.color='#fff';
+  }
+}
+
+function updateTeamChipsSel(){
+  equipes.forEach(eq=>{
+    const el=document.getElementById('tc-'+eq.id);
+    if(!el)return;
+    if(selEquipes.has(eq.id)){
+      el.classList.add('sel');el.style.background=eq.couleur;el.style.color='#fff';
+    }else{
+      el.classList.remove('sel');el.style.background='';el.style.color='';
+    }
+  });
+}
+
+async function saveCh(){
+  const client=document.getElementById('ch-client').value.trim();
+  const debut=document.getElementById('ch-debut').value;
+  const fin=document.getElementById('ch-fin').value;
+  const ca=document.getElementById('ch-ca').value;
+  if(!client||!debut||!fin){toast('Client et dates obligatoires','error');return;}
+  if(selEquipes.size===0){toast('Sélectionnez au moins une équipe','error');return;}
+  // CA optionnel pour ne pas bloquer l'enregistrement
+  // if(!ca){toast('Sélectionnez un chargé d\'affaires','error');return;}
+
+  const ch={
+    id:          editId||`ch-${Date.now()}`,
+    client,
+    adresse:     document.getElementById('ch-adresse').value.trim(),
+    ref:         document.getElementById('ch-ref').value.trim(),
+    travaux:     document.getElementById('ch-travaux').value.trim(),
+    ca,
+    type:        selectedType,
+    date_debut:  debut,
+    date_fin:    fin,
+    date_fin_reel: document.getElementById('ch-fin-reel').value||null,
+    commande:    document.getElementById('ch-commande').checked,
+    date_ok:     document.getElementById('ch-date-ok').checked,
+    we_travaille:document.getElementById('ch-we').checked,
+    nuits:       parseInt(document.getElementById('ch-nuits').value)||0,
+    nuits_reel:  parseInt(document.getElementById('ch-nuits-reel').value)||0,
+    description: document.getElementById('ch-desc').value.trim(),
+    equipes:     [...selEquipes],
+    created_by:  currentUser?.email,
+  };
+
+  // Calcul km en arrière-plan
+  ch.km_total=await calcKm(ch);
+
+  let ok;
+  if(editId){
+    ok=await updateChDB(editId,ch);
+    if(ok){const i=chantiers.findIndex(c=>c.id===editId);if(i>=0)chantiers[i]=ch;}
+  }else{
+    ok=await saveChDB(ch);
+    if(ok)chantiers.push(ch);
+  }
+  if(ok){closeModal();renderPlanning();renderStats();toast(editId?'Chantier mis à jour':'Chantier ajouté','success');}
+  else{
+    // Afficher le détail de l'erreur
+    let errMsg='Erreur enregistrement';
+    try{const errData=await (editId?
+      fetch(`${SB_URL}/rest/v1/chantiers?id=eq.${editId}`,{method:'PATCH',headers:{...sbH(true),"Prefer":"return=minimal"},body:JSON.stringify(ch)}):
+      fetch(`${SB_URL}/rest/v1/chantiers`,{method:'POST',headers:{...sbH(true),"Prefer":"resolution=merge-duplicates"},body:JSON.stringify(ch)}));
+      const txt=await errData.text();console.error('Erreur Supabase:',txt);
+      if(txt.includes('column'))errMsg='Colonnes manquantes — exécutez le SQL de mise à jour';
+      else if(txt.includes('permission'))errMsg='Droits insuffisants — vérifiez RLS Supabase';
+    }catch(e2){}
+    toast(errMsg,'error');
+  }
+}
+
+async function calcKm(ch){
+  if(!ch.adresse)return 0;
+  let total=0;
+  for(const eqId of ch.equipes){
+    const eq=equipes.find(e=>e.id===eqId);
+    if(!eq||!eq.cp||eq.cp==='BE')continue;
+    try{
+      const [rb,rc]=await Promise.all([
+        fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(eq.ville+' '+eq.cp)}&limit=1`),
+        fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(ch.adresse)}&limit=1`)
+      ]);
+      const [db,dc]=await Promise.all([rb.json(),rc.json()]);
+      if(!db.features?.length||!dc.features?.length)continue;
+      const [lngB,latB]=db.features[0].geometry.coordinates;
+      const [lngC,latC]=dc.features[0].geometry.coordinates;
+      const ro=await fetch(`https://router.project-osrm.org/route/v1/driving/${lngB},${latB};${lngC},${latC}?overview=false`);
+      const od=await ro.json();
+      if(od.code==='Ok')total+=Math.round(od.routes[0].distance/1000);
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,100));
+  }
+  return total;
+}
+
+async function deleteCh(){
+  if(!editId||!confirm('Supprimer ce chantier ?'))return;
+  const ok=await deleteChDB(editId);
+  if(ok){
+    chantiers=chantiers.filter(c=>c.id!==editId);
+    closeModal();renderPlanning();renderStats();toast('Chantier supprimé');
+  }
+}
+
+// ── DÉTAIL ──
+function openDetail(id){
+  const ch=chantiers.find(c=>c.id===id);
+  if(!ch)return;
+  detailId=id;
+  const tc=TYPE_CFG[ch.type]||TYPE_CFG.jour;
+  const eqNames=(ch.equipes||[]).map(eid=>{
+    const eq=equipes.find(e=>e.id===eid);
+    return eq?eq.nom+(eq.membres&&eq.membres!=='—'?' + '+eq.membres:''):'?';
+  }).join(', ');
+  const nbJours=daysBetween(ch.date_debut,ch.date_fin);
+  const nbJoursReel=ch.date_fin_reel?daysBetween(ch.date_debut,ch.date_fin_reel):null;
+  const perf=nbJoursReel?Math.round((nbJoursReel/nbJours)*100):null;
+  document.getElementById('detail-head').style.background=tc.color;
+  document.getElementById('detail-title').textContent=`${tc.icon} ${ch.client}`;
+  document.getElementById('detail-body').innerHTML=`
+    <div style="background:var(--light);padding:10px;margin-bottom:12px;border-left:3px solid ${tc.color}">
+      <div style="font-size:16px;font-weight:800;font-family:'Barlow Condensed',sans-serif">${ch.client}</div>
+      ${ch.adresse?`<div style="font-size:11px;color:var(--text2);margin-top:3px">📍 ${ch.adresse}</div>`:''}
+      ${ch.ref?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Réf. ${ch.ref}</div>`:''}
+      ${ch.ca?`<div style="font-size:10px;color:var(--text3);margin-top:2px">👤 CA : ${ch.ca}</div>`:''}
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+        ${!ch.commande?'<span class="badge badge-danger">⚠ Sans commande</span>':'<span class="badge badge-ok">✓ Commande reçue</span>'}
+        ${ch.commande&&!ch.date_ok?'<span class="badge badge-warn">⏳ Date non validée</span>':''}
+        ${ch.we_travaille?'<span class="badge" style="background:#fff3e0;color:#e67e22">★ WE/Férié travaillé</span>':''}
+      </div>
+    </div>
+    <div class="detail-info">
+      <div class="di"><div class="di-val">${nbJours}</div><div class="di-lbl">Jours prévus</div></div>
+      <div class="di"><div class="di-val" style="${nbJoursReel&&nbJoursReel<nbJours?'color:#1a8c4a':''}">${nbJoursReel??'—'}</div><div class="di-lbl">Jours réels</div></div>
+      <div class="di"><div class="di-val">${ch.nuits_reel||ch.nuits||0}</div><div class="di-lbl">Nuits</div></div>
+    </div>
+      ${perf<100?`<div style="background:#d1f2eb;padding:8px 10px;margin-bottom:12px;font-size:11px;font-weight:700;color:#1a8c4a">⚡ Chantier terminé en avance — Performance : ${perf}%</div>`:perf>110?`<div style="background:#fdf0f2;padding:8px 10px;margin-bottom:12px;font-size:11px;font-weight:700;color:#c0392b">⚠ Chantier plus long que prévu — Performance : ${perf}%</div>`:''}
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Dates</div>
+    <div style="font-size:12px;margin-bottom:4px">${new Date(ch.date_debut).toLocaleDateString('fr-FR')} → ${new Date(ch.date_fin).toLocaleDateString('fr-FR')} (prévue)</div>
+    ${ch.date_fin_reel?`<div style="font-size:12px;color:#1a8c4a;font-weight:600;margin-bottom:8px">✓ Terminé le ${new Date(ch.date_fin_reel).toLocaleDateString('fr-FR')}</div>`:''}
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Équipes</div>
+    <div style="font-size:12px;font-weight:600;margin-bottom:10px">${eqNames||'—'}</div>
+    ${ch.km_total?`<div style="font-size:12px;margin-bottom:10px">🚗 ${ch.km_total.toLocaleString('fr-FR')} km estimés A/R</div>`:''}
+    ${ch.description?`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:4px">Description</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.5">${ch.description}</div>`:''}`;
+  document.getElementById('modal-detail').classList.add('open');
+}
+function closeDetail(){ document.getElementById('modal-detail').classList.remove('open'); }
+function editFromDetail(){
+  closeDetail();
+  const ch=chantiers.find(c=>c.id===detailId);
+  if(!ch)return;
+  editId=ch.id;
+  document.getElementById('modal-ch-title').textContent='Modifier le chantier';
+  document.getElementById('btn-del-ch').style.display='block';
+  document.getElementById('ch-client').value=ch.client||'';
+  document.getElementById('ch-adresse').value=ch.adresse||'';
+  document.getElementById('ch-ref').value=ch.ref||'';
+  document.getElementById('ch-travaux').value=ch.travaux||'';
+  document.getElementById('ch-ca').value=ch.ca||'';
+  document.getElementById('ch-debut').value=ch.date_debut||'';
+  document.getElementById('ch-fin').value=ch.date_fin||'';
+  document.getElementById('ch-fin-reel').value=ch.date_fin_reel||'';
+  document.getElementById('ch-commande').checked=!!ch.commande;
+  document.getElementById('ch-date-ok').checked=!!ch.date_ok;
+  document.getElementById('ch-we').checked=!!ch.we_travaille;
+  document.getElementById('ch-nuits').value=ch.nuits||'';
+  document.getElementById('ch-nuits-reel').value=ch.nuits_reel||'';
+  document.getElementById('ch-desc').value=ch.description||'';
+  selectedType=ch.type||'jour';
+  document.querySelectorAll('.type-chip').forEach(c=>{
+    c.classList.remove('sel');c.style.background='';c.style.color='';
+    if(c.dataset.type===selectedType){
+      c.classList.add('sel');c.style.background=c.dataset.color;c.style.color=c.dataset.txtcolor;
+    }
+  });
+  selEquipes=new Set(ch.equipes||[]);
+  updateTeamChipsSel();
+  updateChStyles();
+  document.getElementById('modal-ch').classList.add('open');
+}
+
+// ── STATS ──
+function populateStatsMths(){
+  const sel=document.getElementById('stats-month');
+  sel.innerHTML=MOIS.map((m,i)=>`<option value="${i}" ${i===new Date().getMonth()?'selected':''}>${m}</option>`).join('');
+}
+
+function getStatsChs(){
+  const period=document.getElementById('stats-period')?.value||'month';
+  const mSel=parseInt(document.getElementById('stats-month')?.value??new Date().getMonth());
+  const caFil=document.getElementById('stats-ca')?.value||'all';
+  const now=new Date();
+  return chantiers.filter(ch=>{
+    const d=new Date(ch.date_debut);
+    if(period==='month'&&(d.getMonth()!==mSel||d.getFullYear()!==now.getFullYear()))return false;
+    if(period==='year'&&d.getFullYear()!==now.getFullYear())return false;
+    if(caFil!=='all'&&ch.ca!==caFil)return false;
+    return true;
+  });
+}
+
+function renderStats(){
+  const chs=getStatsChs();
+  const grid=document.getElementById('stats-grid');
+
+  const totalJours=chs.reduce((s,c)=>s+daysBetween(c.date_debut,c.date_fin),0);
+  const totalNuits=chs.reduce((s,c)=>s+(c.nuits_reel||c.nuits||0),0);
+  const totalKm=chs.reduce((s,c)=>s+(c.km_total||0),0);
+  const totalWE=chs.filter(c=>c.we_travaille).length;
+  const sansCmd=chs.filter(c=>!c.commande).length;
+  const dateProv=chs.filter(c=>c.commande&&!c.date_ok).length;
+
+  // Perf équipes
+  const eqStats=equipes.map(eq=>{
+    const ec=chs.filter(c=>c.equipes?.includes(eq.id));
+    const jours=ec.reduce((s,c)=>s+daysBetween(c.date_debut,c.date_fin_reel||c.date_fin),0);
+    const joursP=ec.reduce((s,c)=>s+daysBetween(c.date_debut,c.date_fin),0);
+    const nuits=ec.reduce((s,c)=>s+(c.nuits_reel||c.nuits||0),0);
+    const km=ec.reduce((s,c)=>s+(c.km_total||0),0);
+    const we=ec.filter(c=>c.we_travaille).length;
+    const perf=joursP>0?Math.round(jours/joursP*100):null;
+    return{eq,nb:ec.length,jours,joursP,nuits,km,we,perf,clients:new Set(ec.map(c=>c.client)).size};
+  }).sort((a,b)=>b.nb-a.nb);
+  const maxJours=Math.max(...eqStats.map(e=>e.jours),1);
+
+  // Par CA
+  const caStats={};
+  chs.forEach(c=>{const ca=c.ca||'Non assigné';caStats[ca]=(caStats[ca]||0)+1;});
+  const caSorted=Object.entries(caStats).sort((a,b)=>b[1]-a[1]);
+  const maxCA=Math.max(...Object.values(caStats),1);
+
+  grid.innerHTML=`
+  <!-- KPIs -->
+  <div class="stat-card" style="grid-column:1/-1">
+    <div class="stat-card-title">📊 Vue d'ensemble</div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-val">${chs.length}</div><div class="kpi-lbl">Chantiers</div></div>
+      <div class="kpi"><div class="kpi-val">${fmt(totalJours)}</div><div class="kpi-lbl">Jours terrain</div></div>
+      <div class="kpi"><div class="kpi-val">${totalNuits}</div><div class="kpi-lbl">Nuits</div></div>
+      <div class="kpi"><div class="kpi-val">${fmt(totalKm)}</div><div class="kpi-lbl">km estimés</div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${totalWE?`<span class="badge" style="background:#fff3e0;color:#e67e22">★ ${totalWE} chantier(s) WE/Férié</span>`:''}
+      ${sansCmd?`<span class="badge badge-danger">⚠ ${sansCmd} sans commande</span>`:''}
+      ${dateProv?`<span class="badge badge-warn">⏳ ${dateProv} date non validée</span>`:''}
+    </div>
+  </div>
+
+  <!-- Par équipe -->
+  <div class="stat-card" style="grid-column:1/-1">
+    <div class="stat-card-title">👷 Performance par équipe</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <thead><tr style="background:var(--light)">
+          <th style="padding:5px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:9px;color:var(--text3);text-transform:uppercase">Équipe</th>
+          <th style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text3);font-weight:700">Chantiers</th>
+          <th style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text3);font-weight:700">Clients diff.</th>
+          <th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text3);font-weight:700">Jours terrain</th>
+          <th style="padding:5px 8px;text-align:center;font-size:9px;color:#002D9C;font-weight:700">🌙 Nuits</th>
+          <th style="padding:5px 8px;text-align:center;font-size:9px;color:#e67e22;font-weight:700">★ WE/Fér.</th>
+          <th style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text3);font-weight:700">km</th>
+          <th style="padding:5px 8px;text-align:center;font-size:9px;color:#1a8c4a;font-weight:700">Perf.</th>
+        </tr></thead>
+        <tbody>${eqStats.map((es,i)=>`
+          <tr style="border-top:1px solid var(--light3);${i%2?'background:var(--light)':''}">
+            <td style="padding:5px 8px;font-weight:700;color:${es.eq.couleur};font-family:'Barlow Condensed',sans-serif">${es.eq.nom}${es.eq.membres&&es.eq.membres!=='—'?' + '+es.eq.membres:''}</td>
+            <td style="padding:5px 8px;text-align:center;font-weight:700">${es.nb}</td>
+            <td style="padding:5px 8px;text-align:center">${es.clients}</td>
+            <td style="padding:5px 8px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="flex:1;height:12px;background:var(--light2);overflow:visible;position:relative">
+                  <div style="width:${Math.round(es.jours/maxJours*100)}%;height:100%;background:${es.eq.couleur};position:relative;min-width:2px">
+                    <span style="position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;color:var(--text2);white-space:nowrap">${es.jours}j</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td style="padding:5px 8px;text-align:center;color:#002D9C;font-weight:700">${es.nuits}</td>
+            <td style="padding:5px 8px;text-align:center;color:#e67e22;font-weight:700">${es.we||'—'}</td>
+            <td style="padding:5px 8px;text-align:center;color:var(--text2)">${es.km?fmt(es.km)+' km':'—'}</td>
+            <td style="padding:5px 8px;text-align:center">
+              ${es.perf!==null?`<span style="font-weight:700;color:${es.perf<100?'#1a8c4a':es.perf>110?'#c0392b':'var(--text2)'}">${es.perf}%</span>`:'—'}
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:9px;color:var(--text3);margin-top:8px">Perf. = jours réels / jours prévus × 100 — sous 100% = terminé en avance</div>
+  </div>
+
+  <!-- Par CA -->
+  <div class="stat-card">
+    <div class="stat-card-title">👤 Par chargé d'affaires</div>
+    ${caSorted.map(([ca,n])=>{const pct=Math.round(n/maxCA*100);return`
+      <div class="stat-bar-row">
+        <div class="sbl">${ca}</div>
+        <div class="sbtrack"><div class="sbfill" style="width:${pct}%;background:var(--blue)">
+          <span class="sbn${pct>=20?' inside':''}">${n}</span>
+        </div></div>
+      </div>`;}).join('')}
+  </div>
+
+  <!-- En attente -->
+  <div class="stat-card">
+    <div class="stat-card-title">📋 Suivi commandes</div>
+    ${[
+      {label:'Chantiers validés',n:chs.filter(c=>c.commande&&c.date_ok).length,color:'#1a8c4a'},
+      {label:'Date non validée',n:dateProv,color:'#c47a1a'},
+      {label:'Sans commande',n:sansCmd,color:'#c0392b'},
+    ].map(({label,n,color})=>{
+      const pct=chs.length?Math.round(n/chs.length*100):0;
+      return`<div class="stat-bar-row">
+        <div class="sbl">${label}</div>
+        <div class="sbtrack"><div class="sbfill" style="width:${pct}%;background:${color}">
+          <span class="sbn${pct>=20?' inside':''}">${n}</span>
+        </div></div>
+      </div>`;
+    }).join('')}
+    ${totalWE?`<div style="margin-top:10px;padding:8px;background:#fff3e0;font-size:11px;color:#e67e22;font-weight:700">
+      ★ ${totalWE} chantier(s) avec WE/Jours fériés travaillés → vérifier primes
+    </div>`:''}
+  </div>
+
+  <!-- Par mois -->
+  <div class="stat-card">
+    <div class="stat-card-title">📅 Chantiers par mois (${new Date().getFullYear()})</div>
+    ${MOIS.map((m,i)=>{
+      const n=chantiers.filter(c=>new Date(c.date_debut).getMonth()===i&&new Date(c.date_debut).getFullYear()===new Date().getFullYear()).length;
+      const maxM=Math.max(...MOIS.map((_,j)=>chantiers.filter(c=>new Date(c.date_debut).getMonth()===j&&new Date(c.date_debut).getFullYear()===new Date().getFullYear()).length),1);
+      const pct=Math.round(n/maxM*100);
+      return`<div class="stat-bar-row">
+        <div class="sbl">${m.substring(0,4)}.</div>
+        <div class="sbtrack"><div class="sbfill" style="width:${pct}%;background:var(--blue)">
+          <span class="sbn${pct>=20?' inside':''}">${n}</span>
+        </div></div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── ÉQUIPES ──
+function buildEqSelect(){
+  const sel=document.getElementById('filter-eq');
+  sel.innerHTML='<option value="all">Toutes les équipes</option>'+
+    equipes.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
+}
+
+function buildEquipesGrid(){
+  document.getElementById('equipes-grid').innerHTML=equipes.map(eq=>`
+    <div class="eq-card" style="border-top-color:${eq.couleur}">
+      <div class="eq-card-name" style="color:${eq.couleur}">${eq.nom}</div>
+      ${eq.membres&&eq.membres!=='—'?`<div class="eq-card-info">👷 Technicien : ${eq.membres}</div>`:''}
+      <div class="eq-card-info">📍 Base : ${eq.ville} (${eq.cp})</div>
+      <div class="eq-card-badge" style="background:${eq.type==='soustraitant'?'#fdf0f2':'#e6f5ed'};color:${eq.type==='soustraitant'?'#c0392b':'#1a8c4a'}">
+        ${eq.type==='soustraitant'?'Sous-traitant':'Interne'}
+      </div>
+      <br>
+      <button class="btn-sm" onclick="openModalEquipe('${eq.id}')">✏ Modifier</button>
+    </div>`).join('');
+}
+
+function openModalEquipe(id=null){
+  editEqId=id;
+  const eq=id?equipes.find(e=>e.id===id):null;
+  document.getElementById('modal-eq-title').textContent=eq?'Modifier l\'équipe':'Nouvelle équipe';
+  document.getElementById('btn-del-eq').style.display=eq?'block':'none';
+  document.getElementById('eq-nom').value=eq?.nom||'';
+  document.getElementById('eq-membres').value=eq?.membres||'';
+  document.getElementById('eq-ville').value=eq?.ville||'';
+  document.getElementById('eq-cp').value=eq?.cp||'';
+  document.getElementById('eq-type').value=eq?.type||'interne';
+  document.getElementById('eq-couleur').value=eq?.couleur||'#1a6fc4';
+  document.getElementById('modal-eq').classList.add('open');
+}
+function closeModalEquipe(){ document.getElementById('modal-eq').classList.remove('open'); }
+
+function saveEq(){
+  const nom=document.getElementById('eq-nom').value.trim();
+  if(!nom){toast('Nom obligatoire','error');return;}
+  const eq={
+    id:      editEqId||`eq-${Date.now()}`,
+    nom,
+    membres: document.getElementById('eq-membres').value.trim()||'—',
+    ville:   document.getElementById('eq-ville').value.trim(),
+    cp:      document.getElementById('eq-cp').value.trim(),
+    type:    document.getElementById('eq-type').value,
+    couleur: document.getElementById('eq-couleur').value,
+  };
+  if(editEqId){const i=equipes.findIndex(e=>e.id===editEqId);if(i>=0)equipes[i]=eq;}
+  else equipes.push(eq);
+  localStorage.setItem('big_equipes',JSON.stringify(equipes));
+  closeModalEquipe();
+  buildEqSelect();buildTeamChips();buildEquipesGrid();renderPlanning();
+  toast('Équipe enregistrée','success');
+}
+
+function deleteEq(){
+  if(!editEqId||!confirm('Supprimer cette équipe ?'))return;
+  equipes=equipes.filter(e=>e.id!==editEqId);
+  localStorage.setItem('big_equipes',JSON.stringify(equipes));
+  closeModalEquipe();buildEqSelect();buildTeamChips();buildEquipesGrid();renderPlanning();
+  toast('Équipe supprimée');
+}
+
+// Fermeture modals
+['modal-ch','modal-detail','modal-eq'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{
+    if(e.target.id===id)e.target.classList.remove('open');
+  });
+});
+
+// Init
+initApp();
+</script>
+</body>
+</html>
