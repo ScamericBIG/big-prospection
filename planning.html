@@ -2051,8 +2051,12 @@ function getCoutMP(chId) {
 
 function saveAnalyseField(chId, field, val) {
   if (!analyseData[chId]) analyseData[chId] = {};
+
   analyseData[chId][field] = val;
-  saveAnalyse();
+
+  localStorage.setItem("big_analyse", JSON.stringify(analyseData));
+
+  renderAnalyse();
 }
 
   function populateAnalyseEqFilter() {
@@ -2100,7 +2104,7 @@ function renderAnalyse() {
   var rows = "";
   termines.forEach(function(c, i) {
     var ad    = analyseData[c.id] || {};
-    var caHT  = ad.ca_ht || 0;
+    var caHT = parseFloat(ad.ca_ht) || 0;
     var num = c.ref || "";
     var prim  = ad.primes || 0;
 var coutMP = getCoutMP(c.id);
