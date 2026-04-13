@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>BIG — Espace Chef d'Équipe</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Barlow+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#002D9C; --blue2:#001e7a; --blue-light:#e8eefb;
+  --dark:#111; --dark2:#1a1a1a; --dark3:#252525; --dark4:#333;
+  --light:#f5f5f3; --light2:#ececea; --light3:#e0e0de;
+  --text:#1a1a1a; --text2:#4a4a4a; --text3:#888; --white:#fff;
+  --green:#1a8c4a; --red:#c0392b; --orange:#c47a1a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);color:var(--text);font-size:13px}
+
+/* ── AUTH ── */
+#auth-screen{position:fixed;inset:0;background:var(--dark2);display:flex;align-items:center;justify-content:center;z-index:1000}
+.auth-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);padding:36px 40px;width:360px;max-width:95vw;backdrop-filter:blur(20px)}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.auth-logo-box{background:var(--blue);padding:6px 12px}
+.auth-logo-txt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:26px;color:#fff;letter-spacing:2px}
+.auth-subtitle{font-size:11px;color:rgba(255,255,255,.45);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
+.auth-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;display:block}
+.auth-input{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff;padding:10px 13px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;transition:border .2s;margin-bottom:10px}
+.auth-input:focus{border-color:rgba(0,45,156,.8);background:rgba(0,45,156,.1)}
+.auth-input::placeholder{color:rgba(255,255,255,.2)}
+.auth-btn{width:100%;padding:12px;background:var(--blue);color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;letter-spacing:1.5px;text-transform:uppercase;border:none;cursor:pointer;transition:background .2s;margin-top:4px}
+.auth-btn:hover{background:var(--blue2)}
+.auth-err{color:#e74c3c;font-size:11px;text-align:center;margin-top:8px;display:none;font-weight:600}
+
+/* ── APP ── */
+#app{display:none;flex-direction:column;height:100vh}
+#app.visible{display:flex}
+
+/* ── TOPBAR ── */
+#topbar{height:50px;background:var(--dark2);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;border-bottom:3px solid var(--blue)}
+.tl-logo-box{background:var(--blue);padding:3px 8px;flex-shrink:0}
+.tl-logo-txt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:17px;color:#fff;letter-spacing:1px}
+.tl-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:rgba(255,255,255,.6);text-transform:uppercase}
+.tl-spacer{flex:1}
+.tl-chef{font-size:12px;font-weight:700;color:rgba(255,255,255,.8);font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px}
+.tl-logout{padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;border:1.5px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.5);font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;transition:all .2s}
+.tl-logout:hover{border-color:rgba(255,255,255,.4);color:#fff}
+
+/* ── TABS ── */
+#tab-bar{background:#fff;border-bottom:2px solid var(--light3);display:flex;padding:0 14px;gap:2px;flex-shrink:0}
+.tab{padding:10px 14px;font-size:11px;font-weight:800;cursor:pointer;color:var(--text3);border-bottom:3px solid transparent;transition:all .2s;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;margin-bottom:-2px}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* ── CONTENT ── */
+.tab-content{flex:1;overflow-y:auto;display:none;flex-direction:column}
+.tab-content.active{display:flex}
+
+/* ── PLANNING CHEF ── */
+#planning-wrap{flex:1;overflow-y:auto;padding:12px}
+.plan-header{background:#fff;border:1px solid var(--light3);padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.plan-header-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;text-transform:uppercase}
+.plan-subtitle{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* Carte chantier */
+.chantier-card{background:#fff;border:1px solid var(--light3);margin-bottom:10px;border-left:4px solid var(--blue);overflow:hidden;transition:box-shadow .2s}
+.chantier-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.1)}
+.ch-card-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.ch-card-client{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.3px}
+.ch-card-dates{font-size:11px;color:var(--text3);margin-top:2px}
+.ch-card-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;border-radius:2px}
+.badge-today{background:#e8eefb;color:var(--blue)}
+.badge-soon{background:#e6f5ed;color:var(--green)}
+.badge-future{background:var(--light);color:var(--text3)}
+.badge-done{background:#f0f0ee;color:var(--text3)}
+.ch-card-body{padding:0 16px 14px;border-top:1px solid var(--light3)}
+.ch-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;padding-top:12px}
+.ch-info-item{font-size:11px}
+.ch-info-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;font-family:'Barlow Condensed',sans-serif}
+.ch-info-value{font-weight:600;color:var(--text);word-break:break-word}
+.ch-travaux{background:var(--light);padding:8px 12px;border-left:2px solid var(--blue);margin-bottom:12px;font-size:11px;line-height:1.5;color:var(--text2)}
+.ch-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-action{padding:8px 16px;font-size:11px;font-weight:800;cursor:pointer;border:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;transition:all .2s;display:flex;align-items:center;gap:5px}
+.btn-sortie{background:#002D9C;color:#fff}
+.btn-sortie:hover{background:#001e7a}
+.btn-retour{background:#1a8c4a;color:#fff}
+.btn-retour:hover{background:#137a3f}
+.btn-view-bons{background:var(--light);color:var(--text2);border:1.5px solid var(--light3)}
+.btn-view-bons:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none;align-items:flex-start;justify-content:center;padding:12px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;width:560px;max-width:98vw;margin:auto;box-shadow:0 8px 40px rgba(0,0,0,.25);display:flex;flex-direction:column;max-height:92vh;overflow:hidden}
+.modal-head{background:var(--blue);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;color:#fff;text-transform:uppercase;letter-spacing:.5px}
+.modal-close{background:transparent;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;line-height:1;padding:0 4px}
+.modal-close:hover{color:#fff}
+.modal-body{padding:16px;flex:1;overflow-y:auto}
+.modal-foot{padding:12px 18px;border-top:1px solid var(--light3);display:flex;gap:8px;justify-content:flex-end;background:var(--light);flex-shrink:0}
+.btn{padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer;border:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;transition:all .2s}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue2)}
+.btn-secondary{background:var(--light);color:var(--text2);border:1.5px solid var(--light3)}
+.fg{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.fg label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'Barlow Condensed',sans-serif}
+.fg textarea{padding:8px 10px;border:1.5px solid var(--light3);font-size:12px;font-family:'Barlow',sans-serif;outline:none;resize:vertical;min-height:60px;width:100%}
+.fg textarea:focus{border-color:var(--blue)}
+
+/* Lignes produits dans le bon */
+.section-hd{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:12px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--light3);font-family:'Barlow Condensed',sans-serif}
+.produit-ligne{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--light3)}
+.produit-nom{flex:1;font-size:12px;font-weight:700;color:var(--text)}
+.produit-unite{font-size:10px;color:var(--text3);width:70px;text-align:center;flex-shrink:0}
+.produit-qty{width:90px;flex-shrink:0}
+.produit-qty input{width:100%;padding:5px 7px;border:1.5px solid var(--light3);font-size:12px;text-align:center;outline:none;font-family:'Barlow',sans-serif}
+.produit-qty input:focus{border-color:var(--blue)}
+.produit-sorti{font-size:10px;color:var(--text3);width:70px;text-align:center;flex-shrink:0}
+.qty-alert{border-color:var(--red) !important;background:#fdf2f2 !important}
+
+/* Bons existants */
+.bon-card{background:var(--light);border:1px solid var(--light3);padding:10px 14px;margin-bottom:6px;border-left:3px solid var(--blue)}
+.bon-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.bon-card-title{font-weight:700;font-size:12px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase}
+.bon-card-date{font-size:10px;color:var(--text3)}
+.bon-ligne-list{font-size:11px;color:var(--text2);margin-top:4px}
+.bon-ligne-item{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--light3)}
+
+/* ── MES BONS ── */
+#mes-bons-wrap{flex:1;overflow-y:auto;padding:12px}
+.bons-section-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:8px;margin-top:14px;color:var(--text);display:flex;align-items:center;gap:8px}
+.bons-section-title:first-child{margin-top:0}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:300px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-left-color:var(--green)}
+#toast.error{border-left-color:var(--red)}
+
+/* Responsive */
+@media(max-width:500px){
+  .ch-info-grid{grid-template-columns:1fr}
+  .ch-actions{flex-direction:column}
+  .btn-action{justify-content:center}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-box"><div class="auth-logo-txt">BIG</div></div>
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;color:#fff;text-transform:uppercase">Espace Chef d'Équipe</div>
+        <div class="auth-subtitle">Bordas Industrial Group</div>
+      </div>
+    </div>
+    <label class="auth-label">Identifiant (nom de famille)</label>
+    <input class="auth-input" type="text" id="auth-id" placeholder="Ex: SCHNEIDER" autocomplete="username" style="text-transform:uppercase"/>
+    <label class="auth-label">Mot de passe</label>
+    <input class="auth-input" type="password" id="auth-pwd" placeholder="••••••" autocomplete="current-password"/>
+    <button class="auth-btn" onclick="doLogin()">Accéder à mon planning</button>
+    <div class="auth-err" id="auth-err">Identifiant ou mot de passe incorrect</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="topbar">
+    <div class="tl-logo-box"><div class="tl-logo-txt">BIG</div></div>
+    <div style="width:1px;height:22px;background:var(--dark4)"></div>
+    <div class="tl-title">Espace équipe</div>
+    <div class="tl-spacer"></div>
+    <div class="tl-chef" id="chef-name"></div>
+    <button class="tl-logout" onclick="doLogout()">Déconnexion</button>
+  </div>
+
+  <div id="tab-bar">
+    <div class="tab active" onclick="showTab('planning')" id="tab-planning">📅 Mon planning</div>
+    <div class="tab" onclick="showTab('bons')" id="tab-bons">📋 Mes bons</div>
+  </div>
+
+  <!-- PLANNING -->
+  <div class="tab-content active" id="content-planning">
+    <div id="planning-wrap">
+      <div class="plan-header">
+        <div>
+          <div class="plan-header-title" id="planning-titre">Mes chantiers</div>
+          <div class="plan-subtitle" id="planning-subtitle"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);text-align:right" id="planning-count"></div>
+      </div>
+      <div id="chantiers-list"></div>
+    </div>
+  </div>
+
+  <!-- MES BONS -->
+  <div class="tab-content" id="content-bons">
+    <div id="mes-bons-wrap">
+      <div class="bons-section-title">📤 Mes bons de sortie</div>
+      <div id="liste-bons-sortie"></div>
+      <div class="bons-section-title" style="margin-top:20px">📥 Mes bons de retour</div>
+      <div id="liste-bons-retour"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BON DE SORTIE -->
+<div class="modal-overlay" id="modal-sortie">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="sortie-title">Bon de sortie</div>
+      <button class="modal-close" onclick="closeModal('modal-sortie')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--light);padding:10px 14px;border-left:3px solid var(--blue);margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;font-family:'Barlow Condensed',sans-serif" id="sortie-chantier-nom"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px" id="sortie-chantier-info"></div>
+      </div>
+      <div class="section-hd">Matières premières emportées</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Saisissez uniquement les quantités emportées (laissez 0 ou vide pour les produits non utilisés)</div>
+      <div id="sortie-produits"></div>
+      <div class="fg" style="margin-top:10px">
+        <label>Commentaire (optionnel)</label>
+        <textarea id="sortie-comment" placeholder="Remarques sur la préparation du chantier…"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-sortie')">Annuler</button>
+      <button class="btn btn-primary" onclick="validerBonSortie()">✅ Valider le bon de sortie</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BON DE RETOUR -->
+<div class="modal-overlay" id="modal-retour">
+  <div class="modal">
+    <div class="modal-head" style="background:var(--green)">
+      <div class="modal-title" id="retour-title">Bon de retour</div>
+      <button class="modal-close" onclick="closeModal('modal-retour')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--light);padding:10px 14px;border-left:3px solid var(--green);margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;font-family:'Barlow Condensed',sans-serif" id="retour-chantier-nom"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px" id="retour-chantier-info"></div>
+      </div>
+      <div class="section-hd">Produits non consommés rapportés</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Saisissez les quantités que vous ramenez. La quantité ne peut pas dépasser ce qui a été sorti.</div>
+      <div id="retour-produits"></div>
+      <div id="retour-no-bons" style="display:none;color:var(--text3);font-size:12px;padding:12px;text-align:center;background:var(--light)">
+        Aucun bon de sortie trouvé pour ce chantier. Créez d'abord un bon de sortie.
+      </div>
+      <div class="fg" style="margin-top:10px">
+        <label>Commentaire (optionnel)</label>
+        <textarea id="retour-comment" placeholder="Remarques sur le retour de chantier…"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-retour')">Annuler</button>
+      <button class="btn btn-primary" style="background:var(--green)" onclick="validerBonRetour()">✅ Valider le bon de retour</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VOIR BONS -->
+<div class="modal-overlay" id="modal-voir-bons">
+  <div class="modal" style="width:480px">
+    <div class="modal-head" style="background:var(--dark2)">
+      <div class="modal-title" id="voir-bons-title">Bons du chantier</div>
+      <button class="modal-close" onclick="closeModal('modal-voir-bons')">✕</button>
+    </div>
+    <div class="modal-body" id="voir-bons-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-voir-bons')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ──
+var SB_URL  = "https://lrwfhcdecxrpmacowmfx.supabase.co";
+var SB_ANON = "sb_publishable_RArVRufwMCuS8lCz_pQ3-A_64csz8QJ";
+
+// Chefs d'équipe : ID → {prenom, eq_id, mdp}
+var CHEFS = {
+  "SCHNEIDER":  {prenom:"Geoffroy", eq_id:"eq-geoffroy", mdp:"K7mR2p"},
+  "METAY":      {prenom:"Nicolas",  eq_id:"eq-nicolas",  mdp:"Xv9bL4"},
+  "DE_ALMEIDA": {prenom:"Anthony",  eq_id:"eq-anthony",  mdp:"Wq3nJ8"},
+  "BILLAC":     {prenom:"Alain",    eq_id:"eq-alain",    mdp:"Tz6cF1"},
+};
+
+// Les mêmes produits que dans planning.html
+var PRODUITS = [
+  {id:"p01",nom:"SPALL",             unite:"kit"},
+  {id:"p02",nom:"SILICE",            unite:"kg"},
+  {id:"p03",nom:"SIGNATURE",         unite:"m"},
+  {id:"p04",nom:"FLOWCRETE",         unite:"cartouche"},
+  {id:"p05",nom:"PU 25",             unite:"cartouche"},
+  {id:"p06",nom:"SOLMASTIC",         unite:"sceau"},
+  {id:"p07",nom:"SIKA 406KC",        unite:"sceau"},
+  {id:"p08",nom:"BOOSTER 406KC",     unite:"boudin"},
+  {id:"p09",nom:"SIKA TANK",         unite:"cartouche"},
+  {id:"p10",nom:"METHACRYLATE",      unite:"L"},
+  {id:"p11",nom:"CONCRETE MIX",      unite:"25kg"},
+  {id:"p12",nom:"MORTAR MIX",        unite:"25Kg"},
+  {id:"p13",nom:"PENTRA SIL",        unite:"L"},
+  {id:"p14",nom:"CRETE CLEAN",       unite:"L"},
+  {id:"p15",nom:"FDJ 6",             unite:"ml"},
+  {id:"p16",nom:"FDJ25",             unite:"ml"},
+  {id:"p17",nom:"FDJ20",             unite:"ml"},
+  {id:"p18",nom:"FDJ15",             unite:"ml"},
+  {id:"p19",nom:"LIANT EPOXY",       unite:"Kg"},
+  {id:"p20",nom:"CRETESTRIP",        unite:"L"},
+  {id:"p21",nom:"PENTRA FINISH",     unite:"L"},
+  {id:"p22",nom:"PENTRA SILL",       unite:"L"},
+  {id:"p23",nom:"PENTRA SILL244",    unite:"L"},
+  {id:"p24",nom:"HORS METHODE FLASH",unite:"U"},
+  {id:"p25",nom:"STEP1 GR60",        unite:"Unite"},
+  {id:"p26",nom:"STEP2 GR120",       unite:"Unite"},
+  {id:"p27",nom:"STEP3 GR100",       unite:"Unite"},
+  {id:"p28",nom:"CABLE H07VK",       unite:"ML"},
+];
+
+// ── STATE ──
+var currentChef = null;  // {id, prenom, eq_id}
+var mesChantiers = [];
+var mesBonsSortie = [];
+var mesBonsRetour = [];
+var currentChantierModal = null; // chantier actif pour le modal
+
+// ── HELPERS ──
+function sbH(write) {
+  var h = {"apikey": SB_ANON, "Authorization": "Bearer " + SB_ANON};
+  if (write) h["Content-Type"] = "application/json";
+  return h;
+}
+
+function pad2(n) { return String(n).padStart(2,"0"); }
+
+function fmtDate(str) {
+  if (!str) return "—";
+  var d = new Date(str + "T00:00:00");
+  return pad2(d.getDate()) + "/" + pad2(d.getMonth()+1) + "/" + d.getFullYear();
+}
+
+function daysBetween(a, b) {
+  return Math.max(1, Math.round((new Date(b) - new Date(a)) / 86400000) + 1);
+}
+
+var toastTimer;
+function toast(msg, type) {
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show " + (type || "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.className = ""; }, 3500);
+}
+
+function statutChantier(ch) {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var deb = new Date(ch.date_debut + "T00:00:00");
+  var fin = new Date((ch.date_fin_reel || ch.date_fin) + "T00:00:00");
+  if (today >= deb && today <= fin) return "today";
+  if (deb > today) {
+    var diff = Math.round((deb - today) / 86400000);
+    return diff <= 7 ? "soon" : "future";
+  }
+  return "done";
+}
+
+function statutLabel(st, ch) {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var deb = new Date(ch.date_debut + "T00:00:00");
+  if (st === "today") return "En cours";
+  if (st === "soon") {
+    var diff = Math.round((deb - today) / 86400000);
+    return "Dans " + diff + " jour" + (diff > 1 ? "s" : "");
+  }
+  if (st === "future") return "À venir";
+  return "Terminé";
+}
+
+// ── AUTH ──
+function doLogin() {
+  var id  = document.getElementById("auth-id").value.trim().toUpperCase();
+  var pwd = document.getElementById("auth-pwd").value;
+  var chef = CHEFS[id];
+  if (chef && pwd === chef.mdp) {
+    currentChef = {id: id, prenom: chef.prenom, eq_id: chef.eq_id};
+    localStorage.setItem("big_chef_session", JSON.stringify(currentChef));
+    startApp();
+  } else {
+    var err = document.getElementById("auth-err");
+    err.style.display = "block";
+    setTimeout(function() { err.style.display = "none"; }, 3000);
+  }
+}
+
+document.getElementById("auth-pwd").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") doLogin();
+});
+document.getElementById("auth-id").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") document.getElementById("auth-pwd").focus();
+});
+document.getElementById("auth-id").addEventListener("input", function() {
+  this.value = this.value.toUpperCase();
+});
+
+function doLogout() {
+  currentChef = null;
+  mesChantiers = [];
+  mesBonsSortie = [];
+  mesBonsRetour = [];
+  localStorage.removeItem("big_chef_session");
+  document.getElementById("app").classList.remove("visible");
+  document.getElementById("auth-screen").style.display = "flex";
+  document.getElementById("auth-id").value = "";
+  document.getElementById("auth-pwd").value = "";
+}
+
+function startApp() {
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("app").classList.add("visible");
+  document.getElementById("chef-name").textContent = currentChef.prenom;
+  loadMesChantiers();
+  loadMesBons();
+}
+
+// ── CHARGEMENT DONNÉES ──
+async function loadMesChantiers() {
+  try {
+    var annee = new Date().getFullYear();
+    var r = await fetch(
+      SB_URL + "/rest/v1/chantiers?order=date_debut.asc&limit=500",
+      {headers: sbH()}
+    );
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    var all = await r.json();
+    // Filtrer : uniquement les chantiers de cette équipe en année courante
+    mesChantiers = all.filter(function(ch) {
+      if (!ch.equipes || ch.equipes.indexOf(currentChef.eq_id) < 0) return false;
+      var d = new Date(ch.date_debut);
+      return d.getFullYear() === annee;
+    });
+    renderPlanning();
+  } catch(e) {
+    console.error("loadMesChantiers:", e);
+    toast("Erreur de connexion Supabase", "error");
+    document.getElementById("chantiers-list").innerHTML =
+      '<div style="text-align:center;padding:30px;color:var(--text3)">Impossible de charger les chantiers.<br>Vérifiez votre connexion internet.</div>';
+  }
+}
+
+async function loadMesBons() {
+  try {
+    // Bons de sortie
+    var r1 = await fetch(
+      SB_URL + "/rest/v1/bons_sortie?chef_id=eq." + encodeURIComponent(currentChef.id) + "&order=created_at.desc&limit=200",
+      {headers: sbH()}
+    );
+    if (r1.ok) mesBonsSortie = await r1.json();
+
+    // Bons de retour
+    var r2 = await fetch(
+      SB_URL + "/rest/v1/bons_retour?chef_id=eq." + encodeURIComponent(currentChef.id) + "&order=created_at.desc&limit=200",
+      {headers: sbH()}
+    );
+    if (r2.ok) mesBonsRetour = await r2.json();
+    renderMesBons();
+  } catch(e) {
+    console.error("loadMesBons:", e);
+    // Charger depuis localStorage si Supabase échoue
+    var ls = localStorage.getItem("big_chef_bons_" + currentChef.id);
+    if (ls) {
+      try {
+        var data = JSON.parse(ls);
+        mesBonsSortie = data.sortie || [];
+        mesBonsRetour = data.retour || [];
+        renderMesBons();
+      } catch(e2) {}
+    }
+  }
+}
+
+// ── PLANNING ──
+function renderPlanning() {
+  var list = document.getElementById("chantiers-list");
+  var subtitle = document.getElementById("planning-subtitle");
+  var count = document.getElementById("planning-count");
+
+  if (!mesChantiers.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">' +
+      '<div style="font-size:36px;margin-bottom:12px">📅</div>' +
+      '<div style="font-weight:700;margin-bottom:6px">Aucun chantier cette année</div>' +
+      '<div style="font-size:11px">Vos chantiers apparaîtront ici dès qu\'ils seront planifiés.</div>' +
+      '</div>';
+    subtitle.textContent = "";
+    count.textContent = "";
+    return;
+  }
+
+  // Trier par date de début
+  mesChantiers.sort(function(a,b) { return new Date(a.date_debut) - new Date(b.date_debut); });
+
+  // Stats
+  var enCours  = mesChantiers.filter(function(c) { return statutChantier(c) === "today"; }).length;
+  var aVenir   = mesChantiers.filter(function(c) { return statutChantier(c) !== "done"; }).length;
+  var termines = mesChantiers.filter(function(c) { return statutChantier(c) === "done"; }).length;
+
+  subtitle.textContent = currentChef.prenom + " — " + new Date().getFullYear();
+  count.innerHTML = (enCours ? '<span style="color:var(--blue);font-weight:700">' + enCours + ' en cours</span> · ' : '') +
+    aVenir + ' à venir · ' + termines + ' terminé' + (termines > 1 ? 's' : '');
+
+  var html = "";
+  mesChantiers.forEach(function(ch, idx) {
+    var st = statutChantier(ch);
+    var stLabel = statutLabel(st, ch);
+    var badgeClass = st === "today" ? "badge-today" : (st === "soon" ? "badge-soon" : (st === "future" ? "badge-future" : "badge-done"));
+    var borderColor = st === "today" ? "#002D9C" : (st === "soon" ? "#1a8c4a" : (st === "done" ? "#ccc" : "#e6c300"));
+    var jours = daysBetween(ch.date_debut, ch.date_fin);
+    var type = ch.type === "nuit" ? "🌙 Nuit" : (ch.type === "mixte" ? "☀🌙 Mixte" : "☀ Jour");
+    var bsCount = mesBonsSortie.filter(function(b) { return b.chantier_id === ch.id; }).length;
+    var brCount = mesBonsRetour.filter(function(b) { return b.chantier_id === ch.id; }).length;
+
+    html += '<div class="chantier-card" style="border-left-color:' + borderColor + '">' +
+      '<div class="ch-card-header" onclick="toggleCard(\'ch-body-' + idx + '\')">' +
+        '<div>' +
+          '<div class="ch-card-client">' + ch.client + '</div>' +
+          '<div class="ch-card-dates">Du ' + fmtDate(ch.date_debut) + ' au ' + fmtDate(ch.date_fin) + ' · ' + jours + ' jour' + (jours > 1 ? 's' : '') + '</div>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
+          '<div class="ch-card-badge ' + badgeClass + '">' + stLabel + '</div>' +
+          (bsCount || brCount ? '<div style="font-size:9px;color:var(--text3)">' + bsCount + ' sortie · ' + brCount + ' retour</div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="ch-card-body" id="ch-body-' + idx + '" style="display:' + (st === "today" || st === "soon" ? "block" : "none") + '">' +
+        '<div class="ch-info-grid">' +
+          (ch.adresse ? '<div class="ch-info-item"><div class="ch-info-label">Adresse</div><div class="ch-info-value">📍 ' + ch.adresse + '</div></div>' : '') +
+          '<div class="ch-info-item"><div class="ch-info-label">Horaires</div><div class="ch-info-value">' + type + '</div></div>' +
+          (ch.nuits ? '<div class="ch-info-item"><div class="ch-info-label">Nuits prévues</div><div class="ch-info-value">' + ch.nuits + ' nuit' + (ch.nuits > 1 ? 's' : '') + '</div></div>' : '') +
+        '</div>' +
+        (ch.travaux ? '<div class="ch-travaux"><strong>Travaux :</strong> ' + ch.travaux + '</div>' : '') +
+        (ch.description ? '<div class="ch-travaux" style="border-left-color:#888">' + ch.description + '</div>' : '') +
+        '<div class="ch-actions">' +
+          (st !== "done" ? '<button class="btn-action btn-sortie" onclick="openBonSortie(\'' + ch.id + '\')">📤 Bon de sortie</button>' : '') +
+          '<button class="btn-action btn-retour" onclick="openBonRetour(\'' + ch.id + '\')">📥 Bon de retour</button>' +
+          '<button class="btn-action btn-view-bons" onclick="voirBons(\'' + ch.id + '\')">👁 Voir les bons (' + (bsCount + brCount) + ')</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  });
+
+  list.innerHTML = html;
+}
+
+function toggleCard(id) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+// ── MODAL HELPERS ──
+function closeModal(id) {
+  document.getElementById(id).classList.remove("open");
+}
+
+["modal-sortie","modal-retour","modal-voir-bons"].forEach(function(id) {
+  document.getElementById(id).addEventListener("click", function(e) {
+    if (e.target.id === id) closeModal(id);
+  });
+});
+
+// ── BON DE SORTIE ──
+function openBonSortie(chId) {
+  var ch = mesChantiers.find(function(c) { return c.id === chId; });
+  if (!ch) return;
+  currentChantierModal = ch;
+  document.getElementById("sortie-title").textContent = "Bon de sortie — " + ch.client;
+  document.getElementById("sortie-chantier-nom").textContent = ch.client;
+  document.getElementById("sortie-chantier-info").textContent =
+    fmtDate(ch.date_debut) + " → " + fmtDate(ch.date_fin) + (ch.adresse ? " · " + ch.adresse : "");
+
+  // Construire la liste des produits
+  var html = "";
+  PRODUITS.forEach(function(p) {
+    html += '<div class="produit-ligne">' +
+      '<div class="produit-nom">' + p.nom + '</div>' +
+      '<div class="produit-unite">' + p.unite + '</div>' +
+      '<div class="produit-qty"><input type="number" min="0" step="0.01" placeholder="0" id="bs-' + p.id + '" value=""/></div>' +
+      '</div>';
+  });
+  document.getElementById("sortie-produits").innerHTML = html;
+  document.getElementById("sortie-comment").value = "";
+  document.getElementById("modal-sortie").classList.add("open");
+}
+
+async function validerBonSortie() {
+  if (!currentChantierModal) return;
+  var lignes = [];
+  PRODUITS.forEach(function(p) {
+    var el = document.getElementById("bs-" + p.id);
+    var qte = parseFloat(el ? el.value : "0") || 0;
+    if (qte > 0) lignes.push({produit_id: p.id, nom: p.nom, unite: p.unite, qte: qte});
+  });
+  if (!lignes.length) { toast("Saisissez au moins une quantité", "error"); return; }
+
+  var bon = {
+    id:           "bs-" + Date.now() + "-" + Math.random().toString(36).substr(2,4),
+    chantier_id:  currentChantierModal.id,
+    chantier_nom: currentChantierModal.client,
+    chef_id:      currentChef.id,
+    chef_prenom:  currentChef.prenom,
+    eq_id:        currentChef.eq_id,
+    lignes:       lignes,
+    commentaire:  document.getElementById("sortie-comment").value.trim() || null,
+    statut:       "valide",
+    created_at:   new Date().toISOString(),
+  };
+
+  try {
+    var r = await fetch(SB_URL + "/rest/v1/bons_sortie", {
+      method: "POST",
+      headers: Object.assign(sbH(true), {"Prefer": "resolution=merge-duplicates,return=minimal"}),
+      body: JSON.stringify(bon)
+    });
+    if (!r.ok && r.status !== 201 && r.status !== 204) {
+      var errTxt = await r.text();
+      console.error("Supabase bons_sortie:", r.status, errTxt);
+      // Table peut-être absente — fallback localStorage
+      saveLocalBon("sortie", bon);
+    } else {
+      mesBonsSortie.push(bon);
+    }
+  } catch(e) {
+    console.error(e);
+    saveLocalBon("sortie", bon);
+  }
+
+  mesBonsSortie.push(bon);
+  closeModal("modal-sortie");
+  renderPlanning();
+  renderMesBons();
+  toast("Bon de sortie validé — " + lignes.length + " produit(s)", "success");
+}
+
+// ── BON DE RETOUR ──
+function openBonRetour(chId) {
+  var ch = mesChantiers.find(function(c) { return c.id === chId; });
+  if (!ch) return;
+  currentChantierModal = ch;
+  document.getElementById("retour-title").textContent = "Bon de retour — " + ch.client;
+  document.getElementById("retour-chantier-nom").textContent = ch.client;
+  document.getElementById("retour-chantier-info").textContent =
+    fmtDate(ch.date_debut) + " → " + fmtDate(ch.date_fin);
+
+  // Agréger les sorties pour ce chantier
+  var bsCh = mesBonsSortie.filter(function(b) { return b.chantier_id === chId; });
+  var noBons = document.getElementById("retour-no-bons");
+  var prodDiv = document.getElementById("retour-produits");
+
+  if (!bsCh.length) {
+    noBons.style.display = "block";
+    prodDiv.innerHTML = "";
+    document.getElementById("modal-retour").classList.add("open");
+    return;
+  }
+  noBons.style.display = "none";
+
+  // Calculer les sorties par produit
+  var sortiesParProd = {};
+  bsCh.forEach(function(b) {
+    b.lignes.forEach(function(l) {
+      sortiesParProd[l.produit_id] = (sortiesParProd[l.produit_id] || {nom:l.nom, unite:l.unite, total:0});
+      sortiesParProd[l.produit_id].total += l.qte;
+    });
+  });
+
+  // Calculer les retours déjà faits
+  var retoursParProd = {};
+  mesBonsRetour.filter(function(b) { return b.chantier_id === chId; }).forEach(function(b) {
+    b.lignes.forEach(function(l) {
+      retoursParProd[l.produit_id] = (retoursParProd[l.produit_id] || 0) + l.qte;
+    });
+  });
+
+  var html = "";
+  Object.keys(sortiesParProd).forEach(function(pid) {
+    var s = sortiesParProd[pid];
+    var deja = retoursParProd[pid] || 0;
+    var maxR = Math.max(0, s.total - deja);
+    html += '<div class="produit-ligne">' +
+      '<div class="produit-nom">' + s.nom + '</div>' +
+      '<div class="produit-unite">' + s.unite + '</div>' +
+      '<div class="produit-sorti">Sorti: ' + s.total + (deja ? '<br>Rendu: ' + deja : '') + '</div>' +
+      '<div class="produit-qty">' +
+        '<input type="number" min="0" max="' + maxR + '" step="0.01" placeholder="0" id="br-' + pid + '"' +
+        ' title="Max retournable: ' + maxR + '"' +
+        ' oninput="if(parseFloat(this.value)>' + maxR + ')this.value=' + maxR + '"/>' +
+      '</div>' +
+      '</div>';
+  });
+  prodDiv.innerHTML = html;
+  document.getElementById("retour-comment").value = "";
+  document.getElementById("modal-retour").classList.add("open");
+}
+
+async function validerBonRetour() {
+  if (!currentChantierModal) return;
+  var chId = currentChantierModal.id;
+  var bsCh = mesBonsSortie.filter(function(b) { return b.chantier_id === chId; });
+  if (!bsCh.length) { toast("Aucun bon de sortie pour ce chantier", "error"); return; }
+
+  var sortiesParProd = {};
+  bsCh.forEach(function(b) {
+    b.lignes.forEach(function(l) {
+      sortiesParProd[l.produit_id] = {nom:l.nom, unite:l.unite, total:(sortiesParProd[l.produit_id]||{total:0}).total + l.qte};
+    });
+  });
+
+  var lignes = [];
+  Object.keys(sortiesParProd).forEach(function(pid) {
+    var el = document.getElementById("br-" + pid);
+    var qte = parseFloat(el ? el.value : "0") || 0;
+    if (qte > 0) {
+      var s = sortiesParProd[pid];
+      lignes.push({produit_id: pid, nom: s.nom, unite: s.unite, qte: qte});
+    }
+  });
+  if (!lignes.length) { toast("Saisissez au moins une quantité à retourner", "error"); return; }
+
+  var bon = {
+    id:           "br-" + Date.now() + "-" + Math.random().toString(36).substr(2,4),
+    chantier_id:  chId,
+    chantier_nom: currentChantierModal.client,
+    chef_id:      currentChef.id,
+    chef_prenom:  currentChef.prenom,
+    eq_id:        currentChef.eq_id,
+    lignes:       lignes,
+    commentaire:  document.getElementById("retour-comment").value.trim() || null,
+    statut:       "valide",
+    created_at:   new Date().toISOString(),
+  };
+
+  try {
+    var r = await fetch(SB_URL + "/rest/v1/bons_retour", {
+      method: "POST",
+      headers: Object.assign(sbH(true), {"Prefer": "resolution=merge-duplicates,return=minimal"}),
+      body: JSON.stringify(bon)
+    });
+    if (!r.ok && r.status !== 201 && r.status !== 204) {
+      var errTxt = await r.text();
+      console.error("Supabase bons_retour:", r.status, errTxt);
+      saveLocalBon("retour", bon);
+    } else {
+      mesBonsRetour.push(bon);
+    }
+  } catch(e) {
+    console.error(e);
+    saveLocalBon("retour", bon);
+  }
+
+  mesBonsRetour.push(bon);
+  closeModal("modal-retour");
+  renderPlanning();
+  renderMesBons();
+  toast("Bon de retour validé — " + lignes.length + " produit(s) restitué(s)", "success");
+}
+
+// ── VOIR BONS ──
+function voirBons(chId) {
+  var ch = mesChantiers.find(function(c) { return c.id === chId; });
+  if (!ch) return;
+  document.getElementById("voir-bons-title").textContent = "Bons — " + ch.client;
+  var bsC = mesBonsSortie.filter(function(b) { return b.chantier_id === chId; });
+  var brC = mesBonsRetour.filter(function(b) { return b.chantier_id === chId; });
+  var html = "";
+  if (!bsC.length && !brC.length) {
+    html = '<div style="text-align:center;padding:20px;color:var(--text3)">Aucun bon pour ce chantier</div>';
+  } else {
+    if (bsC.length) {
+      html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:12px;text-transform:uppercase;margin-bottom:6px;color:var(--blue)">Bons de sortie (' + bsC.length + ')</div>';
+      bsC.forEach(function(b) {
+        var d = new Date(b.created_at).toLocaleDateString("fr-FR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+        html += '<div class="bon-card">' +
+          '<div class="bon-card-header"><div class="bon-card-title">📤 Sortie</div><div class="bon-card-date">' + d + '</div></div>' +
+          '<div class="bon-ligne-list">' +
+          b.lignes.map(function(l) {
+            return '<div class="bon-ligne-item"><span>' + l.nom + '</span><span style="font-weight:700">' + l.qte + ' ' + l.unite + '</span></div>';
+          }).join("") +
+          '</div>' +
+          (b.commentaire ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-style:italic">' + b.commentaire + '</div>' : '') +
+          '</div>';
+      });
+    }
+    if (brC.length) {
+      html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-weight:800;font-size:12px;text-transform:uppercase;margin:12px 0 6px;color:var(--green)">Bons de retour (' + brC.length + ')</div>';
+      brC.forEach(function(b) {
+        var d = new Date(b.created_at).toLocaleDateString("fr-FR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+        html += '<div class="bon-card" style="border-left-color:var(--green)">' +
+          '<div class="bon-card-header"><div class="bon-card-title" style="color:var(--green)">📥 Retour</div><div class="bon-card-date">' + d + '</div></div>' +
+          '<div class="bon-ligne-list">' +
+          b.lignes.map(function(l) {
+            return '<div class="bon-ligne-item"><span>' + l.nom + '</span><span style="font-weight:700;color:var(--green)">' + l.qte + ' ' + l.unite + '</span></div>';
+          }).join("") +
+          '</div>' +
+          (b.commentaire ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-style:italic">' + b.commentaire + '</div>' : '') +
+          '</div>';
+      });
+    }
+  }
+  document.getElementById("voir-bons-body").innerHTML = html;
+  document.getElementById("modal-voir-bons").classList.add("open");
+}
+
+// ── MES BONS (onglet) ──
+function renderMesBons() {
+  var lbsEl = document.getElementById("liste-bons-sortie");
+  var lbrEl = document.getElementById("liste-bons-retour");
+  if (!lbsEl || !lbrEl) return;
+
+  if (!mesBonsSortie.length) {
+    lbsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px;text-align:center">Aucun bon de sortie créé</div>';
+  } else {
+    var html = "";
+    mesBonsSortie.slice().reverse().forEach(function(b) {
+      var d = new Date(b.created_at).toLocaleDateString("fr-FR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      html += '<div class="bon-card">' +
+        '<div class="bon-card-header"><div class="bon-card-title">📤 ' + b.chantier_nom + '</div><div class="bon-card-date">' + d + '</div></div>' +
+        '<div class="bon-ligne-list">' +
+        b.lignes.slice(0,5).map(function(l) {
+          return '<div class="bon-ligne-item"><span>' + l.nom + '</span><span style="font-weight:700">' + l.qte + ' ' + l.unite + '</span></div>';
+        }).join("") +
+        (b.lignes.length > 5 ? '<div style="font-size:10px;color:var(--text3);margin-top:4px">+ ' + (b.lignes.length - 5) + ' autre(s) produit(s)</div>' : '') +
+        '</div>' +
+        (b.commentaire ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-style:italic">' + b.commentaire + '</div>' : '') +
+        '</div>';
+    });
+    lbsEl.innerHTML = html;
+  }
+
+  if (!mesBonsRetour.length) {
+    lbrEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px;text-align:center">Aucun bon de retour créé</div>';
+  } else {
+    var html2 = "";
+    mesBonsRetour.slice().reverse().forEach(function(b) {
+      var d = new Date(b.created_at).toLocaleDateString("fr-FR", {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      html2 += '<div class="bon-card" style="border-left-color:var(--green)">' +
+        '<div class="bon-card-header"><div class="bon-card-title" style="color:var(--green)">📥 ' + b.chantier_nom + '</div><div class="bon-card-date">' + d + '</div></div>' +
+        '<div class="bon-ligne-list">' +
+        b.lignes.slice(0,5).map(function(l) {
+          return '<div class="bon-ligne-item"><span>' + l.nom + '</span><span style="font-weight:700;color:var(--green)">' + l.qte + ' ' + l.unite + '</span></div>';
+        }).join("") +
+        (b.lignes.length > 5 ? '<div style="font-size:10px;color:var(--text3);margin-top:4px">+ ' + (b.lignes.length - 5) + ' autre(s) produit(s)</div>' : '') +
+        '</div>' +
+        (b.commentaire ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-style:italic">' + b.commentaire + '</div>' : '') +
+        '</div>';
+    });
+    lbrEl.innerHTML = html2;
+  }
+}
+
+// ── TABS ──
+function showTab(name) {
+  ["planning","bons"].forEach(function(t) {
+    var el  = document.getElementById("content-" + t);
+    var tab = document.getElementById("tab-" + t);
+    if (el)  el.classList.toggle("active", t === name);
+    if (tab) tab.classList.toggle("active", t === name);
+  });
+  if (name === "bons") renderMesBons();
+}
+
+// ── FALLBACK LOCALSTORAGE ──
+function saveLocalBon(type, bon) {
+  var key = "big_chef_bons_" + currentChef.id;
+  var data = {sortie: mesBonsSortie, retour: mesBonsRetour};
+  if (type === "sortie") data.sortie.push(bon);
+  if (type === "retour") data.retour.push(bon);
+  localStorage.setItem(key, JSON.stringify(data));
+  toast("Sauvegardé localement (Supabase inaccessible)", "");
+}
+
+// ── SESSION PERSISTANTE ──
+(function() {
+  var saved = localStorage.getItem("big_chef_session");
+  if (saved) {
+    try {
+      var s = JSON.parse(saved);
+      if (CHEFS[s.id]) {
+        currentChef = s;
+        startApp();
+      }
+    } catch(e) { localStorage.removeItem("big_chef_session"); }
+  }
+})();
+</script>
+</body>
+</html>
