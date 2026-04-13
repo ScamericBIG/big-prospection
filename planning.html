@@ -855,7 +855,7 @@ async function loadClients() {
 
     while (true) {
       var r = await fetch(
-        SB_URL + "/rest/v1/sites?select=id,nom,adresse,ville,dept&order=nom",
+        SB_URL + "/rest/v1/sites?select=id,nom,ville,dept&order=nom",
         {
           headers: Object.assign(sbH(), {
             "Range-Unit": "items",
@@ -867,7 +867,12 @@ async function loadClients() {
       if (!r.ok) {
         var txt = await r.text();
         console.error("loadClients HTTP", r.status, txt);
-        break;
+
+        var inpErr = document.getElementById("ch-client");
+        if (inpErr) inpErr.placeholder = "Erreur chargement sites";
+        _planSitesCache = [];
+        _planSitesLoaded = false;
+        return;
       }
 
       var data = await r.json();
@@ -890,6 +895,10 @@ async function loadClients() {
     refreshClientDatalist("");
   } catch (e) {
     console.error("loadClients:", e);
+    var inpCatch = document.getElementById("ch-client");
+    if (inpCatch) inpCatch.placeholder = "Erreur chargement sites";
+    _planSitesCache = [];
+    _planSitesLoaded = false;
   } finally {
     _planSitesLoading = false;
   }
@@ -1326,10 +1335,10 @@ function updateTeamChipsSel() {
 }
 
 async function saveCh() {
-  var client = ($("#ch-client").value || "").trim();
-  var debut  = $("#ch-debut").value;
-  var fin    = $("#ch-fin").value;
-  var ca     = $("#ch-ca").value;
+  var client = (document.getElementById("ch-client") || {value:""}).value.trim();
+  var debut  = (document.getElementById("ch-debut")  || {value:""}).value;
+  var fin    = (document.getElementById("ch-fin")    || {value:""}).value;
+  var ca     = (document.getElementById("ch-ca")     || {value:""}).value;
 
   if (!client || !debut || !fin) {
     toast("Client et dates obligatoires", "error");
@@ -1341,35 +1350,35 @@ async function saveCh() {
     return;
   }
 
-  var siteId = ($("#ch-site-id") || {}).value || "";
+  var siteId = (document.getElementById("ch-site-id") || {value:""}).value;
 
-var ch = {
-  id:          editId || ("ch-" + Date.now()),
-  site_id: siteId || null,
-  client:      client,
-    adresse:       ($("#ch-adresse").value || "").trim(),
-    ref:           ($("#ch-ref").value || "").trim(),
-    travaux:       ($("#ch-travaux").value || "").trim(),
+  var ch = {
+    id:            editId || ("ch-" + Date.now()),
+    site_id:       siteId || null,
+    client:        client,
+    adresse:       (document.getElementById("ch-adresse") || {value:""}).value.trim(),
+    ref:           (document.getElementById("ch-ref") || {value:""}).value.trim(),
+    travaux:       (document.getElementById("ch-travaux") || {value:""}).value.trim(),
     ca:            ca,
     type:          selectedType,
     date_debut:    debut,
     date_fin:      fin,
-    date_fin_reel: ($("#ch-fin-reel") || {}).value || null,
-    commande:      $("#ch-commande").checked,
-    date_ok:       $("#ch-date-ok").checked,
-    we_travaille:  $("#ch-we").checked,
-    nuits:         parseInt($("#ch-nuits").value || "0", 10) || 0,
-    nuits_reel:    parseInt($("#ch-nuits-reel").value || "0", 10) || 0,
-    description:   ($("#ch-desc").value || "").trim(),
+    date_fin_reel: (document.getElementById("ch-fin-reel") || {value:""}).value || null,
+    commande:      (document.getElementById("ch-commande") || {}).checked,
+    date_ok:       (document.getElementById("ch-date-ok") || {}).checked,
+    we_travaille:  (document.getElementById("ch-we") || {}).checked,
+    nuits:         parseInt((document.getElementById("ch-nuits") || {value:"0"}).value, 10) || 0,
+    nuits_reel:    parseInt((document.getElementById("ch-nuits-reel") || {value:"0"}).value, 10) || 0,
+    description:   (document.getElementById("ch-desc") || {value:""}).value.trim(),
     equipes:       Array.from(selEquipes),
-    created_by:    currentUser.email
+    created_by:    currentUser ? currentUser.email : ""
   };
 
   var ok;
   if (editId) {
     ok = await updateChDB(editId, ch);
     if (ok) {
-      var i = chantiers.findIndex(function(c){ return c.id === editId; });
+      var i = chantiers.findIndex(function(c) { return c.id === editId; });
       if (i >= 0) chantiers[i] = ch;
     }
   } else {
