@@ -460,11 +460,8 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
       <div class="form-row full">
         <div class="fg">
           <label>Client / Site *</label>
-          <input type="text" id="ch-client" placeholder="Tapez un nom, une ville… (22 000 sites)" autocomplete="off"
-            oninput="searchSitePlanning(this.value)"
-            onfocus="if(this.value && this.value.trim().length >= 2) searchSitePlanning(this.value)"
-            onblur="setTimeout(()=>hideSiteSugg(),200)"
-            style="width:100%"/>
+          <input type="text" id="ch-client" placeholder="Tapez un nom, une ville…" list="clients-dl" autocomplete="off" style="width:100%"/>
+<datalist id="clients-dl"></datalist>
           <input type="hidden" id="ch-site-id"/>
         </div>
       </div>
@@ -632,20 +629,6 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 </div>
 
 <div id="toast"></div>
-<!-- Portail de suggestions sites — hors modal pour éviter overflow clipping -->
-<div id="site-sugg-portal" style="
-  position:fixed;
-  z-index:999999;
-  background:#fff;
-  border:2px solid #002D9C;
-  box-shadow:0 8px 32px rgba(0,0,0,.3);
-  max-height:300px;
-  overflow-y:auto;
-  display:none;
-  border-radius:3px;
-  min-width:300px;
-  font-family:'Barlow',sans-serif;
-"></div>
 
 <script>
 // ── CONFIG ──
@@ -859,9 +842,8 @@ async function loadClients() {
   try {
     var all = [], page = 0;
     while (true) {
-      var start = page * 1000;
-      var r = await fetch(SB_URL + "/rest/v1/sites?select=id,nom,ville,dept,adresse,contact,tel,mail&order=nom", {
-        headers: Object.assign(sbH(), {"Range-Unit": "items", "Range": start + "-" + (start + 999)})
+      var r = await fetch(SB_URL + "/rest/v1/sites?select=nom,ville,dept&order=nom", {
+        headers: Object.assign(sbH(), {"Range-Unit":"items","Range": (page*1000) + "-" + (page*1000+999)})
       });
       if (!r.ok) break;
       var data = await r.json();
@@ -870,6 +852,20 @@ async function loadClients() {
       if (data.length < 1000) break;
       page++;
     }
+    _planSitesCache = all;
+    _planSitesLoaded = true;
+    var dl = document.getElementById("clients-dl");
+    if (dl) {
+      dl.innerHTML = all.map(function(s) {
+        return '<option value="' + s.nom + (s.ville ? ' — ' + s.ville : '') + '">';
+      }).join("");
+    }
+  } catch(e) {
+    console.error("loadClients:", e);
+  } finally {
+    _planSitesLoading = false;
+  }
+}
     _planSitesCache = all;
     _planSitesLoaded = true;
     console.log("Planning: " + all.length + " sites charges");
@@ -919,24 +915,6 @@ function fuzzyScore(q, site) {
   return 0;
 }
 
-function searchSitePlanning(q) {
-  clearTimeout(_suggTimer);
-  var portal = document.getElementById("site-sugg-portal");
-  if (!portal) return;
-  if (!q || q.trim().length < 2) { hideSiteSugg(); return; }
-
-  if (!_planSitesLoaded) {
-    if (!_planSitesLoading) loadClients();
-    var inp0 = document.getElementById("ch-client");
-    if (inp0) {
-      var r0 = inp0.getBoundingClientRect();
-      portal.innerHTML = '<div style="padding:12px 14px;font-size:11px;color:#888;font-style:italic;">Chargement des sites en cours…</div>';
-      portal.style.cssText = "position:fixed;z-index:999999;background:#fff;border:2px solid #002D9C;box-shadow:0 8px 32px rgba(0,0,0,.3);max-height:300px;overflow-y:auto;display:block;border-radius:3px;min-width:300px;top:" + (r0.bottom + 2) + "px;left:" + r0.left + "px;width:" + r0.width + "px;";
-    }
-    _suggTimer = setTimeout(function() { searchSitePlanning(q); }, 600);
-    return;
-  }
-
   _suggTimer = setTimeout(function() {
     var results = [];
     for (var i = 0; i < _planSitesCache.length; i++) {
@@ -967,25 +945,6 @@ function searchSitePlanning(q) {
   }, 150);
 }
 
-function hideSiteSugg() {
-  var portal = document.getElementById("site-sugg-portal");
-  if (portal) portal.style.display = "none";
-}
-
-function pickSite(idx) {
-  var site = _suggResults[idx];
-  if (!site) return;
-  var inp = document.getElementById("ch-client");
-  if (inp) inp.value = site.nom + (site.ville ? " — " + site.ville : "");
-  var sid = document.getElementById("ch-site-id");
-  if (sid) sid.value = site.id || "";
-  var adr = document.getElementById("ch-adresse");
-  if (adr) {
-    if (site.adresse) adr.value = site.adresse;
-    else if (site.ville) adr.value = site.ville + (site.dept ? " (" + site.dept + ")" : "");
-  }
-  hideSiteSugg();
-}
 
 document.addEventListener("click", function(e) {
   var inp    = document.getElementById("ch-client");
