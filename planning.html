@@ -2137,7 +2137,7 @@ var coutMP = getCoutMP(c.id);
       + '</tr>';
   });
 
-  tbody.innerHTML = rows || '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">Aucun chantier termine en ' + annee + (currentCA !== "all" ? " pour " + currentCA : "") + '</td></tr>';
+  tbody.innerHTML = rows || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--text3)">Aucun chantier termine en ' + annee + (currentCA !== "all" ? " pour " + currentCA : "") + '</td></tr>';
 
   if (tfoot) {
     var tauxMoy = totCA > 0 ? Math.round(totR / totCA * 100) : 0;
