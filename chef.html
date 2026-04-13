@@ -78,6 +78,48 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 .ch-info-value{font-weight:600;color:var(--text);word-break:break-word}
 .ch-travaux{background:var(--light);padding:8px 12px;border-left:2px solid var(--blue);margin-bottom:12px;font-size:11px;line-height:1.5;color:var(--text2)}
 .ch-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .ch-meta-stack{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-bottom:12px;
+  padding-top:12px;
+}
+
+.ch-meta-line{
+  font-size:12px;
+  line-height:1.4;
+  color:var(--text);
+  font-weight:600;
+}
+
+.ch-meta-line .muted{
+  color:var(--text3);
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  font-size:10px;
+  margin-right:6px;
+  font-family:'Barlow Condensed',sans-serif;
+}
+
+.ch-actions-vertical{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:10px;
+}
+
+.ch-actions-vertical .btn-action{
+  width:100%;
+  justify-content:center;
+}
+
+@media(min-width:769px){
+  .ch-actions-vertical{
+    max-width:240px;
+  }
+}
 .btn-action{padding:8px 16px;font-size:11px;font-weight:800;cursor:pointer;border:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;transition:all .2s;display:flex;align-items:center;gap:5px}
 .btn-sortie{background:#002D9C;color:#fff}
 .btn-sortie:hover{background:#001e7a}
@@ -563,63 +605,129 @@ function renderPlanning() {
     list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">' +
       '<div style="font-size:36px;margin-bottom:12px">📅</div>' +
       '<div style="font-weight:700;margin-bottom:6px">Aucun chantier cette année</div>' +
-      '<div style="font-size:11px">Vos chantiers apparaîtront ici dès qu\'ils seront planifiés.</div>' +
+      '<div style="font-size:11px">Vos chantiers apparaîtront ici dès qu\\\'ils seront planifiés.</div>' +
       '</div>';
     subtitle.textContent = "";
     count.textContent = "";
     return;
   }
 
-  // Trier par date de début
-  mesChantiers.sort(function(a,b) { return new Date(a.date_debut) - new Date(b.date_debut); });
+  mesChantiers.sort(function(a, b) {
+    return new Date(a.date_debut) - new Date(b.date_debut);
+  });
 
-  // Stats
-  var enCours  = mesChantiers.filter(function(c) { return statutChantier(c) === "today"; }).length;
-  var aVenir   = mesChantiers.filter(function(c) { return statutChantier(c) !== "done"; }).length;
-  var termines = mesChantiers.filter(function(c) { return statutChantier(c) === "done"; }).length;
+  var enCours = mesChantiers.filter(function(c) {
+    return statutChantier(c) === "today";
+  }).length;
+
+  var aVenir = mesChantiers.filter(function(c) {
+    return statutChantier(c) !== "done";
+  }).length;
+
+  var termines = mesChantiers.filter(function(c) {
+    return statutChantier(c) === "done";
+  }).length;
 
   subtitle.textContent = currentChef.prenom + " — " + new Date().getFullYear();
-  count.innerHTML = (enCours ? '<span style="color:var(--blue);font-weight:700">' + enCours + ' en cours</span> · ' : '') +
-    aVenir + ' à venir · ' + termines + ' terminé' + (termines > 1 ? 's' : '');
+  count.innerHTML =
+    (enCours ? '<span style="color:var(--blue);font-weight:700">' + enCours + ' en cours</span> · ' : '') +
+    aVenir + ' à venir · ' +
+    termines + ' terminé' + (termines > 1 ? 's' : '');
 
   var html = "";
+
   mesChantiers.forEach(function(ch, idx) {
     var st = statutChantier(ch);
     var stLabel = statutLabel(st, ch);
-    var badgeClass = st === "today" ? "badge-today" : (st === "soon" ? "badge-soon" : (st === "future" ? "badge-future" : "badge-done"));
-    var borderColor = st === "today" ? "#002D9C" : (st === "soon" ? "#1a8c4a" : (st === "done" ? "#ccc" : "#e6c300"));
-    var jours = daysBetween(ch.date_debut, ch.date_fin);
-    var type = ch.type === "nuit" ? "🌙 Nuit" : (ch.type === "mixte" ? "☀🌙 Mixte" : "☀ Jour");
-    var bsCount = mesBonsSortie.filter(function(b) { return b.chantier_id === ch.id; }).length;
-    var brCount = mesBonsRetour.filter(function(b) { return b.chantier_id === ch.id; }).length;
+    var badgeClass =
+      st === "today" ? "badge-today" :
+      (st === "soon" ? "badge-soon" :
+      (st === "future" ? "badge-future" : "badge-done"));
 
-    html += '<div class="chantier-card" style="border-left-color:' + borderColor + '">' +
-      '<div class="ch-card-header" onclick="toggleCard(\'ch-body-' + idx + '\')">' +
-        '<div>' +
-          '<div class="ch-card-client">' + ch.client + '</div>' +
-          '<div class="ch-card-dates">Du ' + fmtDate(ch.date_debut) + ' au ' + fmtDate(ch.date_fin) + ' · ' + jours + ' jour' + (jours > 1 ? 's' : '') + '</div>' +
+    var borderColor =
+      st === "today" ? "#002D9C" :
+      (st === "soon" ? "#1a8c4a" :
+      (st === "done" ? "#ccc" : "#e6c300"));
+
+    var jours = daysBetween(ch.date_debut, ch.date_fin);
+    var type = ch.type === "nuit"
+      ? "🌙 Nuit"
+      : (ch.type === "mixte" ? "☀🌙 Mixte" : "☀ Jour");
+
+    var bsCount = mesBonsSortie.filter(function(b) {
+      return b.chantier_id === ch.id;
+    }).length;
+
+    var brCount = mesBonsRetour.filter(function(b) {
+      return b.chantier_id === ch.id;
+    }).length;
+
+    html +=
+      '<div class="chantier-card" style="border-left-color:' + borderColor + '">' +
+
+        '<div class="ch-card-header" onclick="toggleCard(\'ch-body-' + idx + '\')">' +
+          '<div>' +
+            '<div class="ch-card-client">' + ch.client + '</div>' +
+            '<div class="ch-card-dates">Du ' + fmtDate(ch.date_debut) + ' au ' + fmtDate(ch.date_fin) + ' · ' + jours + ' jour' + (jours > 1 ? 's' : '') + '</div>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
+            '<div class="ch-card-badge ' + badgeClass + '">' + stLabel + '</div>' +
+            (bsCount || brCount
+              ? '<div style="font-size:9px;color:var(--text3)">' + bsCount + ' sortie · ' + brCount + ' retour</div>'
+              : '') +
+          '</div>' +
         '</div>' +
-        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">' +
-          '<div class="ch-card-badge ' + badgeClass + '">' + stLabel + '</div>' +
-          (bsCount || brCount ? '<div style="font-size:9px;color:var(--text3)">' + bsCount + ' sortie · ' + brCount + ' retour</div>' : '') +
+
+        '<div class="ch-card-body" id="ch-body-' + idx + '" style="display:' + (st === "today" || st === "soon" ? "block" : "none") + '">' +
+
+          '<div class="ch-meta-stack">' +
+
+            ((ch.adresse || type)
+              ? '<div class="ch-meta-line">' +
+                  (ch.adresse ? '📍 ' + ch.adresse : '') +
+                  (ch.adresse && type ? ' — ' : '') +
+                  (type ? type : '') +
+                '</div>'
+              : '') +
+
+            ((ch.site_contact || ch.site_tel)
+              ? '<div class="ch-meta-line">' +
+                  (ch.site_contact ? '👤 ' + ch.site_contact : '') +
+                  (ch.site_contact && ch.site_tel ? ' — ' : '') +
+                  (ch.site_tel
+                    ? '📞 <a href="tel:' + cleanTel(ch.site_tel) + '" style="color:var(--blue);font-weight:800;text-decoration:none">' + ch.site_tel + '</a>'
+                    : '') +
+                '</div>'
+              : '') +
+
+            (ch.ca
+              ? '<div class="ch-meta-line">👔 ' + ch.ca + '</div>'
+              : '') +
+
+            (ch.nuits
+              ? '<div class="ch-meta-line">🌙 ' + ch.nuits + ' nuit' + (ch.nuits > 1 ? 's' : '') + ' prévues</div>'
+              : '') +
+
+            (ch.travaux
+              ? '<div class="ch-travaux"><strong>Travaux :</strong> ' + ch.travaux + '</div>'
+              : '') +
+
+            (ch.description
+              ? '<div class="ch-travaux" style="border-left-color:#888">' + ch.description + '</div>'
+              : '') +
+
+          '</div>' +
+
+          '<div class="ch-actions-vertical">' +
+            (st !== "done"
+              ? '<button class="btn-action btn-sortie" onclick="openBonSortie(\'' + ch.id + '\')">📤 Bon de sortie</button>'
+              : '') +
+            '<button class="btn-action btn-retour" onclick="openBonRetour(\'' + ch.id + '\')">📥 Bon de retour</button>' +
+            '<button class="btn-action btn-view-bons" onclick="voirBons(\'' + ch.id + '\')">👁 Voir les bons (' + (bsCount + brCount) + ')</button>' +
+          '</div>' +
+
         '</div>' +
-     '<div class="ch-info-grid">' +
-  (ch.adresse ? '<div class="ch-info-item"><div class="ch-info-label">Adresse</div><div class="ch-info-value">📍 ' + ch.adresse + '</div></div>' : '') +
-  '<div class="ch-info-item"><div class="ch-info-label">Horaires</div><div class="ch-info-value">' + type + '</div></div>' +
-  (ch.ca ? '<div class="ch-info-item"><div class="ch-info-label">Chargé d’affaires</div><div class="ch-info-value">👔 ' + ch.ca + '</div></div>' : '') +
-  (ch.site_contact ? '<div class="ch-info-item"><div class="ch-info-label">Contact chantier</div><div class="ch-info-value">👤 ' + ch.site_contact + '</div></div>' : '') +
-  (ch.site_tel ? '<div class="ch-info-item"><div class="ch-info-label">Téléphone contact</div><div class="ch-info-value">📞 <a href="tel:' + cleanTel(ch.site_tel) + '" style="color:var(--blue);font-weight:800;text-decoration:none">' + ch.site_tel + '</a></div></div>' : '') +
-  (ch.nuits ? '<div class="ch-info-item"><div class="ch-info-label">Nuits prévues</div><div class="ch-info-value">' + ch.nuits + ' nuit' + (ch.nuits > 1 ? 's' : '') + '</div></div>' : '') +
-'</div>' +
-        (ch.travaux ? '<div class="ch-travaux"><strong>Travaux :</strong> ' + ch.travaux + '</div>' : '') +
-        (ch.description ? '<div class="ch-travaux" style="border-left-color:#888">' + ch.description + '</div>' : '') +
-        '<div class="ch-actions">' +
-          (st !== "done" ? '<button class="btn-action btn-sortie" onclick="openBonSortie(\'' + ch.id + '\')">📤 Bon de sortie</button>' : '') +
-          '<button class="btn-action btn-retour" onclick="openBonRetour(\'' + ch.id + '\')">📥 Bon de retour</button>' +
-          '<button class="btn-action btn-view-bons" onclick="voirBons(\'' + ch.id + '\')">👁 Voir les bons (' + (bsCount + brCount) + ')</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
+      '</div>';
   });
 
   list.innerHTML = html;
