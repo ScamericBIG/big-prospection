@@ -457,12 +457,21 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
       <!-- Client + Adresse -->
       <div class="section-hd" style="margin-top:0">Informations chantier</div>
       <div class="form-row full">
-        <div class="fg">
-          <label>Client / Site *</label>
-          <input type="text" id="ch-client" placeholder="Tapez un nom, une ville…" list="clients-dl" autocomplete="off" style="width:100%"/>
-          <datalist id="clients-dl"></datalist>
-          <input type="hidden" id="ch-site-id"/>
-        </div>
+       <div class="fg" style="position:relative">
+  <label>Client / Site *</label>
+  <input
+    type="text"
+    id="ch-client"
+    placeholder="Tapez un nom, une ville…"
+    autocomplete="off"
+    style="width:100%"
+    oninput="onClientInput()"
+    onfocus="onClientFocus()"
+    onkeydown="onClientKeyDown(event)"
+  />
+  <div id="site-sugg-portal" class="site-sugg-box"></div>
+  <input type="hidden" id="ch-site-id"/>
+</div>
       </div>
       <div class="form-row">
         <div class="fg">
@@ -839,30 +848,41 @@ async function deleteChDB(id) {
 async function loadClients() {
   if (_planSitesLoading) return;
   _planSitesLoading = true;
+
   try {
-    var all = [], page = 0;
+    var all = [];
+    var page = 0;
+
     while (true) {
-      var r = await fetch(SB_URL + "/rest/v1/sites?select=nom,ville,dept&order=nom", {
-        headers: Object.assign(sbH(), {"Range-Unit":"items","Range": (page*1000) + "-" + (page*1000+999)})
-      });
+      var r = await fetch(
+        SB_URL + "/rest/v1/sites?select=id,nom,adresse,ville,dept&order=nom",
+        {
+          headers: Object.assign(sbH(), {
+            "Range-Unit": "items",
+            "Range": (page * 1000) + "-" + (page * 1000 + 999)
+          })
+        }
+      );
+
       if (!r.ok) break;
+
       var data = await r.json();
       if (!data || !data.length) break;
+
       all = all.concat(data);
+
       if (data.length < 1000) break;
       page++;
     }
+
     _planSitesCache = all;
     _planSitesLoaded = true;
-    var dl = document.getElementById("clients-dl");
-    if (dl) {
-      dl.innerHTML = all.map(function(s) {
-        return '<option value="' + (s.nom||'') + (s.ville ? ' — ' + s.ville : '') + '">';
-      }).join("");
-    }
+
     var inp = document.getElementById("ch-client");
-    if (inp) inp.placeholder = "Tapez un nom, une ville… (" + all.length.toLocaleString("fr-FR") + " sites)";
-  } catch(e) {
+    if (inp) {
+      inp.placeholder = "Tapez un nom, une ville… (" + all.length.toLocaleString("fr-FR") + " sites)";
+    }
+  } catch (e) {
     console.error("loadClients:", e);
   } finally {
     _planSitesLoading = false;
@@ -903,7 +923,202 @@ function fuzzyScore(q, site) {
   return 0;
 }
 
+var _siteSuggIndex = -1;
+var _siteSuggResults = [];
 
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getSiteLabel(site) {
+  var parts = [];
+  if (site.nom) parts.push(site.nom);
+  if (site.ville) parts.push(site.ville);
+  if (site.dept) parts.push("(" + site.dept + ")");
+  return parts.join(" — ").replace(" — (", " (");
+}
+
+function getSiteAdresse(site) {
+  if (site.adresse && site.ville) return site.adresse + ", " + site.ville + (site.dept ? " (" + site.dept + ")" : "");
+  if (site.adresse) return site.adresse;
+  if (site.ville) return site.ville + (site.dept ? " (" + site.dept + ")" : "");
+  return "";
+}
+
+function hideSiteSugg() {
+  var box = document.getElementById("site-sugg-portal");
+  if (!box) return;
+  box.style.display = "none";
+  box.innerHTML = "";
+  _siteSuggIndex = -1;
+  _siteSuggResults = [];
+}
+
+function renderSiteSugg(results) {
+  var box = document.getElementById("site-sugg-portal");
+  if (!box) return;
+
+  _siteSuggResults = results || [];
+  _siteSuggIndex = -1;
+
+  if (!_siteSuggResults.length) {
+    box.innerHTML = '<div class="site-sugg-item"><div class="ssi-nom">Aucun résultat</div><div class="ssi-meta">Essayez un nom de site, une ville ou un département</div></div>';
+    box.style.display = "block";
+    return;
+  }
+
+  box.innerHTML = _siteSuggResults.map(function(site, idx) {
+    return ''
+      + '<div class="site-sugg-item" data-idx="' + idx + '" onclick="selectSiteSuggestion(' + idx + ')">'
+      +   '<div class="ssi-nom">' + escapeHtml(site.nom || "Sans nom") + '</div>'
+      +   '<div class="ssi-meta">' + escapeHtml(getSiteAdresse(site)) + '</div>'
+      + '</div>';
+  }).join("");
+
+  box.style.display = "block";
+}
+
+function updateSiteSuggActive() {
+  var box = document.getElementById("site-sugg-portal");
+  if (!box) return;
+
+  var items = box.querySelectorAll(".site-sugg-item");
+  items.forEach(function(item, idx) {
+    if (idx === _siteSuggIndex) {
+      item.style.background = "var(--light)";
+      item.style.color = "var(--blue)";
+    } else {
+      item.style.background = "";
+      item.style.color = "";
+    }
+  });
+
+  if (_siteSuggIndex >= 0 && items[_siteSuggIndex]) {
+    items[_siteSuggIndex].scrollIntoView({ block: "nearest" });
+  }
+}
+
+function selectSiteSuggestion(idx) {
+  var site = _siteSuggResults[idx];
+  if (!site) return;
+
+  var clientEl = document.getElementById("ch-client");
+  var adrEl = document.getElementById("ch-adresse");
+  var idEl = document.getElementById("ch-site-id");
+
+  if (clientEl) clientEl.value = site.nom || "";
+  if (adrEl) adrEl.value = getSiteAdresse(site);
+  if (idEl) idEl.value = site.id || "";
+
+  hideSiteSugg();
+}
+
+function clearSelectedSiteIfNeeded() {
+  var clientEl = document.getElementById("ch-client");
+  var idEl = document.getElementById("ch-site-id");
+
+  if (!clientEl || !idEl) return;
+
+  if (!clientEl.value.trim()) {
+    idEl.value = "";
+    var adrEl = document.getElementById("ch-adresse");
+    if (adrEl) adrEl.value = "";
+  }
+}
+
+function searchSites(query) {
+  if (!_planSitesCache || !_planSitesCache.length) return [];
+  if (!query || query.trim().length < 2) return [];
+
+  return _planSitesCache
+    .map(function(site) {
+      return { site: site, score: fuzzyScore(query, site) };
+    })
+    .filter(function(x) {
+      return x.score > 0;
+    })
+    .sort(function(a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      return String(a.site.nom || "").localeCompare(String(b.site.nom || ""), "fr");
+    })
+    .slice(0, 8)
+    .map(function(x) {
+      return x.site;
+    });
+}
+
+async function onClientInput() {
+  var inp = document.getElementById("ch-client");
+  if (!inp) return;
+
+  clearSelectedSiteIfNeeded();
+
+  var q = inp.value.trim();
+  if (q.length < 2) {
+    hideSiteSugg();
+    return;
+  }
+
+  if (!_planSitesLoaded && !_planSitesLoading) {
+    await loadClients();
+  }
+
+  var results = searchSites(q);
+  renderSiteSugg(results);
+}
+
+async function onClientFocus() {
+  var inp = document.getElementById("ch-client");
+  if (!inp) return;
+
+  if (!_planSitesLoaded && !_planSitesLoading) {
+    await loadClients();
+  }
+
+  var q = inp.value.trim();
+  if (q.length >= 2) {
+    var results = searchSites(q);
+    renderSiteSugg(results);
+  }
+}
+
+function onClientKeyDown(e) {
+  var box = document.getElementById("site-sugg-portal");
+  var visible = box && box.style.display === "block";
+
+  if (!visible || !_siteSuggResults.length) return;
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    _siteSuggIndex = Math.min(_siteSuggIndex + 1, _siteSuggResults.length - 1);
+    updateSiteSuggActive();
+    return;
+  }
+
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    _siteSuggIndex = Math.max(_siteSuggIndex - 1, 0);
+    updateSiteSuggActive();
+    return;
+  }
+
+  if (e.key === "Enter") {
+    if (_siteSuggIndex >= 0 && _siteSuggResults[_siteSuggIndex]) {
+      e.preventDefault();
+      selectSiteSuggestion(_siteSuggIndex);
+    }
+    return;
+  }
+
+  if (e.key === "Escape") {
+    hideSiteSugg();
+  }
+}
 
 
 
@@ -1133,35 +1348,54 @@ function renderAnnuel() {
 // ── MODAL CHANTIER ──
 function openModal(prefDate, prefEqId) {
   editId = null;
-  document.getElementById("modal-ch-title").textContent = "Nouveau chantier";
-  document.getElementById("btn-del-ch").style.display = "none";
-  ["ch-client","ch-adresse","ch-ref","ch-travaux","ch-desc"].forEach(function(id) {
-    var el = document.getElementById(id); if (el) el.value = "";
+  $("#modal-ch-title").textContent = "Nouveau chantier";
+  $("#btn-del-ch").style.display = "none";
+
+  ["ch-client","ch-adresse","ch-ref","ch-travaux","ch-desc"].forEach(function(id){
+    var el = $(id);
+    if (el) el.value = "";
   });
-  var sid = document.getElementById("ch-site-id"); if (sid) sid.value = "";
-  ["ch-nuits","ch-nuits-reel"].forEach(function(id) {
-    var el = document.getElementById(id); if (el) el.value = "";
+
+  var sid = $("#ch-site-id");
+  if (sid) sid.value = "";
+
+  hideSiteSugg();
+
+  ["ch-nuits","ch-nuits-reel"].forEach(function(id){
+    var el = $(id);
+    if (el) el.value = "";
   });
-  var el = document.getElementById("ch-fin-reel"); if (el) el.value = "";
-  var today = prefDate || new Date().toISOString().split("T")[0];
-  var debEl = document.getElementById("ch-debut"); if (debEl) debEl.value = today;
-  var finEl = document.getElementById("ch-fin");   if (finEl) finEl.value = today;
-  var caEl  = document.getElementById("ch-ca");    if (caEl)  caEl.value = "";
-  var cmdEl = document.getElementById("ch-commande"); if (cmdEl) cmdEl.checked = true;
-  var dokEl = document.getElementById("ch-date-ok");  if (dokEl) dokEl.checked = true;
-  var weEl  = document.getElementById("ch-we");        if (weEl)  weEl.checked = false;
+
+  var el = $("#ch-fin-reel");
+  if (el) el.value = "";
+
+  var today = prefDate || toISO(new Date());
+  $("#ch-debut").value = today;
+  $("#ch-fin").value   = today;
+  $("#ch-ca").value = "";
+  $("#ch-commande").checked = true;
+  $("#ch-date-ok").checked  = true;
+  $("#ch-we").checked       = false;
+
   selectedType = "jour";
-  document.querySelectorAll(".type-chip").forEach(function(c) {
-    c.classList.remove("sel"); c.style.background = ""; c.style.color = "";
+  $$(".type-chip").forEach(function(c){
+    c.classList.remove("sel");
+    c.style.background = "";
+    c.style.color = "";
     if (c.dataset.type === "jour") {
-      c.classList.add("sel"); c.style.background = c.dataset.color; c.style.color = c.dataset.txtcolor || "#1a1a1a";
+      c.classList.add("sel");
+      c.style.background = c.dataset.color;
+      c.style.color = c.dataset.txtcolor || "#1a1a1a";
     }
   });
+
   selEquipes = prefEqId ? new Set([prefEqId]) : new Set();
   updateTeamChipsSel();
   updateChStyles();
+
   if (!_planSitesLoaded && !_planSitesLoading) loadClients();
-  document.getElementById("modal-ch").classList.add("open");
+
+  $("#modal-ch").classList.add("open");
 }
 
 function closeModal() {
@@ -1229,45 +1463,65 @@ function updateTeamChipsSel() {
 }
 
 async function saveCh() {
-  var client = (document.getElementById("ch-client") || {value:""}).value.trim();
-  var debut  = (document.getElementById("ch-debut")  || {value:""}).value;
-  var fin    = (document.getElementById("ch-fin")    || {value:""}).value;
-  var ca     = (document.getElementById("ch-ca")     || {value:""}).value;
-  if (!client || !debut || !fin) { toast("Client et dates obligatoires", "error"); return; }
-  if (selEquipes.size === 0)     { toast("Selectionnez au moins une equipe", "error"); return; }
+  var client = ($("#ch-client").value || "").trim();
+  var debut  = $("#ch-debut").value;
+  var fin    = $("#ch-fin").value;
+  var ca     = $("#ch-ca").value;
 
-  var siteId = (document.getElementById("ch-site-id") || {value:""}).value;
+  if (!client || !debut || !fin) {
+    toast("Client et dates obligatoires", "error");
+    return;
+  }
+
+  if (selEquipes.size === 0) {
+    toast("Sélectionnez au moins une équipe", "error");
+    return;
+  }
+
+  var siteId = ($("#ch-site-id") || {}).value || "";
+
   var ch = {
-    id:          editId || ("ch-" + Date.now()),
-    client:      client,
-    adresse:     (document.getElementById("ch-adresse")   || {value:""}).value.trim(),
-    ref:         (document.getElementById("ch-ref")        || {value:""}).value.trim(),
-    travaux:     (document.getElementById("ch-travaux")    || {value:""}).value.trim(),
-    ca:          ca,
-    type:        selectedType,
-    date_debut:  debut,
-    date_fin:    fin,
-    date_fin_reel: (document.getElementById("ch-fin-reel") || {value:""}).value || null,
-    commande:    (document.getElementById("ch-commande")   || {}).checked,
-    date_ok:     (document.getElementById("ch-date-ok")   || {}).checked,
-    we_travaille:(document.getElementById("ch-we")         || {}).checked,
-    nuits:       parseInt((document.getElementById("ch-nuits")      || {value:"0"}).value) || 0,
-    nuits_reel:  parseInt((document.getElementById("ch-nuits-reel") || {value:"0"}).value) || 0,
-    description: (document.getElementById("ch-desc") || {value:""}).value.trim(),
-    equipes:     Array.from(selEquipes),
-    created_by:  currentUser ? currentUser.email : "",
+    id:            editId || ("ch-" + Date.now()),
+    site_id:       siteId || null,
+    client:        client,
+    adresse:       ($("#ch-adresse").value || "").trim(),
+    ref:           ($("#ch-ref").value || "").trim(),
+    travaux:       ($("#ch-travaux").value || "").trim(),
+    ca:            ca,
+    type:          selectedType,
+    date_debut:    debut,
+    date_fin:      fin,
+    date_fin_reel: ($("#ch-fin-reel") || {}).value || null,
+    commande:      $("#ch-commande").checked,
+    date_ok:       $("#ch-date-ok").checked,
+    we_travaille:  $("#ch-we").checked,
+    nuits:         parseInt($("#ch-nuits").value || "0", 10) || 0,
+    nuits_reel:    parseInt($("#ch-nuits-reel").value || "0", 10) || 0,
+    description:   ($("#ch-desc").value || "").trim(),
+    equipes:       Array.from(selEquipes),
+    created_by:    currentUser.email
   };
 
   var ok;
   if (editId) {
     ok = await updateChDB(editId, ch);
-    if (ok) { var i = chantiers.findIndex(function(c) { return c.id === editId; }); if (i >= 0) chantiers[i] = ch; }
+    if (ok) {
+      var i = chantiers.findIndex(function(c){ return c.id === editId; });
+      if (i >= 0) chantiers[i] = ch;
+    }
   } else {
     ok = await saveChDB(ch);
     if (ok) chantiers.push(ch);
   }
-  if (ok) { closeModal(); renderPlanning(); renderStats(); toast(editId ? "Chantier mis a jour" : "Chantier ajoute", "success"); }
-  else    { toast("Erreur enregistrement — verifiez le SQL Supabase (RLS)", "error"); }
+
+  if (ok) {
+    closeModal();
+    renderPlanning();
+    renderStats();
+    toast(editId ? "Chantier mis à jour" : "Chantier ajouté", "success");
+  } else {
+    toast("Erreur enregistrement — vérifiez le SQL Supabase (RLS)", "error");
+  }
 }
 
 async function deleteCh() {
