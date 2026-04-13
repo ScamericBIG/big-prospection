@@ -2095,7 +2095,7 @@ function renderAnalyse() {
   var tfoot = document.getElementById("analyse-tfoot");
   if (!tbody) return;
 
-  var totCA = 0, totMO = 0, totMP = 0, totPrimes = 0, totR = 0;
+  var totCA = 0, totMO = 0, totMP = 0, totPrimes = 0, totR = 0, totJours = 0;
 
   var rows = "";
   termines.forEach(function(c, i) {
@@ -2105,6 +2105,7 @@ function renderAnalyse() {
     var prim  = ad.primes || 0;
 var coutMP = getCoutMP(c.id);
     var jours  = daysBetween(c.date_debut, c.date_fin_reel || c.date_fin);
+    totJours += jours;
     var eq     = equipes.find(function(e) { return c.equipes && c.equipes.indexOf(e.id) >= 0; });
     var eqNames = (c.equipes || []).map(function(eqId) {
   var found = equipes.find(function(e) { return e.id === eqId; });
@@ -2139,21 +2140,22 @@ var coutMP = getCoutMP(c.id);
 
   tbody.innerHTML = rows || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--text3)">Aucun chantier termine en ' + annee + (currentCA !== "all" ? " pour " + currentCA : "") + '</td></tr>';
 
-  if (tfoot) {
-    var tauxMoy = totCA > 0 ? Math.round(totR / totCA * 100) : 0;
-    var tmColor = tauxMoy >= 20 ? "#4ade80" : (tauxMoy >= 0 ? "#f0c47a" : "#f87171");
-    tfoot.innerHTML = '<tr style="background:var(--dark2);color:#fff;font-weight:700">'
-      + '<td style="padding:8px 10px;font-family:\'Barlow Condensed\',sans-serif">TOTAUX (' + termines.length + ' chantiers)</td>'
-      + '<td></td><td></td>'
-      + '<td style="padding:8px 10px;text-align:center;color:#4ade80">' + (totCA > 0 ? fmtEur(totCA) : "—") + '</td>'
-      + '<td></td>'
-      + '<td style="padding:8px 10px;text-align:center;color:#f0c47a">' + (totMO > 0 ? fmtEur(totMO) : "—") + '</td>'
-      + '<td style="padding:8px 10px;text-align:center;color:#f0c47a">' + (totMP > 0 ? fmtEur(totMP) : "—") + '</td>'
-      + '<td style="padding:8px 10px;text-align:center;color:#f0c47a">' + (totPrimes > 0 ? fmtEur(totPrimes) : "—") + '</td>'
-      + '<td style="padding:8px 10px;text-align:center;color:' + (totR > 0 ? "#4ade80" : "#f87171") + '">' + (totCA > 0 ? fmtEur(totR) : "—") + '</td>'
-      + '<td style="padding:8px 10px;text-align:center;color:' + tmColor + '">' + (totCA > 0 ? tauxMoy + "%" : "—") + '</td>'
-      + '</tr>';
-  }
+if (tfoot) {
+  tfoot.innerHTML =
+    '<tr style="background:var(--dark2);color:#fff;font-weight:800">' +
+      '<td style="padding:8px">TOTAL (' + termines.length + ' chantiers)</td>' +
+      '<td style="padding:8px;text-align:center">—</td>' +
+      '<td style="padding:8px;text-align:center">—</td>' +
+      '<td style="padding:8px;text-align:center">—</td>' +
+      '<td style="padding:8px;text-align:center;color:#4ade80">' + fmtEur(totCA) + '</td>' +
+      '<td style="padding:8px;text-align:center">' + totJours + 'j</td>' +
+      '<td style="padding:8px;text-align:center;color:#f0c47a">' + (totMO > 0 ? fmtEur(totMO) : "—") + '</td>' +
+      '<td style="padding:8px;text-align:center;color:#f0c47a">' + (totMP > 0 ? fmtEur(totMP) : "—") + '</td>' +
+      '<td style="padding:8px;text-align:center;color:#f0c47a">' + (totPrimes > 0 ? fmtEur(totPrimes) : "—") + '</td>' +
+      '<td style="padding:8px;text-align:center;color:#4ade80">' + fmtEur(totR) + '</td>' +
+      '<td style="padding:8px;text-align:center;color:#4ade80">' + (totCA > 0 ? Math.round((totR / totCA) * 100) + '%' : '—') + '</td>' +
+    '</tr>';
+}
 
   var kpiEl = document.getElementById("analyse-kpi");
   if (kpiEl) {
