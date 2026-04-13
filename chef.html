@@ -425,6 +425,51 @@ function statutLabel(st, ch) {
   if (st === "future") return "À venir";
   return "Terminé";
 }
+  function daysLateFrom(dateStr) {
+  if (!dateStr) return 0;
+  var today = new Date();
+  today.setHours(0,0,0,0);
+
+  var d = new Date(dateStr + "T00:00:00");
+  d.setHours(0,0,0,0);
+
+  return Math.max(0, Math.round((today - d) / 86400000));
+}
+
+function getBonRappel(ch) {
+  var bsCount = mesBonsSortie.filter(function(b) {
+    return b.chantier_id === ch.id;
+  }).length;
+
+  var brCount = mesBonsRetour.filter(function(b) {
+    return b.chantier_id === ch.id;
+  }).length;
+
+  var today = new Date();
+  today.setHours(0,0,0,0);
+
+  var deb = new Date(ch.date_debut + "T00:00:00");
+  deb.setHours(0,0,0,0);
+
+  var fin = new Date((ch.date_fin_reel || ch.date_fin) + "T00:00:00");
+  fin.setHours(0,0,0,0);
+
+  if (today >= deb && bsCount === 0) {
+    return {
+      type: "sortie",
+      message: "Rappel — bon de sortie manquant" + (today > deb ? " depuis " + daysLateFrom(ch.date_debut) + " jour(s)" : "")
+    };
+  }
+
+  if (today > fin && bsCount > 0 && brCount === 0) {
+    return {
+      type: "retour",
+      message: "Rappel — " + daysLateFrom(ch.date_fin_reel || ch.date_fin) + " jour(s) de retard bon de retour"
+    };
+  }
+
+  return null;
+}
 function normTxt(s) {
   return String(s || "")
     .toLowerCase()
@@ -661,7 +706,7 @@ function renderPlanning() {
     var brCount = mesBonsRetour.filter(function(b) {
       return b.chantier_id === ch.id;
     }).length;
-
+var rappel = getBonRappel(ch);
     html +=
       '<div class="chantier-card" style="border-left-color:' + borderColor + '">' +
 
@@ -703,7 +748,9 @@ function renderPlanning() {
             (ch.ca
               ? '<div class="ch-meta-line">👔 ' + ch.ca + '</div>'
               : '') +
-
+(rappel
+  ? '<div class="ch-meta-line" style="background:#fff3cd;color:#856404;padding:7px 10px;border-left:3px solid #c47a1a;font-weight:800">⚠️ ' + rappel.message + '</div>'
+  : '') +
             (ch.nuits
               ? '<div class="ch-meta-line">🌙 ' + ch.nuits + ' nuit' + (ch.nuits > 1 ? 's' : '') + ' prévues</div>'
               : '') +
@@ -719,9 +766,7 @@ function renderPlanning() {
           '</div>' +
 
           '<div class="ch-actions-vertical">' +
-            (st !== "done"
-              ? '<button class="btn-action btn-sortie" onclick="openBonSortie(\'' + ch.id + '\')">📤 Bon de sortie</button>'
-              : '') +
+            '<button class="btn-action btn-sortie" onclick="openBonSortie(\'' + ch.id + '\')">📤 Bon de sortie</button>' +
             '<button class="btn-action btn-retour" onclick="openBonRetour(\'' + ch.id + '\')">📥 Bon de retour</button>' +
             '<button class="btn-action btn-view-bons" onclick="voirBons(\'' + ch.id + '\')">👁 Voir les bons (' + (bsCount + brCount) + ')</button>' +
           '</div>' +
@@ -795,31 +840,52 @@ async function validerBonSortie() {
     statut:       "valide",
     created_at:   new Date().toISOString(),
   };
+  var editingId = currentChantierModal._editingBonType === "sortie" ? currentChantierModal._editingBonId : null;
 
-  try {
-    var r = await fetch(SB_URL + "/rest/v1/bons_sortie", {
-      method: "POST",
-      headers: Object.assign(sbH(true), {"Prefer": "resolution=merge-duplicates,return=minimal"}),
-      body: JSON.stringify(bon)
-    });
-    if (!r.ok && r.status !== 201 && r.status !== 204) {
-      var errTxt = await r.text();
-      console.error("Supabase bons_sortie:", r.status, errTxt);
-      // Table peut-être absente — fallback localStorage
-      saveLocalBon("sortie", bon);
-    } else {
-      mesBonsSortie.push(bon);
-    }
-  } catch(e) {
-    console.error(e);
-    saveLocalBon("sortie", bon);
-  }
+if (editingId) {
+  bon.id = editingId;
+  var idx = mesBonsSortie.findIndex(function(b) { return b.id === editingId; });
+  if (idx >= 0) mesBonsSortie[idx] = bon;
 
-  mesBonsSortie.push(bon);
+  await fetch(SB_URL + "/rest/v1/bons_sortie?id=eq." + encodeURIComponent(editingId), {
+    method: "PATCH",
+    headers: Object.assign(sbH(true), {"Prefer": "return=minimal"}),
+    body: JSON.stringify(bon)
+  });
+
+  delete currentChantierModal._editingBonType;
+  delete currentChantierModal._editingBonId;
+
   closeModal("modal-sortie");
   renderPlanning();
   renderMesBons();
-  toast("Bon de sortie validé — " + lignes.length + " produit(s)", "success");
+  toast("Bon de sortie modifié", "success");
+  return;
+}
+
+  try {
+  var r = await fetch(SB_URL + "/rest/v1/bons_sortie", {
+    method: "POST",
+    headers: Object.assign(sbH(true), {"Prefer": "resolution=merge-duplicates,return=minimal"}),
+    body: JSON.stringify(bon)
+  });
+
+  if (!r.ok && r.status !== 201 && r.status !== 204) {
+    var errTxt = await r.text();
+    console.error("Supabase bons_sortie:", r.status, errTxt);
+    saveLocalBon("sortie", bon);
+  } else {
+    mesBonsSortie.push(bon);
+  }
+} catch (e) {
+  console.error(e);
+  saveLocalBon("sortie", bon);
+}
+
+closeModal("modal-sortie");
+renderPlanning();
+renderMesBons();
+toast("Bon de sortie validé — " + lignes.length + " produit(s)", "success");
 }
 
 // ── BON DE RETOUR ──
@@ -919,30 +985,51 @@ async function validerBonRetour() {
     statut:       "valide",
     created_at:   new Date().toISOString(),
   };
+var editingId = currentChantierModal._editingBonType === "retour" ? currentChantierModal._editingBonId : null;
 
-  try {
-    var r = await fetch(SB_URL + "/rest/v1/bons_retour", {
-      method: "POST",
-      headers: Object.assign(sbH(true), {"Prefer": "resolution=merge-duplicates,return=minimal"}),
-      body: JSON.stringify(bon)
-    });
-    if (!r.ok && r.status !== 201 && r.status !== 204) {
-      var errTxt = await r.text();
-      console.error("Supabase bons_retour:", r.status, errTxt);
-      saveLocalBon("retour", bon);
-    } else {
-      mesBonsRetour.push(bon);
-    }
-  } catch(e) {
-    console.error(e);
-    saveLocalBon("retour", bon);
-  }
+if (editingId) {
+  bon.id = editingId;
+  var idx = mesBonsRetour.findIndex(function(b) { return b.id === editingId; });
+  if (idx >= 0) mesBonsRetour[idx] = bon;
 
-  mesBonsRetour.push(bon);
+  await fetch(SB_URL + "/rest/v1/bons_retour?id=eq." + encodeURIComponent(editingId), {
+    method: "PATCH",
+    headers: Object.assign(sbH(true), {"Prefer": "return=minimal"}),
+    body: JSON.stringify(bon)
+  });
+
+  delete currentChantierModal._editingBonType;
+  delete currentChantierModal._editingBonId;
+
   closeModal("modal-retour");
   renderPlanning();
   renderMesBons();
-  toast("Bon de retour validé — " + lignes.length + " produit(s) restitué(s)", "success");
+  toast("Bon de retour modifié", "success");
+  return;
+}
+  try {
+  var r = await fetch(SB_URL + "/rest/v1/bons_retour", {
+    method: "POST",
+    headers: Object.assign(sbH(true), {"Prefer": "resolution=merge-duplicates,return=minimal"}),
+    body: JSON.stringify(bon)
+  });
+
+  if (!r.ok && r.status !== 201 && r.status !== 204) {
+    var errTxt = await r.text();
+    console.error("Supabase bons_retour:", r.status, errTxt);
+    saveLocalBon("retour", bon);
+  } else {
+    mesBonsRetour.push(bon);
+  }
+} catch (e) {
+  console.error(e);
+  saveLocalBon("retour", bon);
+}
+
+closeModal("modal-retour");
+renderPlanning();
+renderMesBons();
+toast("Bon de retour validé — " + lignes.length + " produit(s) restitué(s)", "success");
 }
 
 // ── VOIR BONS ──
@@ -992,6 +1079,55 @@ function voirBons(chId) {
 }
 
 // ── MES BONS (onglet) ──
+  function modifierBonSortie(bonId) {
+  var bon = mesBonsSortie.find(function(b) { return b.id === bonId; });
+  if (!bon) return;
+
+  var ch = mesChantiers.find(function(c) { return c.id === bon.chantier_id; });
+  if (!ch) return;
+
+  openBonSortie(ch.id);
+
+  setTimeout(function() {
+    bon.lignes.forEach(function(l) {
+      var input = document.getElementById("bs-" + l.produit_id);
+      if (input) input.value = l.qte;
+    });
+
+    var comment = document.getElementById("sortie-comment");
+    if (comment) comment.value = bon.commentaire || "";
+
+    currentChantierModal._editingBonType = "sortie";
+    currentChantierModal._editingBonId = bon.id;
+
+    document.getElementById("sortie-title").textContent = "Modifier bon de sortie — " + ch.client;
+  }, 50);
+}
+
+function modifierBonRetour(bonId) {
+  var bon = mesBonsRetour.find(function(b) { return b.id === bonId; });
+  if (!bon) return;
+
+  var ch = mesChantiers.find(function(c) { return c.id === bon.chantier_id; });
+  if (!ch) return;
+
+  openBonRetour(ch.id);
+
+  setTimeout(function() {
+    bon.lignes.forEach(function(l) {
+      var input = document.getElementById("br-" + l.produit_id);
+      if (input) input.value = l.qte;
+    });
+
+    var comment = document.getElementById("retour-comment");
+    if (comment) comment.value = bon.commentaire || "";
+
+    currentChantierModal._editingBonType = "retour";
+    currentChantierModal._editingBonId = bon.id;
+
+    document.getElementById("retour-title").textContent = "Modifier bon de retour — " + ch.client;
+  }, 50);
+}
 function renderMesBons() {
   var lbsEl = document.getElementById("liste-bons-sortie");
   var lbrEl = document.getElementById("liste-bons-retour");
@@ -1012,6 +1148,7 @@ function renderMesBons() {
         (b.lignes.length > 5 ? '<div style="font-size:10px;color:var(--text3);margin-top:4px">+ ' + (b.lignes.length - 5) + ' autre(s) produit(s)</div>' : '') +
         '</div>' +
         (b.commentaire ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-style:italic">' + b.commentaire + '</div>' : '') +
+       '<button class="btn btn-secondary" style="margin-top:8px;width:100%" onclick="modifierBonSortie(\'' + b.id + '\')">✏ Modifier</button>' +
         '</div>';
     });
     lbsEl.innerHTML = html;
@@ -1032,6 +1169,7 @@ function renderMesBons() {
         (b.lignes.length > 5 ? '<div style="font-size:10px;color:var(--text3);margin-top:4px">+ ' + (b.lignes.length - 5) + ' autre(s) produit(s)</div>' : '') +
         '</div>' +
         (b.commentaire ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;font-style:italic">' + b.commentaire + '</div>' : '') +
+        '<button class="btn btn-secondary" style="margin-top:8px;width:100%" onclick="modifierBonSortie(\'' + b.id + '\')">✏ Modifier</button>' +
         '</div>';
     });
     lbrEl.innerHTML = html2;
@@ -1052,9 +1190,39 @@ function showTab(name) {
 // ── FALLBACK LOCALSTORAGE ──
 function saveLocalBon(type, bon) {
   var key = "big_chef_bons_" + currentChef.id;
-  var data = {sortie: mesBonsSortie, retour: mesBonsRetour};
-  if (type === "sortie") data.sortie.push(bon);
-  if (type === "retour") data.retour.push(bon);
+
+  var existing = localStorage.getItem(key);
+  var data = {sortie: [], retour: []};
+
+  if (existing) {
+    try {
+      data = JSON.parse(existing) || data;
+    } catch (e) {}
+  }
+
+  if (!Array.isArray(data.sortie)) data.sortie = [];
+  if (!Array.isArray(data.retour)) data.retour = [];
+
+  if (type === "sortie") {
+    var i1 = data.sortie.findIndex(function(b) { return b.id === bon.id; });
+    if (i1 >= 0) data.sortie[i1] = bon;
+    else data.sortie.push(bon);
+
+    var m1 = mesBonsSortie.findIndex(function(b) { return b.id === bon.id; });
+    if (m1 >= 0) mesBonsSortie[m1] = bon;
+    else mesBonsSortie.push(bon);
+  }
+
+  if (type === "retour") {
+    var i2 = data.retour.findIndex(function(b) { return b.id === bon.id; });
+    if (i2 >= 0) data.retour[i2] = bon;
+    else data.retour.push(bon);
+
+    var m2 = mesBonsRetour.findIndex(function(b) { return b.id === bon.id; });
+    if (m2 >= 0) mesBonsRetour[m2] = bon;
+    else mesBonsRetour.push(bon);
+  }
+
   localStorage.setItem(key, JSON.stringify(data));
   toast("Sauvegardé localement (Supabase inaccessible)", "");
 }
