@@ -1999,40 +1999,97 @@ async function openModalAjout(){document.getElementById('modal-ajout').classList
 function closeModalAjout(){document.getElementById('modal-ajout').classList.remove('open');}
 
 async function ajouterSite(){
-  const nom=document.getElementById('new-nom').value.trim();
-  const adresse=document.getElementById('new-adresse').value.trim();
-  const cat=document.getElementById('new-cat').value;
-  const surf=parseInt(document.getElementById('new-surf').value)||10000;
-  if(!nom||!adresse){showToast('Nom et adresse obligatoires','error');return;}
+  const nom = document.getElementById('aj-nom').value.trim();
+  const adresse = document.getElementById('aj-adresse').value.trim();
+  const cat = document.getElementById('aj-cat').value;
+  const sector = document.getElementById('aj-sector').value;
+  const surf = parseInt(document.getElementById('aj-surf').value, 10) || 10000;
+  const annee = parseInt(document.getElementById('aj-annee').value, 10) || null;
+  const groupe = document.getElementById('aj-groupe').value.trim();
+
+  const contact = document.getElementById('aj-contact').value.trim();
+  const tel = document.getElementById('aj-tel').value.trim();
+  const mail = document.getElementById('aj-mail').value.trim();
+
+  if (!nom || !adresse) {
+    showToast('Nom et adresse obligatoires', 'error');
+    return;
+  }
+
   showToast('Géocodage…');
-  try{
-    const r=await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(adresse)}&limit=1`);
-    const d=await r.json();
-    if(!d.features?.length){showToast('Adresse non trouvée','error');return;}
-    const [lng,lat]=d.features[0].geometry.coordinates;
-    const props=d.features[0].properties;
-    const dept=(props.postcode||'').substring(0,2);
-    const ville=props.city||props.label||'';
-    const id=`manual-${Date.now()}`;
-    const score=50; const prio='B';
-    const site={id,siret:'',nom,groupe:'',cat,ville,dept,
-      sector:dept?'all':'all',lat:parseFloat(lat.toFixed(6)),lng:parseFloat(lng.toFixed(6)),
-      surf,annee:2005,naf:'',naf_label:'',contact:'À qualifier',tel:'À qualifier',mail:'',
-      score,prio,status:'prospect',concurrent:[],source:'manuel',notes:''
+
+  try {
+    const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(adresse)}&limit=1`);
+    const d = await r.json();
+
+    if (!d.features || !d.features.length) {
+      showToast('Adresse non trouvée', 'error');
+      return;
+    }
+
+    const coords = d.features[0].geometry.coordinates;
+    const lng = coords[0];
+    const lat = coords[1];
+    const props = d.features[0].properties;
+    const dept = (props.postcode || '').substring(0, 2);
+    const ville = props.city || props.label || '';
+    const id = `manual-${Date.now()}`;
+    const score = 50;
+    const prio = 'B';
+
+    const site = {
+      id: id,
+      siret: '',
+      nom: nom,
+      groupe: groupe,
+      cat: cat,
+      ville: ville,
+      dept: dept,
+      sector: sector,
+      lat: parseFloat(lat.toFixed(6)),
+      lng: parseFloat(lng.toFixed(6)),
+      surf: surf,
+      annee: annee,
+      naf: '',
+      naf_label: '',
+      contact: contact || 'À qualifier',
+      tel: tel || 'À qualifier',
+      mail: mail || '',
+      score: score,
+      prio: prio,
+      status: contact || tel ? 'contact' : 'prospect',
+      concurrent: [],
+      source: 'manuel',
+      notes: ''
     };
-    const resp=await fetch(`${SUPABASE_URL}/rest/v1/sites`,{
-      method:'POST',
-      headers:{...sbHeaders(true),"Prefer":"resolution=merge-duplicates"},
-      body:JSON.stringify(site)
+
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/sites`, {
+      method: 'POST',
+      headers: {...sbHeaders(true), "Prefer": "resolution=merge-duplicates"},
+      body: JSON.stringify(site)
     });
-    if(resp.ok){
+
+    if (resp.ok) {
       allSitesCache.push(site);
       allSitesGlobalCache.push(site);
       renderMarkers(applyFilters(allSitesCache));
       closeModalAjout();
-      showToast(`Site ajouté : ${nom}`,'success');
-    }else{showToast('Erreur ajout site','error');}
-  }catch(e){showToast('Erreur: '+e.message,'error');}
+
+      ['aj-nom','aj-adresse','aj-surf','aj-annee','aj-groupe','aj-contact','aj-tel','aj-mail'].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+
+      showToast(`Site ajouté : ${nom}`, 'success');
+    } else {
+      const errTxt = await resp.text();
+      console.error('Erreur ajout site:', resp.status, errTxt);
+      showToast('Erreur ajout site', 'error');
+    }
+  } catch(e) {
+    console.error(e);
+    showToast('Erreur: ' + e.message, 'error');
+  }
 }
 
 // ── STATS ──
