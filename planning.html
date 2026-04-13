@@ -460,15 +460,17 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
    <div class="fg">
   <label>Client / Site *</label>
   <input
-    type="text"
-    id="ch-client"
-    placeholder="Tapez un nom, une ville…"
-    list="clients-dl"
-    autocomplete="off"
-    style="width:100%"
-    oninput="refreshClientDatalist(this.value)"
-    onfocus="refreshClientDatalist(this.value)"
-  />
+  type="text"
+  id="ch-client"
+  placeholder="Tapez un nom, une ville…"
+  list="clients-dl"
+  autocomplete="off"
+  style="width:100%"
+  oninput="refreshClientDatalist(this.value); syncSelectedSiteFromInput();"
+  onfocus="refreshClientDatalist(this.value)"
+  onchange="syncSelectedSiteFromInput()"
+  onblur="syncSelectedSiteFromInput()"
+/>
   <datalist id="clients-dl"></datalist>
   <input type="hidden" id="ch-site-id"/>
 </div>
@@ -726,6 +728,7 @@ let currentCA = "all";
 let _planSitesCache = [];
 let _planSitesLoaded = false;
 let _planSitesLoading = false;
+  let _planSitesLabelMap = {};
 let _suggResults = [];
 let _suggTimer = null;
 
@@ -951,6 +954,19 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function getSiteDisplayLabel(site) {
+  return (site.nom || "")
+    + (site.ville ? " — " + site.ville : "")
+    + (site.dept ? " (" + site.dept + ")" : "");
+}
+
+function getSiteAdressePlanning(site) {
+  if (site.adresse && site.ville) return site.adresse + ", " + site.ville + (site.dept ? " (" + site.dept + ")" : "");
+  if (site.adresse) return site.adresse;
+  if (site.ville) return site.ville + (site.dept ? " (" + site.dept + ")" : "");
+  return "";
+}
+
 function refreshClientDatalist(query) {
   var dl = document.getElementById("clients-dl");
   if (!dl) return;
@@ -959,6 +975,7 @@ function refreshClientDatalist(query) {
 
   if (!_planSitesCache || !_planSitesCache.length) {
     dl.innerHTML = "";
+    _planSitesLabelMap = {};
     return;
   }
 
@@ -987,13 +1004,44 @@ function refreshClientDatalist(query) {
       });
   }
 
-  dl.innerHTML = results.map(function(site) {
-    var label = (site.nom || "")
-      + (site.ville ? " — " + site.ville : "")
-      + (site.dept ? " (" + site.dept + ")" : "");
+  _planSitesLabelMap = {};
 
+  dl.innerHTML = results.map(function(site) {
+    var label = getSiteDisplayLabel(site);
+    _planSitesLabelMap[label] = site;
     return '<option value="' + escapeHtml(label) + '">';
   }).join("");
+}
+
+  function syncSelectedSiteFromInput() {
+  var clientEl = document.getElementById("ch-client");
+  var siteIdEl = document.getElementById("ch-site-id");
+  var adrEl = document.getElementById("ch-adresse");
+
+  if (!clientEl || !siteIdEl) return;
+
+  var value = (clientEl.value || "").trim();
+  if (!value) {
+    siteIdEl.value = "";
+    return;
+  }
+
+  var site = _planSitesLabelMap[value] || null;
+
+  if (!site && _planSitesCache && _planSitesCache.length) {
+    site = _planSitesCache.find(function(s) {
+      return getSiteDisplayLabel(s) === value;
+    }) || null;
+  }
+
+  if (site) {
+    siteIdEl.value = site.id || "";
+    if (adrEl && !adrEl.value.trim()) {
+      adrEl.value = getSiteAdressePlanning(site);
+    }
+  } else {
+    siteIdEl.value = "";
+  }
 }
 
 // ── NAVIGATION ──
