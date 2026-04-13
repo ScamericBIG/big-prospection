@@ -328,6 +328,8 @@ var currentChef = null;  // {id, prenom, eq_id}
 var mesChantiers = [];
 var mesBonsSortie = [];
 var mesBonsRetour = [];
+  var SITE_CONTACT_FIELD = "contact";
+var SITE_TEL_FIELD = "tel";
 var currentChantierModal = null; // chantier actif pour le modal
 
 // ── HELPERS ──
@@ -382,6 +384,10 @@ function statutLabel(st, ch) {
   return "Terminé";
 }
 
+function formatTelHref(tel) {
+  return String(tel || "").replace(/[^\d+]/g, "");
+}
+  
 // ── AUTH ──
 function doLogin() {
   var id  = document.getElementById("auth-id").value.trim().toUpperCase();
@@ -432,20 +438,58 @@ function startApp() {
 async function loadMesChantiers() {
   try {
     var annee = new Date().getFullYear();
+
     var r = await fetch(
       SB_URL + "/rest/v1/chantiers?order=date_debut.asc&limit=500",
-      {headers: sbH()}
+      { headers: sbH() }
     );
     if (!r.ok) throw new Error("HTTP " + r.status);
+
     var all = await r.json();
-    // Filtrer : uniquement les chantiers de cette équipe en année courante
-    mesChantiers = all.filter(function(ch) {
+
+    var filtres = all.filter(function(ch) {
       if (!ch.equipes || ch.equipes.indexOf(currentChef.eq_id) < 0) return false;
       var d = new Date(ch.date_debut);
       return d.getFullYear() === annee;
     });
+
+    var siteIds = filtres
+      .map(function(ch) { return ch.site_id; })
+      .filter(function(id) { return !!id; });
+
+    var sitesMap = {};
+
+    if (siteIds.length) {
+      var idsQuery = siteIds.map(function(id) {
+        return '"' + String(id).replace(/"/g, '\\"') + '"';
+      }).join(",");
+
+      var rs = await fetch(
+        SB_URL + "/rest/v1/sites?select=id,contact,tel&id=in.(" + encodeURIComponent(idsQuery) + ")",
+        { headers: sbH() }
+      );
+
+      if (rs.ok) {
+        var sites = await rs.json();
+        sites.forEach(function(site) {
+          sitesMap[site.id] = site;
+        });
+      } else {
+        var errTxt = await rs.text();
+        console.error("loadMesChantiers sites:", rs.status, errTxt);
+      }
+    }
+
+    mesChantiers = filtres.map(function(ch) {
+      var site = ch.site_id ? sitesMap[ch.site_id] : null;
+      return Object.assign({}, ch, {
+        site_contact: site && site.contact ? site.contact : "",
+        site_tel: site && site.tel ? site.tel : ""
+      });
+    });
+
     renderPlanning();
-  } catch(e) {
+  } catch (e) {
     console.error("loadMesChantiers:", e);
     toast("Erreur de connexion Supabase", "error");
     document.getElementById("chantiers-list").innerHTML =
@@ -537,10 +581,12 @@ function renderPlanning() {
       '</div>' +
       '<div class="ch-card-body" id="ch-body-' + idx + '" style="display:' + (st === "today" || st === "soon" ? "block" : "none") + '">' +
         '<div class="ch-info-grid">' +
-          (ch.adresse ? '<div class="ch-info-item"><div class="ch-info-label">Adresse</div><div class="ch-info-value">📍 ' + ch.adresse + '</div></div>' : '') +
-          '<div class="ch-info-item"><div class="ch-info-label">Horaires</div><div class="ch-info-value">' + type + '</div></div>' +
-          (ch.nuits ? '<div class="ch-info-item"><div class="ch-info-label">Nuits prévues</div><div class="ch-info-value">' + ch.nuits + ' nuit' + (ch.nuits > 1 ? 's' : '') + '</div></div>' : '') +
-        '</div>' +
+  (ch.adresse ? '<div class="ch-info-item"><div class="ch-info-label">Adresse</div><div class="ch-info-value">📍 ' + ch.adresse + '</div></div>' : '') +
+  '<div class="ch-info-item"><div class="ch-info-label">Horaires</div><div class="ch-info-value">' + type + '</div></div>' +
+  (ch.nuits ? '<div class="ch-info-item"><div class="ch-info-label">Nuits prévues</div><div class="ch-info-value">' + ch.nuits + ' nuit' + (ch.nuits > 1 ? 's' : '') + '</div></div>' : '') +
+  (ch.site_contact ? '<div class="ch-info-item"><div class="ch-info-label">Contact principal</div><div class="ch-info-value">👤 ' + ch.site_contact + '</div></div>' : '') +
+  (ch.site_tel ? '<div class="ch-info-item"><div class="ch-info-label">Téléphone</div><div class="ch-info-value">📞 <a href="tel:' + formatTelHref(ch.site_tel) + '" style="color:var(--blue);text-decoration:none;font-weight:700">' + ch.site_tel + '</a></div></div>' : '') +
+'</div>' +
         (ch.travaux ? '<div class="ch-travaux"><strong>Travaux :</strong> ' + ch.travaux + '</div>' : '') +
         (ch.description ? '<div class="ch-travaux" style="border-left-color:#888">' + ch.description + '</div>' : '') +
         '<div class="ch-actions">' +
