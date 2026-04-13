@@ -457,7 +457,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
       <!-- Client + Adresse -->
       <div class="section-hd" style="margin-top:0">Informations chantier</div>
       <div class="form-row full">
-       <div class="fg">
+   <div class="fg">
   <label>Client / Site *</label>
   <input
     type="text"
@@ -895,7 +895,7 @@ async function loadClients() {
   }
 }
 
-// ── RECHERCHE FUZZY SITES ──
+/* ── RECHERCHE FUZZY SITES ── */
 function normStr(s) {
   if (!s) return "";
   return s.toLowerCase()
@@ -907,14 +907,17 @@ function normStr(s) {
 function fuzzyScore(q, site) {
   var qn = normStr(q);
   if (!qn || qn.length < 2) return 0;
-  var nom  = normStr(site.nom   || "");
+
+  var nom  = normStr(site.nom || "");
   var vil  = normStr(site.ville || "");
-  var dep  = normStr(site.dept  || "");
+  var dep  = normStr(site.dept || "");
   var full = nom + " " + vil + " " + dep;
+
   if (nom === qn) return 100;
   if (nom.indexOf(qn) === 0) return 95;
   if (nom.indexOf(qn) >= 0) return 85;
   if (full.indexOf(qn) >= 0) return 70;
+
   var words = qn.split(" ").filter(function(w) { return w.length > 1; });
   if (words.length > 1) {
     var hits = words.filter(function(w) { return full.indexOf(w) >= 0; }).length;
@@ -923,13 +926,15 @@ function fuzzyScore(q, site) {
     if (hits === words.length) return 80 + (nomH > 0 && vilH > 0 ? 10 : 0);
     if (hits > 0) return Math.round(hits / words.length * 60);
   }
+
   var fw = words[0] || qn;
   if (nom.indexOf(fw) === 0 || vil.indexOf(fw) === 0) return 45;
   if (fw.length >= 4 && nom.indexOf(fw.substring(0, fw.length - 1)) >= 0) return 25;
+
   return 0;
 }
 
-  function escapeHtml(s) {
+function escapeHtml(s) {
   return String(s || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -981,74 +986,6 @@ function refreshClientDatalist(query) {
     return '<option value="' + escapeHtml(label) + '">';
   }).join("");
 }
-  
-var _siteSuggIndex = -1;
-var _siteSuggResults = [];
-
-function escapeHtml(str) {
-  return String(str || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function getSiteLabel(site) {
-  var parts = [];
-  if (site.nom) parts.push(site.nom);
-  if (site.ville) parts.push(site.ville);
-  if (site.dept) parts.push("(" + site.dept + ")");
-  return parts.join(" — ").replace(" — (", " (");
-}
-
-function getSiteAdresse(site) {
-  if (site.adresse && site.ville) return site.adresse + ", " + site.ville + (site.dept ? " (" + site.dept + ")" : "");
-  if (site.adresse) return site.adresse;
-  if (site.ville) return site.ville + (site.dept ? " (" + site.dept + ")" : "");
-  return "";
-}
-
-).join("");
-
-  box.style.display = "block";
-}
-
-function updateSiteSuggActive() {
-  var box = document.getElementById("site-sugg-portal");
-  if (!box) return;
-
-  var items = box.querySelectorAll(".site-sugg-item");
-  items.forEach(function(item, idx) {
-    if (idx === _siteSuggIndex) {
-      item.style.background = "var(--light)";
-      item.style.color = "var(--blue)";
-    } else {
-      item.style.background = "";
-      item.style.color = "";
-    }
-  });
-
-  if (_siteSuggIndex >= 0 && items[_siteSuggIndex]) {
-    items[_siteSuggIndex].scrollIntoView({ block: "nearest" });
-  }
-}
-
-
-function clearSelectedSiteIfNeeded() {
-  var clientEl = document.getElementById("ch-client");
-  var idEl = document.getElementById("ch-site-id");
-
-  if (!clientEl || !idEl) return;
-
-  if (!clientEl.value.trim()) {
-    idEl.value = "";
-    var adrEl = document.getElementById("ch-adresse");
-    if (adrEl) adrEl.value = "";
-  }
-}
-
-document.addEventListener("click", function() {});
 
 // ── NAVIGATION ──
 function nav(delta) {
@@ -1408,7 +1345,7 @@ async function saveCh() {
 
 var ch = {
   id:          editId || ("ch-" + Date.now()),
-  site_id:     siteId || null,
+  site_id: siteId || null,
   client:      client,
     adresse:       ($("#ch-adresse").value || "").trim(),
     ref:           ($("#ch-ref").value || "").trim(),
