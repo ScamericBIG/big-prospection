@@ -331,6 +331,9 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
         <button class="ca-btn" data-ca="Mathis" onclick="selCA(this)">Mathis</button>
         <button class="ca-btn" data-ca="Emeric" onclick="selCA(this)">Emeric</button>
       </div>
+      <select class="filter-sel" id="analyse-eq" onchange="selAnalyseEq(this)">
+  <option value="all">Toutes les équipes</option>
+</select>
       <button class="btn-add" onclick="openModalEditAnalyse()" style="margin-left:auto">✏ Saisir données chantier</button>
     </div>
     <!-- KPI -->
@@ -343,6 +346,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
             <th style="padding:7px 8px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;text-transform:uppercase;white-space:nowrap">Client / Site</th>
             <th style="padding:7px 8px;text-align:center;font-size:10px;white-space:nowrap">N° Affaire</th>
             <th style="padding:7px 8px;text-align:center;font-size:10px;white-space:nowrap">Chargé</th>
+            <th style="padding:7px 8px;text-align:center;font-size:10px;white-space:nowrap">Équipe</th>
             <th style="padding:7px 8px;text-align:center;font-size:10px;white-space:nowrap;color:#4ade80">CA HT</th>
             <th style="padding:7px 8px;text-align:center;font-size:10px;white-space:nowrap">Jours</th>
             <th style="padding:7px 8px;text-align:center;font-size:10px;white-space:nowrap;color:#f0c47a">Coût MO</th>
@@ -352,7 +356,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
             <th style="padding:7px 8px;text-align:center;font-size:10px;white-space:nowrap;color:#4ade80">Taux %</th>
           </tr>
         </thead>
-        <tbody id="analyse-tbody"><tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">Aucun chantier terminé trouvé — ajoutez des données via le bouton ✏</td></tr></tbody>
+        <tbody id="analyse-tbody"><tr><td colspan="11" style="text-align:center;padding:20px;color:var(--text3)">Aucun chantier terminé trouvé — ajoutez des données via le bouton ✏</td></tr></tbody>
         <tfoot id="analyse-tfoot"></tfoot>
       </table>
     </div>
@@ -725,6 +729,7 @@ let bonsRetour = [];
 let mouvements = [];
 let analyseData = {};
 let currentCA = "all";
+  let currentAnalyseEq = "all";
 let _planSitesCache = [];
 let _planSitesLoaded = false;
 let _planSitesLoading = false;
@@ -799,6 +804,7 @@ function initApp() {
   buildEqSelect();
   buildTeamChips();
   buildEquipesGrid();
+  populateAnalyseEqFilter();
   populateStatsMths();
  Promise.all([loadChantiers(), loadBonsSupabase()]).then(function() {
   renderPlanning();
@@ -1995,7 +2001,10 @@ function selCA(el) {
   currentCA = el.dataset.ca;
   renderAnalyse();
 }
-
+function selAnalyseEq(el) {
+  currentAnalyseEq = el.value || "all";
+  renderAnalyse();
+}
 function getCoutMP(chId) {
   var bsCh = bonsSortie.filter(function(b) {
     return (b.chantier || b.chantier_id) === chId;
@@ -2046,18 +2055,41 @@ function saveAnalyseField(chId, field, val) {
   saveAnalyse();
 }
 
+  function populateAnalyseEqFilter() {
+  var sel = document.getElementById("analyse-eq");
+  if (!sel) return;
+
+  var current = sel.value || "all";
+
+  sel.innerHTML = '<option value="all">Toutes les équipes</option>' +
+    equipes.map(function(e) {
+      return '<option value="' + e.id + '">' + e.nom + '</option>';
+    }).join("");
+
+  sel.value = currentAnalyseEq || current || "all";
+}
 function renderAnalyse() {
   var anneeEl = document.getElementById("analyse-annee");
   var annee = parseInt(anneeEl ? anneeEl.value : new Date().getFullYear());
   var debut = new Date(annee, 0, 1);
   var fin   = new Date(annee, 11, 31);
   var termines = chantiers.filter(function(c) {
-    if (!c.date_fin && !c.date_fin_reel) return false;
-    var df = new Date(c.date_fin_reel || c.date_fin);
-    if (df < debut || df > fin) return false;
-    if (currentCA !== "all" && c.ca !== currentCA) return false;
-    return true;
-  });
+  if (!c.date_fin && !c.date_fin_reel) return false;
+
+  var df = new Date(c.date_fin_reel || c.date_fin);
+  if (df < debut || df > fin) return false;
+
+  if (currentCA !== "all" && c.ca !== currentCA) return false;
+
+  if (
+    currentAnalyseEq !== "all" &&
+    (!c.equipes || c.equipes.indexOf(currentAnalyseEq) < 0)
+  ) {
+    return false;
+  }
+
+  return true;
+});
 
   var tbody = document.getElementById("analyse-tbody");
   var tfoot = document.getElementById("analyse-tfoot");
@@ -2069,11 +2101,15 @@ function renderAnalyse() {
   termines.forEach(function(c, i) {
     var ad    = analyseData[c.id] || {};
     var caHT  = ad.ca_ht || 0;
-    var num   = ad.num_affaire || "";
+    var num = c.ref || "";
     var prim  = ad.primes || 0;
 var coutMP = getCoutMP(c.id);
     var jours  = daysBetween(c.date_debut, c.date_fin_reel || c.date_fin);
     var eq     = equipes.find(function(e) { return c.equipes && c.equipes.indexOf(e.id) >= 0; });
+    var eqNames = (c.equipes || []).map(function(eqId) {
+  var found = equipes.find(function(e) { return e.id === eqId; });
+  return found ? found.nom : eqId;
+}).join(", ");
     var coutMO = jours * (eq ? (eq.cout_journalier || 0) : 0);
     var renta  = caHT - coutMP - coutMO - prim;
     var taux   = caHT > 0 ? Math.round(renta / caHT * 100) : 0;
@@ -2084,10 +2120,9 @@ var coutMP = getCoutMP(c.id);
     rows += '<tr style="' + bg + '">'
       + '<td style="padding:6px 8px;font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + c.client + '">' + c.client
       + '<br><span style="font-size:9px;color:var(--text3);font-weight:400">' + (c.adresse||"") + '</span></td>'
-      + '<td style="padding:6px 8px;text-align:center"><input type="text" value="' + num + '" placeholder="MAI26000"'
-      + ' onchange="saveAnalyseField(\'' + c.id + '\',\'num_affaire\',this.value)"'
-      + ' style="width:80px;padding:3px;border:1.5px solid var(--light3);font-size:10px;text-align:center;outline:none"/></td>'
++ '<td style="padding:6px 8px;text-align:center;font-weight:700;color:var(--text2)">' + (num || "—") + '</td>'
       + '<td style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3)">' + (c.ca||"—") + '</td>'
+      + '<td style="padding:6px 8px;text-align:center;font-weight:700;color:var(--blue)">' + (eqNames || "—") + '</td>'
       + '<td style="padding:6px 8px;text-align:center"><input type="number" min="0" step="0.01" value="' + (caHT||"") + '" placeholder="0,00"'
       + ' onchange="saveAnalyseField(\'' + c.id + '\',\'ca_ht\',parseFloat(this.value)||0)"'
       + ' style="width:90px;padding:3px;border:1.5px solid var(--light3);font-size:11px;text-align:center;outline:none;color:#1a8c4a;font-weight:700"/></td>'
