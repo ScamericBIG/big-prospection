@@ -800,11 +800,12 @@ function initApp() {
   buildTeamChips();
   buildEquipesGrid();
   populateStatsMths();
-  loadChantiers().then(function() {
-    renderPlanning();
-    renderStats();
-  });
-  loadClients();
+ Promise.all([loadChantiers(), loadBonsSupabase()]).then(function() {
+  renderPlanning();
+  renderStats();
+  renderAnalyse();
+});
+loadClients();
 }
 
 // ── SUPABASE ──
@@ -815,6 +816,32 @@ async function loadChantiers() {
   } catch(e) { console.error("loadChantiers:", e); }
 }
 
+  async function loadBonsSupabase() {
+  try {
+    var r1 = await fetch(
+      SB_URL + "/rest/v1/bons_sortie?order=created_at.desc&limit=5000",
+      { headers: sbH() }
+    );
+    if (r1.ok) {
+      bonsSortie = await r1.json();
+    } else {
+      console.error("loadBonsSupabase sortie:", r1.status, await r1.text());
+    }
+
+    var r2 = await fetch(
+      SB_URL + "/rest/v1/bons_retour?order=created_at.desc&limit=5000",
+      { headers: sbH() }
+    );
+    if (r2.ok) {
+      bonsRetour = await r2.json();
+    } else {
+      console.error("loadBonsSupabase retour:", r2.status, await r2.text());
+    }
+  } catch (e) {
+    console.error("loadBonsSupabase:", e);
+  }
+}
+  
 async function saveChDB(ch) {
   try {
     var r = await fetch(SB_URL + "/rest/v1/chantiers", {
@@ -1970,14 +1997,46 @@ function selCA(el) {
 }
 
 function getCoutMP(chId) {
-  var bsCh = bonsSortie.filter(function(b) { return b.chantier === chId; });
-  var brCh = bonsRetour.filter(function(b) { return b.chantier === chId; });
-  if (!bsCh.length) return analyseData[chId] ? (analyseData[chId].cout_mp || 0) : 0;
-  var sorties = {}, retours = {};
-  bsCh.forEach(function(b) { b.lignes.forEach(function(l) { sorties[l.pid] = (sorties[l.pid]||0) + l.qte; }); });
-  brCh.forEach(function(b) { b.lignes.forEach(function(l) { retours[l.pid] = (retours[l.pid]||0) + l.qte; }); });
+  var bsCh = bonsSortie.filter(function(b) {
+    return (b.chantier || b.chantier_id) === chId;
+  });
+
+  var brCh = bonsRetour.filter(function(b) {
+    return (b.chantier || b.chantier_id) === chId;
+  });
+
+  if (!bsCh.length) return 0;
+
+  var sorties = {};
+  var retours = {};
+
+  bsCh.forEach(function(b) {
+    (b.lignes || []).forEach(function(l) {
+      var pid = l.pid || l.produit_id;
+      var qte = parseFloat(l.qte) || 0;
+      if (!pid || qte <= 0) return;
+      sorties[pid] = (sorties[pid] || 0) + qte;
+    });
+  });
+
+  brCh.forEach(function(b) {
+    (b.lignes || []).forEach(function(l) {
+      var pid = l.pid || l.produit_id;
+      var qte = parseFloat(l.qte) || 0;
+      if (!pid || qte <= 0) return;
+      retours[pid] = (retours[pid] || 0) + qte;
+    });
+  });
+
   var total = 0;
-  PRODUITS_BIG.forEach(function(p) { var conso = Math.max(0, (sorties[p.id]||0) - (retours[p.id]||0)); total += conso * p.prix; });
+
+  PRODUITS_BIG.forEach(function(p) {
+    var sorti = sorties[p.id] || 0;
+    var retourne = retours[p.id] || 0;
+    var conso = Math.max(0, sorti - retourne);
+    total += conso * (parseFloat(p.prix) || 0);
+  });
+
   return Math.round(total * 100) / 100;
 }
 
@@ -2012,9 +2071,7 @@ function renderAnalyse() {
     var caHT  = ad.ca_ht || 0;
     var num   = ad.num_affaire || "";
     var prim  = ad.primes || 0;
-    var coutMPbons = getCoutMP(c.id);
-    var coutMPman  = ad.cout_mp || 0;
-    var coutMP = coutMPbons > 0 ? coutMPbons : coutMPman;
+var coutMP = getCoutMP(c.id);
     var jours  = daysBetween(c.date_debut, c.date_fin_reel || c.date_fin);
     var eq     = equipes.find(function(e) { return c.equipes && c.equipes.indexOf(e.id) >= 0; });
     var coutMO = jours * (eq ? (eq.cout_journalier || 0) : 0);
@@ -2036,11 +2093,7 @@ function renderAnalyse() {
       + ' style="width:90px;padding:3px;border:1.5px solid var(--light3);font-size:11px;text-align:center;outline:none;color:#1a8c4a;font-weight:700"/></td>'
       + '<td style="padding:6px 8px;text-align:center;font-size:11px">' + jours + 'j</td>'
       + '<td style="padding:6px 8px;text-align:center;font-size:11px;color:#c47a1a;font-weight:700">' + (coutMO > 0 ? fmtEur(coutMO) : "—") + '</td>'
-      + '<td style="padding:6px 8px;text-align:center"><span style="font-size:11px;color:#c47a1a;font-weight:700">' + (coutMP > 0 ? fmtEur(coutMP) : "—") + '</span>'
-      + (coutMPbons === 0 ? '<br><input type="number" min="0" step="0.01" placeholder="Saisir EUR"'
-        + ' onchange="saveAnalyseField(\'' + c.id + '\',\'cout_mp\',parseFloat(this.value)||0)"'
-        + ' style="width:80px;padding:2px;border:1.5px dashed var(--light3);font-size:10px;text-align:center;outline:none;margin-top:2px"/>' : "")
-      + '</td>'
++ '<td style="padding:6px 8px;text-align:center"><span style="font-size:11px;color:#c47a1a;font-weight:700">' + (coutMP > 0 ? fmtEur(coutMP) : "—") + '</span></td>'
       + '<td style="padding:6px 8px;text-align:center"><input type="number" min="0" step="0.01" value="' + (prim||"") + '" placeholder="0,00"'
       + ' onchange="saveAnalyseField(\'' + c.id + '\',\'primes\',parseFloat(this.value)||0);renderAnalyse()"'
       + ' style="width:70px;padding:3px;border:1.5px solid var(--light3);font-size:10px;text-align:center;outline:none"/></td>'
@@ -2074,7 +2127,7 @@ function renderAnalyse() {
       {label:"CA total HT",        val: totCA > 0 ? fmtEur(totCA) : "—",                          color:"#1a8c4a"},
       {label:"Rentabilite totale", val: totCA > 0 ? fmtEur(totR) : "—",                           color: totR >= 0 ? "#1a8c4a" : "#c0392b"},
       {label:"Taux moyen",         val: totCA > 0 ? tauxMoy + "%" : "—",                          color: tauxMoy >= 20 ? "#1a8c4a" : (tauxMoy >= 0 ? "#c47a1a" : "#c0392b")},
-      {label:"Cout matieres",      val: totMP > 0 ? fmtEur(totMP) : "A saisir",                   color:"#c47a1a"},
+      {label:"Cout matieres", val: totMP > 0 ? fmtEur(totMP) : "—", color:"#c47a1a"},
       {label:"Cout main oeuvre",   val: totMO > 0 ? fmtEur(totMO) : "—",                          color:"#c47a1a"},
     ];
     var kpiHtml = "";
