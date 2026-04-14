@@ -373,7 +373,7 @@ var mesBonsRetour = [];
   var SITE_CONTACT_FIELD = "contact";
 var SITE_TEL_FIELD = "tel";
 var currentChantierModal = null; // chantier actif pour le modal
-const EQ_AGENCE = {
+var EQ_AGENCE_CHEF = {
   "eq-nicolas": "Nantes",
   "eq-anthony": "Lyon",
   "eq-alain": "Lyon",
@@ -382,7 +382,7 @@ const EQ_AGENCE = {
 };
 
 function getAgenceChef() {
-  return EQ_AGENCE[currentChef.eq_id] || "Metz";
+return EQ_AGENCE_CHEF[currentChef.eq_id] || "Metz";
 }
 
 function makeId(prefix) {
