@@ -968,6 +968,31 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 .obj-none td {
   background: #fff;
 }
+  .analyse-cost-cell {
+  padding: 9px 11px !important;
+  text-align: center !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  color: #c47a1a !important;
+  white-space: nowrap !important;
+}
+
+.analyse-money-input {
+  font-family: 'Barlow', sans-serif !important;
+}
+  .analyse-eq-badge {
+  display: inline-block;
+  padding: 3px 7px;
+  margin: 2px;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  background: #fff;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 /* ── TOAST ── */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
 #toast.show{transform:translateY(0);opacity:1}
@@ -4024,10 +4049,15 @@ var coutMP = getCoutMP(c.id);
     var jours  = daysBetween(c.date_debut, c.date_fin_reel || c.date_fin);
     totJours += jours;
     var eq     = equipes.find(function(e) { return c.equipes && c.equipes.indexOf(e.id) >= 0; });
-    var eqNames = (c.equipes || []).map(function(eqId) {
+    var eqBadges = (c.equipes || []).map(function(eqId) {
   var found = equipes.find(function(e) { return e.id === eqId; });
-  return found ? found.nom : eqId;
-}).join(", ");
+
+  if (!found) {
+    return '<span class="analyse-eq-badge">' + eqId + '</span>';
+  }
+
+  return '<span class="analyse-eq-badge" style="color:' + found.couleur + ';border-color:' + found.couleur + '">' + found.nom + '</span>';
+}).join(" ");
     var coutMO = jours * (eq ? (eq.cout_journalier || 0) : 0);
     var renta  = caHT - coutMP - coutMO - prim;
     var taux   = caHT > 0 ? Math.round(renta / caHT * 100) : 0;
@@ -4040,15 +4070,18 @@ var coutMP = getCoutMP(c.id);
       + '<br><span style="font-size:9px;color:var(--text3);font-weight:400">' + (c.adresse||"") + '</span></td>'
 + '<td style="padding:6px 8px;text-align:center;font-weight:700;color:var(--text2)">' + (num || "—") + '</td>'
       + '<td style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3)">' + (c.ca||"—") + '</td>'
-      + '<td style="padding:6px 8px;text-align:center;font-weight:700;color:var(--blue)">' + (eqNames || "—") + '</td>'
-      + '<td style="padding:6px 8px;text-align:center"><input type="number" min="0" step="0.01" value="' + (caHT||"") + '" placeholder="0,00"'
-      + ' onchange="saveAnalyseField(\'' + c.id + '\',\'ca_ht\',parseFloat(this.value)||0)"'
-      + ' style="width:90px;padding:3px;border:1.5px solid var(--light3);font-size:11px;text-align:center;outline:none;color:#1a8c4a;font-weight:700"/></td>'
++ '<td style="padding:6px 8px;text-align:center;font-weight:800">' + (eqBadges || "—") + '</td>'
++ '<td style="padding:6px 8px;text-align:center"><input class="analyse-money-input" type="text" value="' + fmtMoneyInput(caHT) + '" placeholder="0 €"'
++ ' onfocus="onMoneyInputFocus(this)"'
++ ' onblur="onMoneyInputBlur(this, \'' + c.id + '\', \'ca_ht\')"'
++ ' style="width:120px;padding:5px;border:1.5px solid var(--light3);font-size:14px;text-align:center;outline:none;color:#1a8c4a;font-weight:800"/></td>'
       + '<td style="padding:6px 8px;text-align:center;font-size:11px">' + jours + 'j</td>'
-      + '<td style="padding:6px 8px;text-align:center;font-size:11px;color:#c47a1a;font-weight:700">' + (coutMO > 0 ? fmtEur(coutMO) : "—") + '</td>'
-+ '<td style="padding:6px 8px;text-align:center"><span style="font-size:11px;color:#c47a1a;font-weight:700">' + (coutMP > 0 ? fmtEur(coutMP) : "—") + '</span></td>'
-      + '<td style="padding:6px 8px;text-align:center"><input type="number" min="0" step="0.01" value="' + (prim||"") + '" placeholder="0,00"'
-      + ' onchange="saveAnalyseField(\'' + c.id + '\',\'primes\',parseFloat(this.value)||0);renderAnalyse()"'
++ '<td class="analyse-cost-cell">' + (coutMO > 0 ? fmtEur(coutMO) : "—") + '</td>'
++ '<td class="analyse-cost-cell">' + (coutMP > 0 ? fmtEur(coutMP) : "—") + '</td>'
++ '<td style="padding:6px 8px;text-align:center"><input class="analyse-money-input" type="text" value="' + fmtMoneyInput(prim) + '" placeholder="0 €"'
++ ' onfocus="onMoneyInputFocus(this)"'
++ ' onblur="onMoneyInputBlur(this, \'' + c.id + '\', \'primes\')"'
++ ' style="width:120px;padding:5px;border:1.5px solid var(--light3);font-size:14px;text-align:center;outline:none;font-weight:800"/></td>'
       + ' style="width:70px;padding:3px;border:1.5px solid var(--light3);font-size:10px;text-align:center;outline:none"/></td>'
       + '<td style="padding:6px 8px;text-align:center;font-weight:800;color:' + rc + '">' + (caHT > 0 ? fmtEur(renta) : "—") + '</td>'
       + '<td style="padding:6px 8px;text-align:center;font-weight:800;color:' + tc2 + '">' + (caHT > 0 ? taux + "%" : "—") + '</td>'
