@@ -2942,7 +2942,25 @@ function objectifClass(pct) {
   if (pct < 120) return "obj-green";
   return "obj-blue";
 }
+function parseMoneyInput(v) {
+  return parseFloat(String(v || "").replace(/\s/g, "").replace(/€/g, "").replace(",", ".")) || 0;
+}
 
+function fmtMoneyInput(v) {
+  var n = parseMoneyInput(v);
+  if (!n) return "";
+  return Math.round(n).toLocaleString("fr-FR") + " €";
+}
+
+function onMoneyInputFocus(el) {
+  el.value = parseMoneyInput(el.value) || "";
+}
+
+function onMoneyInputBlur(el, monthIdx, field) {
+  var val = parseMoneyInput(el.value);
+  el.value = fmtMoneyInput(val);
+  saveObjectifField(monthIdx, field, val);
+}
 function renderObjectifsMensuelsTable() {
   var rows = getObjectifsMensuelsStats();
 
@@ -2966,8 +2984,8 @@ function renderObjectifsMensuelsTable() {
     return '<tr class="' + cls + '">' +
       '<td class="obj-mois">' + r.mois + '</td>' +
 
-      '<td><input class="obj-input" type="number" min="0" step="100" value="' + (r.objectif || "") + '" ' +
-      'onchange="saveObjectifField(' + r.idx + ', \'objectif\', this.value)"></td>' +
+      '<td><input class="obj-input" type="text" value="' + fmtMoneyInput(r.objectif) + '" ' +
+'onfocus="onMoneyInputFocus(this)" onblur="onMoneyInputBlur(this, ' + r.idx + ', \'objectif\')"></td>' +
 
       '<td class="obj-money obj-realise">' + fmtEur(r.realise) + '</td>' +
       '<td class="obj-money obj-potentiel">' + fmtEur(r.potentiel) + '</td>' +
@@ -2978,8 +2996,8 @@ function renderObjectifsMensuelsTable() {
       '<td class="obj-money">' + fmtEur(r.marge) + '</td>' +
       '<td class="obj-percent">' + (r.tauxRenta === null ? "—" : Math.round(r.tauxRenta) + "%") + '</td>' +
 
-      '<td><input class="obj-input" type="number" step="100" value="' + (r.benefice || "") + '" ' +
-      'onchange="saveObjectifField(' + r.idx + ', \'benefice\', this.value)"></td>' +
+'<td><input class="obj-input" type="text" value="' + fmtMoneyInput(r.benefice) + '" ' +
+'onfocus="onMoneyInputFocus(this)" onblur="onMoneyInputBlur(this, ' + r.idx + ', \'benefice\')"></td>' +
     '</tr>';
   }).join("");
 
