@@ -677,7 +677,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
         <select class="filter-sel" id="stock-agence-filter" onchange="currentStockAgence=this.value;renderStockTable();renderHistorique();">
           <option value="global">Global</option>
           <option value="Nantes">Nantes</option>
-          <option value="Lyon">Lyon</option>
+          <option value="Ternay">Ternay</option>
           <option value="Metz">Metz</option>
         </select>
 
@@ -712,7 +712,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
           <option value="all">Toutes les agences</option>
           <option value="Metz">Metz (Geoffroy)</option>
           <option value="Nantes">Nantes (Nicolas)</option>
-          <option value="Lyon">Lyon (Anthony + Alain)</option>
+          <option value="Ternay">Ternay (Anthony + Alain)</option>
         </select>
         <select id="bs-filtre-produit" class="filter-sel" style="font-size:11px" onchange="renderBonsSortie()"><option value="all">Tous les produits</option></select>
         <button class="btn-sm" onclick="resetFiltreBon('bs')">✕ Reset</button>
@@ -729,7 +729,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
           <option value="all">Toutes les agences</option>
           <option value="Metz">Metz (Geoffroy)</option>
           <option value="Nantes">Nantes (Nicolas)</option>
-          <option value="Lyon">Lyon (Anthony + Alain)</option>
+          <option value="Ternay">Ternay (Anthony + Alain)</option>
         </select>
         <select id="br-filtre-produit" class="filter-sel" style="font-size:11px" onchange="renderBonsRetour()"><option value="all">Tous les produits</option></select>
         <button class="btn-sm" onclick="resetFiltreBon('br')">✕ Reset</button>
@@ -745,7 +745,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
         <select class="filter-sel" id="hist-agence" onchange="renderHistorique()">
           <option value="all">Toutes agences</option>
           <option value="Nantes">Nantes</option>
-          <option value="Lyon">Lyon</option>
+          <option value="Ternay">Ternay</option>
           <option value="Metz">Metz</option>
         </select>
 
@@ -961,7 +961,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
       </div>
       <div class="form-row">
         <div class="fg"><label>Technicien(s)</label><input type="text" id="eq-membres" placeholder="Ex: David"/></div>
-        <div class="fg"><label>Ville de base *</label><input type="text" id="eq-ville" placeholder="Ex: Peltre"/></div>
+        <div class="fg"><label>Ville de base *</label><input type="text" id="eq-ville" placeholder="Ex: Metz"/></div>
       </div>
       <div class="form-row">
         <div class="fg"><label>Code postal</label><input type="text" id="eq-cp" placeholder="Ex: 57245"/></div>
@@ -1005,7 +1005,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
             <option value="">Sélectionner…</option>
             <option value="Metz">Metz (Geoffroy)</option>
             <option value="Nantes">Nantes (Nicolas)</option>
-            <option value="Lyon">Lyon (Anthony + Alain)</option>
+            <option value="Ternay">Ternay (Anthony + Alain)</option>
           </select>
         </div>
         <div class="fg"><label>Produit *</label>
@@ -1041,7 +1041,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
             <option value="">Sélectionner…</option>
             <option value="Metz">Metz (Geoffroy)</option>
             <option value="Nantes">Nantes (Nicolas)</option>
-            <option value="Lyon">Lyon (Anthony + Alain)</option>
+            <option value="Ternay">Ternay (Anthony + Alain)</option>
           </select>
         </div>
         <div class="fg"><label>Agence destination *</label>
@@ -1049,7 +1049,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
             <option value="">Sélectionner…</option>
             <option value="Metz">Metz (Geoffroy)</option>
             <option value="Nantes">Nantes (Nicolas)</option>
-            <option value="Lyon">Lyon (Anthony + Alain)</option>
+            <option value="Ternay">Ternay (Anthony + Alain)</option>
           </select>
         </div>
       </div>
@@ -1090,8 +1090,8 @@ const USERS = {
 const EQ_DEFAULT = [
   {id:"eq-geoffroy", nom:"Geoffroy",   membres:"David",  ville:"Metz",    cp:"57000", couleur:"#1a6fc4", type:"interne",      cout_journalier:0},
   {id:"eq-nicolas",  nom:"Nicolas",    membres:"Aime",   ville:"Nantes",  cp:"44000", couleur:"#1a8c4a", type:"interne",      cout_journalier:0},
-  {id:"eq-anthony",  nom:"Anthony",    membres:"Jessim", ville:"Lyon",    cp:"69000", couleur:"#c47a1a", type:"interne",      cout_journalier:0},
-  {id:"eq-alain",    nom:"Alain",      membres:"",       ville:"Lyon",  cp:"69360", couleur:"#7a1ac4", type:"interne",      cout_journalier:0},
+  {id:"eq-anthony",  nom:"Anthony",    membres:"Jessim", ville:"Ternay",    cp:"69000", couleur:"#c47a1a", type:"interne",      cout_journalier:0},
+  {id:"eq-alain",    nom:"Alain",      membres:"",       ville:"Ternay",  cp:"69360", couleur:"#7a1ac4", type:"interne",      cout_journalier:0},
   {id:"eq-marchal",  nom:"A. Marchal", membres:"",       ville:"Belgique",cp:"BE",    couleur:"#e67e22", type:"soustraitant", cout_journalier:0},
 ];
 
@@ -1142,12 +1142,12 @@ const PRODUITS_BIG = [
   {id:"p28",nom:"CABLE H07VK",       unite:"ML",         prix:0.35},
 ];
 
-  const AGENCES = ["Nantes", "Lyon", "Metz"];
+  const AGENCES = ["Nantes", "Ternay", "Metz"];
 
 const EQ_AGENCE = {
   "eq-nicolas": "Nantes",
-  "eq-anthony": "Lyon",
-  "eq-alain": "Lyon",
+  "eq-anthony": "Ternay",
+  "eq-alain": "Ternay",
   "eq-geoffroy": "Metz",
   "eq-marchal": "Metz"
 };
@@ -2345,12 +2345,27 @@ function signedQty(mv) {
 
   return 0;
 }
+function getMouvementAgence(mv) {
+  if (mv.agence) return mv.agence;
+  if (mv.eq_id && EQ_AGENCE[mv.eq_id]) return EQ_AGENCE[mv.eq_id];
 
+  var chef = String(mv.chef_prenom || "").toLowerCase();
+  if (chef.indexOf("geoffroy") >= 0) return "Metz";
+  if (chef.indexOf("nicolas") >= 0) return "Nantes";
+  if (chef.indexOf("anthony") >= 0 || chef.indexOf("alain") >= 0) return "Lyon";
+
+  return "";
+}
+  
 function getStockAgenceProduit(pid, agence) {
   return stockMouvements
     .filter(function(mv) {
       if (mv.produit_id !== pid) return false;
-      if (agence !== "global" && mv.agence !== agence) return false;
+
+      var mvAgence = getMouvementAgence(mv);
+
+      if (agence !== "global" && mvAgence !== agence) return false;
+
       return true;
     })
     .reduce(function(sum, mv) {
@@ -2367,7 +2382,7 @@ function renderStockTable() {
 
   PRODUITS_BIG.forEach(function(p, i) {
     var theo = getStockAgenceProduit(p.id, agence);
-    var val = Math.max(0, theo) * p.prix;
+    var val = theo * p.prix;
     totalVal += val;
 
     var alerte = theo <= 0 ? "RUPTURE" : (theo <= 3 ? "Bas" : "OK");
