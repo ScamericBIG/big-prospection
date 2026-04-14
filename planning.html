@@ -821,6 +821,27 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
   background:#f5f5f3 !important;
   color:#777 !important;
 }
+  .stats-finance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.stats-finance-grid .kpi {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.stats-finance-grid .kpi-val {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats-finance-grid .kpi-lbl {
+  white-space: nowrap;
+}
 /* ── TOAST ── */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
 #toast.show{transform:translateY(0);opacity:1}
@@ -2850,12 +2871,11 @@ function renderStats() {
         '<div class="kpi"><div class="kpi-val">' + totalNuits + '</div><div class="kpi-lbl">Nuits</div></div>' +
         '<div class="kpi"><div class="kpi-val">' + totalWE + '</div><div class="kpi-lbl">WE / Fériés</div></div>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px">' +
-        '<div class="kpi"><div class="kpi-val" style="font-size:24px;color:#1a8c4a">' + fmtEur(totalCA) + '</div><div class="kpi-lbl">CA HT</div></div>' +
-        '<div class="kpi"><div class="kpi-val" style="font-size:24px;color:#c47a1a">' + fmtEur(totalMO + totalMP + totalPrimes) + '</div><div class="kpi-lbl">Coûts</div></div>' +
-        '<div class="kpi"><div class="kpi-val" style="font-size:24px">' + fmtEur(totalMarge) + '</div><div class="kpi-lbl">Marge</div></div>' +
-        '<div class="kpi ' + tauxClass + '"><div class="kpi-val" style="font-size:24px">' + getRentaLabel(tauxGlobal) + '</div><div class="kpi-lbl">Rentabilité</div></div>' +
-        '<div class="kpi"><div class="kpi-val" style="font-size:24px;color:#c0392b">' + sansCmd + '/' + dateProv + '</div><div class="kpi-lbl">Sans cmd / date prov.</div></div>' +
+      '<div class="stats-finance-grid">' +
+        '<div class="kpi"><div class="kpi-val" style="font-size:20px;color:#1a8c4a">' + fmtEur(totalCA) + '</div><div class="kpi-lbl">CA HT</div></div>' +
+        '<div class="kpi"><div class="kpi-val" style="font-size:20px;color:#c47a1a">' + fmtEur(totalMO + totalMP + totalPrimes) + '</div><div class="kpi-lbl">Coûts</div></div>' +
+        '<div class="kpi"><div class="kpi-val" style="font-size:20px">' + fmtEur(totalMarge) + '</div><div class="kpi-lbl">Marge</div></div>' +
+        '<div class="kpi ' + tauxClass + '"><div class="kpi-val" style="font-size:20px">' + getRentaLabel(tauxGlobal) + '</div><div class="kpi-lbl">Rentabilité</div></div>' +
       '</div>' +
     '</div>' +
 
@@ -2918,15 +2938,15 @@ function renderMonthlyChart(months) {
     return Math.max(m.ca, m.couts, Math.abs(m.marge));
   }).concat([1]));
 
-  return '<div style="display:flex;gap:8px;align-items:flex-end;height:260px;padding:10px 4px;border-left:1px solid var(--light3);border-bottom:1px solid var(--light3);overflow-x:auto">' +
+  return '<div style="display:flex;gap:8px;align-items:flex-end;height:320px;padding:10px 4px;border-left:1px solid var(--light3);border-bottom:1px solid var(--light3);overflow-x:auto">' +
     months.map(function(m) {
       var hCA = Math.round((m.ca / max) * 210);
       var hCouts = Math.round((m.couts / max) * 210);
       var hMarge = Math.round((Math.abs(m.marge) / max) * 210);
       var margeColor = m.marge >= 0 ? "#1a8c4a" : "#c0392b";
 
-      return '<div style="min-width:70px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:240px">' +
-        '<div style="display:flex;gap:3px;align-items:flex-end;height:210px">' +
+      return '<div style="min-width:86px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:240px">' +
+        '<div style="display:flex;gap:3px;align-items:flex-end;height:250px">' +
           '<div title="CA ' + fmtEur(m.ca) + '" style="width:14px;height:' + hCA + 'px;background:#1a8c4a"></div>' +
           '<div title="Coûts ' + fmtEur(m.couts) + '" style="width:14px;height:' + hCouts + 'px;background:#c47a1a"></div>' +
           '<div title="Marge ' + fmtEur(m.marge) + '" style="width:14px;height:' + hMarge + 'px;background:' + margeColor + '"></div>' +
