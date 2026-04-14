@@ -525,6 +525,172 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 #content-stocks td {
   font-size: 13px !important;
 }
+  /* ── AGRANDISSEMENT GLOBAL DES TITRES / FILTRES / ONGLETS ── */
+
+/* Onglets du haut : Planning, Stats équipes, Analyse chantier, Stocks & bons, Équipes */
+#tab-bar {
+  min-height: 46px;
+  align-items: center;
+}
+
+.tab {
+  font-size: 20px !important;
+  padding: 14px 22px !important;
+  letter-spacing: .8px !important;
+}
+
+/* Barre haute planning */
+#plan-toolbar {
+  padding: 14px 16px !important;
+  gap: 12px !important;
+}
+
+#month-label {
+  font-size: 28px !important;
+  min-width: 220px !important;
+}
+
+.mnav-btn {
+  width: 42px !important;
+  height: 42px !important;
+  font-size: 24px !important;
+}
+
+.vt-btn {
+  font-size: 17px !important;
+  padding: 10px 16px !important;
+}
+
+.filter-sel {
+  font-size: 17px !important;
+  padding: 10px 14px !important;
+  min-height: 42px !important;
+}
+
+.btn-add {
+  font-size: 17px !important;
+  padding: 12px 20px !important;
+}
+
+.legend {
+  gap: 14px !important;
+}
+
+.leg-item {
+  font-size: 14px !important;
+}
+
+.leg-dot {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Barre Stats / Analyse / Stocks / Équipes */
+.stats-toolbar,
+#content-analyse > div:first-child,
+#content-stocks > div:first-child,
+#content-equipes > div:first-child {
+  padding: 14px 16px !important;
+  gap: 12px !important;
+}
+
+.stats-toolbar > div:first-child,
+#content-analyse > div:first-child > div:first-child,
+#content-stocks > div:first-child > div:first-child,
+#content-equipes > div:first-child > div:first-child {
+  font-size: 24px !important;
+}
+
+/* Boutons chargé d'affaires / stocks */
+.ca-btn,
+.stk-btn,
+.btn-sm {
+  font-size: 17px !important;
+  padding: 10px 16px !important;
+}
+
+/* ── STATS ÉQUIPES PLUS LISIBLES ── */
+
+#stats-wrap {
+  padding: 24px !important;
+}
+
+.stats-grid {
+  grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)) !important;
+  gap: 22px !important;
+}
+
+.stat-card {
+  padding: 26px !important;
+}
+
+.stat-card-title {
+  font-size: 26px !important;
+  margin-bottom: 18px !important;
+  padding-bottom: 12px !important;
+}
+
+.kpi-grid {
+  gap: 12px !important;
+  margin-bottom: 20px !important;
+}
+
+.kpi {
+  padding: 18px 12px !important;
+}
+
+.kpi-val {
+  font-size: 44px !important;
+}
+
+.kpi-lbl {
+  font-size: 15px !important;
+  margin-top: 8px !important;
+}
+
+.stat-bar-row {
+  gap: 14px !important;
+  margin-bottom: 12px !important;
+}
+
+.sbl {
+  font-size: 18px !important;
+  width: 150px !important;
+}
+
+.sbtrack {
+  height: 28px !important;
+}
+
+.sbn {
+  font-size: 16px !important;
+}
+
+.eq-row {
+  gap: 14px !important;
+  padding: 16px 0 !important;
+}
+
+.eq-dot {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.eq-name {
+  font-size: 22px !important;
+}
+
+.eq-stats {
+  gap: 28px !important;
+}
+
+.eq-stat-val {
+  font-size: 28px !important;
+}
+
+.eq-stat-lbl {
+  font-size: 14px !important;
+}
 /* ── TOAST ── */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
 #toast.show{transform:translateY(0);opacity:1}
