@@ -273,6 +273,32 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 #content-stocks td {
   font-size: 13px !important;
 }
+
+  #content-stocks .filter-sel,
+#content-stocks select,
+#content-stocks option {
+  font-size: 15px !important;
+}
+
+#content-stocks .filter-sel {
+  padding: 9px 12px !important;
+  min-height: 38px !important;
+}
+
+#content-stocks .stk-btn {
+  font-size: 14px !important;
+  padding: 9px 14px !important;
+}
+
+#content-stocks .btn-add {
+  font-size: 14px !important;
+  padding: 10px 16px !important;
+}
+
+#content-stocks th,
+#content-stocks td {
+  font-size: 13px !important;
+}
 /* ── TOAST ── */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
 #toast.show{transform:translateY(0);opacity:1}
@@ -403,34 +429,39 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
     </div>
   </div>
 
-  <!-- STOCKS & BONS -->
-  <div class="tab-content" id="content-stocks">
-    <div style="padding:8px 12px;background:#fff;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;text-transform:uppercase">📦 Stocks &amp; bons de chantier</div>
-      <div style="display:flex;gap:3px;margin-left:auto;flex-wrap:wrap">
-        <button class="stk-btn active" data-stk="stock" onclick="selStk(this)">📊 Stock</button>
-        <button class="stk-btn" data-stk="sortie" onclick="selStk(this)">📤 Bon de sortie</button>
-        <button class="stk-btn" data-stk="retour" onclick="selStk(this)">📥 Bon de retour</button>
-        <button class="stk-btn" data-stk="historique" onclick="selStk(this)">📋 Historique</button>
-      </div>
+<!-- STOCKS & BONS -->
+<div class="tab-content" id="content-stocks">
+  <div style="padding:8px 12px;background:#fff;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;text-transform:uppercase">📦 Stocks &amp; bons de chantier</div>
+    <div style="display:flex;gap:3px;margin-left:auto;flex-wrap:wrap">
+      <button class="stk-btn active" data-stk="stock" onclick="selStk(this)">📊 Stock</button>
+      <button class="stk-btn" data-stk="sortie" onclick="selStk(this)">📤 Bon de sortie</button>
+      <button class="stk-btn" data-stk="retour" onclick="selStk(this)">📥 Bon de retour</button>
+      <button class="stk-btn" data-stk="historique" onclick="selStk(this)">📋 Historique</button>
     </div>
-    <div style="flex:1;overflow:auto">
-      <!-- STOCK -->
-      <div id="stk-stock" style="padding:12px">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
-  <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">Stock théorique actuel</div>
+  </div>
 
-  <select class="filter-sel" id="stock-agence-filter" onchange="currentStockAgence=this.value;renderStockTable();renderHistorique();">
-    <option value="global">Global</option>
-    <option value="Nantes">Nantes</option>
-    <option value="Lyon">Lyon</option>
-    <option value="Metz">Metz</option>
-  </select>
-  <button class="btn-add" onclick="openModalEntreeStock()">+ Entrée stock</button>
-  <button class="btn-add" onclick="openModalTransfertAgence()">⇄ Transfert agence</button>
-</div>
-        <table style="width:100%;border-collapse:collapse;font-size:11px" id="stock-table">
-          <thead><tr style="background:var(--dark2);color:#fff">
+  <div style="flex:1;overflow:auto">
+
+    <!-- STOCK -->
+    <div id="stk-stock" style="padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">Stock théorique actuel</div>
+
+        <select class="filter-sel" id="stock-agence-filter" onchange="currentStockAgence=this.value;renderStockTable();renderHistorique();">
+          <option value="global">Global</option>
+          <option value="Nantes">Nantes</option>
+          <option value="Lyon">Lyon</option>
+          <option value="Metz">Metz</option>
+        </select>
+
+        <button class="btn-add" onclick="openModalEntreeStock()">+ Entrée stock</button>
+        <button class="btn-add" onclick="openModalTransfertAgence()">⇄ Transfert agence</button>
+      </div>
+
+      <table style="width:100%;border-collapse:collapse;font-size:11px" id="stock-table">
+        <thead>
+          <tr style="background:var(--dark2);color:#fff">
             <th style="padding:6px 10px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;text-transform:uppercase">Produit</th>
             <th style="padding:6px 10px;text-align:center;font-size:10px">Unité</th>
             <th style="padding:6px 10px;text-align:center;font-size:10px">Stock init.</th>
@@ -440,95 +471,110 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
             <th style="padding:6px 10px;text-align:center;font-size:10px;color:#e6c300;font-weight:800">Stock théo.</th>
             <th style="padding:6px 10px;text-align:center;font-size:10px;color:#1a8c4a;font-weight:800">Valeur €</th>
             <th style="padding:6px 10px;text-align:center;font-size:10px">Alerte</th>
-          </tr></thead>
-          <tbody id="stock-tbody"></tbody>
-        </table>
+          </tr>
+        </thead>
+        <tbody id="stock-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- BON DE SORTIE -->
+    <div id="stk-sortie" style="display:none;padding:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📤 Nouveau bon de sortie</div>
+
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="fg">
+          <label>Chantier *</label>
+          <select id="bs-chantier" class="filter-sel" style="width:100%"><option value="">Sélectionner un chantier…</option></select>
+        </div>
+        <div class="fg">
+          <label>Chef d'équipe *</label>
+          <select id="bs-equipe" class="filter-sel" style="width:100%"><option value="">Sélectionner…</option></select>
         </div>
       </div>
-      <!-- BON DE SORTIE -->
-      <div id="stk-sortie" style="display:none;padding:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">📤 Nouveau bon de sortie</div>
-        </div>
-        <div class="form-row" style="margin-bottom:12px">
-          <div class="fg"><label>Chantier *</label>
-            <select id="bs-chantier" class="filter-sel" style="width:100%"><option value="">Sélectionner un chantier…</option></select>
-          </div>
-          <div class="fg"><label>Chef d'équipe *</label>
-            <select id="bs-equipe" class="filter-sel" style="width:100%"><option value="">Sélectionner…</option></select>
-          </div>
-        </div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:6px;color:var(--text3)">Produits sortis</div>
-        <div id="bs-produits"></div>
-        <div class="fg" style="margin-top:8px">
-          <label>Commentaire</label>
-          <textarea id="bs-comment" class="fg input" placeholder="Remarques éventuelles…" style="width:100%;padding:7px;border:1.5px solid var(--light3);font-family:'Barlow',sans-serif;font-size:12px;resize:vertical;min-height:50px"></textarea>
-        </div>
-        <button class="btn-add" style="margin-top:10px;width:100%" onclick="validerBonSortie()">✅ Valider le bon de sortie</button>
+
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:6px;color:var(--text3)">Produits sortis</div>
+      <div id="bs-produits"></div>
+
+      <div class="fg" style="margin-top:8px">
+        <label>Commentaire</label>
+        <textarea id="bs-comment" placeholder="Remarques éventuelles…" style="width:100%;padding:7px;border:1.5px solid var(--light3);font-family:'Barlow',sans-serif;font-size:12px;resize:vertical;min-height:50px"></textarea>
       </div>
-      <!-- BON DE RETOUR -->
-      <div id="stk-retour" style="display:none;padding:12px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📥 Bon de retour</div>
-        <div class="form-row" style="margin-bottom:12px">
-          <div class="fg"><label>Chantier *</label>
-            <select id="br-chantier" class="filter-sel" style="width:100%" onchange="loadBonSortieForRetour()"><option value="">Sélectionner…</option></select>
-          </div>
+
+      <button class="btn-add" style="margin-top:10px;width:100%" onclick="validerBonSortie()">✅ Valider le bon de sortie</button>
+    </div>
+
+    <!-- BON DE RETOUR -->
+    <div id="stk-retour" style="display:none;padding:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📥 Bon de retour</div>
+
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="fg">
+          <label>Chantier *</label>
+          <select id="br-chantier" class="filter-sel" style="width:100%" onchange="loadBonSortieForRetour()"><option value="">Sélectionner…</option></select>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Produits issus du bon de sortie de ce chantier :</div>
-        <div id="br-produits"></div>
-        <div class="fg" style="margin-top:8px">
-          <label>Commentaire</label>
-          <textarea id="br-comment" style="width:100%;padding:7px;border:1.5px solid var(--light3);font-family:'Barlow',sans-serif;font-size:12px;resize:vertical;min-height:50px"></textarea>
-        </div>
-        <button class="btn-add" style="margin-top:10px;width:100%" onclick="validerBonRetour()">✅ Valider le bon de retour</button>
       </div>
-     <!-- HISTORIQUE -->
-<div id="stk-historique" style="display:none;padding:12px">
-  <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📋 Historique global des mouvements</div>
 
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-    <select class="filter-sel" id="hist-agence" onchange="renderHistorique()">
-      <option value="all">Toutes agences</option>
-      <option value="Nantes">Nantes</option>
-      <option value="Lyon">Lyon</option>
-      <option value="Metz">Metz</option>
-    </select>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Produits issus du bon de sortie de ce chantier :</div>
+      <div id="br-produits"></div>
 
-    <select class="filter-sel" id="hist-type" onchange="renderHistorique()">
-      <option value="all">Tous types</option>
-      <option value="entree">Entrée</option>
-      <option value="sortie_chantier">Sortie chantier</option>
-      <option value="retour_chantier">Retour chantier</option>
-      <option value="transfert_sortie">Transfert sortie</option>
-      <option value="transfert_entree">Transfert entrée</option>
-      <option value="perte">Perte</option>
-      <option value="ajustement">Ajustement inventaire</option>
-    </select>
+      <div class="fg" style="margin-top:8px">
+        <label>Commentaire</label>
+        <textarea id="br-comment" style="width:100%;padding:7px;border:1.5px solid var(--light3);font-family:'Barlow',sans-serif;font-size:12px;resize:vertical;min-height:50px"></textarea>
+      </div>
 
-    <select class="filter-sel" id="hist-produit" onchange="renderHistorique()">
-      <option value="all">Tous produits</option>
-    </select>
+      <button class="btn-add" style="margin-top:10px;width:100%" onclick="validerBonRetour()">✅ Valider le bon de retour</button>
+    </div>
 
-    <select class="filter-sel" id="hist-mois" onchange="renderHistorique()">
-      <option value="all">Tous mois</option>
-      <option value="0">Janvier</option>
-      <option value="1">Février</option>
-      <option value="2">Mars</option>
-      <option value="3">Avril</option>
-      <option value="4">Mai</option>
-      <option value="5">Juin</option>
-      <option value="6">Juillet</option>
-      <option value="7">Août</option>
-      <option value="8">Septembre</option>
-      <option value="9">Octobre</option>
-      <option value="10">Novembre</option>
-      <option value="11">Décembre</option>
-    </select>
+    <!-- HISTORIQUE -->
+    <div id="stk-historique" style="display:none;padding:12px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📋 Historique global des mouvements</div>
 
-    <select class="filter-sel" id="hist-annee" onchange="renderHistorique()"></select>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <select class="filter-sel" id="hist-agence" onchange="renderHistorique()">
+          <option value="all">Toutes agences</option>
+          <option value="Nantes">Nantes</option>
+          <option value="Lyon">Lyon</option>
+          <option value="Metz">Metz</option>
+        </select>
+
+        <select class="filter-sel" id="hist-type" onchange="renderHistorique()">
+          <option value="all">Tous types</option>
+          <option value="entree">Entrée</option>
+          <option value="sortie_chantier">Sortie chantier</option>
+          <option value="retour_chantier">Retour chantier</option>
+          <option value="transfert_sortie">Transfert sortie</option>
+          <option value="transfert_entree">Transfert entrée</option>
+          <option value="perte">Perte</option>
+          <option value="ajustement">Ajustement</option>
+        </select>
+
+        <select class="filter-sel" id="hist-produit" onchange="renderHistorique()">
+          <option value="all">Tous produits</option>
+        </select>
+
+        <select class="filter-sel" id="hist-mois" onchange="renderHistorique()">
+          <option value="all">Tous mois</option>
+          <option value="0">Janvier</option>
+          <option value="1">Février</option>
+          <option value="2">Mars</option>
+          <option value="3">Avril</option>
+          <option value="4">Mai</option>
+          <option value="5">Juin</option>
+          <option value="6">Juillet</option>
+          <option value="7">Août</option>
+          <option value="8">Septembre</option>
+          <option value="9">Octobre</option>
+          <option value="10">Novembre</option>
+          <option value="11">Décembre</option>
+        </select>
+
+        <select class="filter-sel" id="hist-annee" onchange="renderHistorique()"></select>
+      </div>
+
+      <div id="historique-list"></div>
+    </div>
+
   </div>
-
-  <div id="historique-list"></div>
 </div>
   <!-- ÉQUIPES -->
   <div class="tab-content" id="content-equipes">
