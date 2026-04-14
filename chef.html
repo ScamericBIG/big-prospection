@@ -1082,9 +1082,10 @@ if (editingId) {
     var errTxt = await r.text();
     console.error("Supabase bons_retour:", r.status, errTxt);
     saveLocalBon("retour", bon);
-  } else {
-    mesBonsRetour.push(bon);
-  }
+} else {
+  mesBonsRetour.push(bon);
+  await insertStockMouvementsChef(bon, "retour_chantier");
+}
 } catch (e) {
   console.error(e);
   saveLocalBon("retour", bon);
@@ -1284,13 +1285,12 @@ function saveLocalBon(type, bon) {
 
     var m2 = mesBonsRetour.findIndex(function(b) { return b.id === bon.id; });
     if (m2 >= 0) mesBonsRetour[m2] = bon;
-mesBonsRetour.push(bon);
-await insertStockMouvementsChef(bon, "retour_chantier");
+    else mesBonsRetour.push(bon);
+  }
 
   localStorage.setItem(key, JSON.stringify(data));
   toast("Sauvegardé localement (Supabase inaccessible)", "");
 }
-
 // ── SESSION PERSISTANTE ──
 (function() {
   var saved = localStorage.getItem("big_chef_session");
