@@ -866,6 +866,108 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
   white-space: nowrap !important;
   font-size: 11px !important;
 }
+  .objectifs-card {
+  overflow: visible !important;
+}
+
+.obj-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--light3);
+  background: #fff;
+}
+
+.obj-table {
+  width: 100%;
+  min-width: 1750px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.obj-table th {
+  background: var(--dark2);
+  color: #fff;
+  padding: 10px 8px;
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.obj-table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--light3);
+  text-align: center;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.obj-table .obj-mois {
+  text-align: left;
+  font-weight: 900;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  text-transform: uppercase;
+}
+
+.obj-input {
+  width: 115px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--light3);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  background: #fff;
+}
+
+.obj-input:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.obj-money {
+  font-weight: 900;
+}
+
+.obj-realise {
+  color: #1a8c4a;
+}
+
+.obj-potentiel {
+  color: #c47a1a;
+}
+
+.obj-percent {
+  font-weight: 900;
+}
+
+.obj-table tfoot td {
+  background: var(--dark2);
+  color: #fff;
+  font-weight: 900;
+  border-bottom: none;
+}
+
+.obj-red td {
+  background: #fdeaea;
+}
+
+.obj-orange td {
+  background: #fff3df;
+}
+
+.obj-green td {
+  background: #e9f8ef;
+}
+
+.obj-blue td {
+  background: #e8eefb;
+}
+
+.obj-none td {
+  background: #fff;
+}
 /* ── TOAST ── */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
 #toast.show{transform:translateY(0);opacity:1}
@@ -2748,6 +2850,183 @@ function passRentaFilter(taux) {
 
   return true;
 }
+  var objectifsData = JSON.parse(localStorage.getItem("big_objectifs_mensuels") || "{}");
+
+function saveObjectifField(monthIdx, field, value) {
+  if (!objectifsData[monthIdx]) objectifsData[monthIdx] = {};
+
+  objectifsData[monthIdx][field] = parseFloat(value) || 0;
+
+  localStorage.setItem("big_objectifs_mensuels", JSON.stringify(objectifsData));
+
+  renderStats();
+}
+
+function getChCAHT(ch) {
+  var ad = analyseData[ch.id] || {};
+  return parseFloat(ad.ca_ht) || 0;
+}
+
+function getObjectifsMensuelsStats() {
+  var year = new Date().getFullYear();
+
+  return MOIS_FR.map(function(moisNom, idx) {
+    var objectif = objectifsData[idx] ? (parseFloat(objectifsData[idx].objectif) || 0) : 0;
+    var benefice = objectifsData[idx] ? (parseFloat(objectifsData[idx].benefice) || 0) : 0;
+
+    var chsMois = chantiers.filter(function(ch) {
+      if (!ch.date_debut) return false;
+      var d = new Date(ch.date_debut);
+      return d.getFullYear() === year && d.getMonth() === idx;
+    });
+
+    var realise = 0;
+    var potentiel = 0;
+    var coutMO = 0;
+    var coutMP = 0;
+    var primes = 0;
+    var marge = 0;
+
+    chsMois.forEach(function(ch) {
+      var caHT = getChCAHT(ch);
+
+      if (ch.commande && ch.date_ok) {
+        realise += caHT;
+      } else {
+        potentiel += caHT;
+      }
+
+      var jours = daysBetween(ch.date_debut, ch.date_fin_reel || ch.date_fin);
+
+      var mo = 0;
+      (ch.equipes || []).forEach(function(eqId) {
+        var eq = equipes.find(function(e) { return e.id === eqId; });
+        if (eq) mo += jours * (parseFloat(eq.cout_journalier) || 0);
+      });
+
+      var mp = getCoutMP(ch.id);
+      var pr = parseFloat((analyseData[ch.id] || {}).primes) || 0;
+
+      coutMO += mo;
+      coutMP += mp;
+      primes += pr;
+      marge += caHT - mo - mp - pr;
+    });
+
+    var atteinte = objectif > 0 ? (realise / objectif) * 100 : null;
+    var projete = realise + potentiel;
+    var projection = objectif > 0 ? (projete / objectif) * 100 : null;
+    var tauxRenta = realise > 0 ? (marge / realise) * 100 : null;
+
+    return {
+      idx: idx,
+      mois: moisNom,
+      objectif: objectif,
+      realise: realise,
+      potentiel: potentiel,
+      projete: projete,
+      atteinte: atteinte,
+      projection: projection,
+      couts: coutMO + coutMP + primes,
+      marge: marge,
+      tauxRenta: tauxRenta,
+      benefice: benefice
+    };
+  });
+}
+
+function objectifClass(pct) {
+  if (pct === null || isNaN(pct)) return "obj-none";
+  if (pct < 70) return "obj-red";
+  if (pct < 100) return "obj-orange";
+  if (pct < 120) return "obj-green";
+  return "obj-blue";
+}
+
+function renderObjectifsMensuelsTable() {
+  var rows = getObjectifsMensuelsStats();
+
+  var totalObj = 0;
+  var totalRea = 0;
+  var totalPot = 0;
+  var totalCouts = 0;
+  var totalMarge = 0;
+  var totalBenef = 0;
+
+  var htmlRows = rows.map(function(r) {
+    totalObj += r.objectif;
+    totalRea += r.realise;
+    totalPot += r.potentiel;
+    totalCouts += r.couts;
+    totalMarge += r.marge;
+    totalBenef += r.benefice;
+
+    var cls = objectifClass(r.atteinte);
+
+    return '<tr class="' + cls + '">' +
+      '<td class="obj-mois">' + r.mois + '</td>' +
+
+      '<td><input class="obj-input" type="number" min="0" step="100" value="' + (r.objectif || "") + '" ' +
+      'onchange="saveObjectifField(' + r.idx + ', \'objectif\', this.value)"></td>' +
+
+      '<td class="obj-money obj-realise">' + fmtEur(r.realise) + '</td>' +
+      '<td class="obj-money obj-potentiel">' + fmtEur(r.potentiel) + '</td>' +
+      '<td class="obj-money">' + fmtEur(r.projete) + '</td>' +
+      '<td class="obj-percent">' + (r.atteinte === null ? "—" : Math.round(r.atteinte) + "%") + '</td>' +
+      '<td class="obj-percent">' + (r.projection === null ? "—" : Math.round(r.projection) + "%") + '</td>' +
+      '<td class="obj-money">' + fmtEur(r.couts) + '</td>' +
+      '<td class="obj-money">' + fmtEur(r.marge) + '</td>' +
+      '<td class="obj-percent">' + (r.tauxRenta === null ? "—" : Math.round(r.tauxRenta) + "%") + '</td>' +
+
+      '<td><input class="obj-input" type="number" step="100" value="' + (r.benefice || "") + '" ' +
+      'onchange="saveObjectifField(' + r.idx + ', \'benefice\', this.value)"></td>' +
+    '</tr>';
+  }).join("");
+
+  var totalAtteinte = totalObj > 0 ? Math.round((totalRea / totalObj) * 100) + "%" : "—";
+  var totalProjection = totalObj > 0 ? Math.round(((totalRea + totalPot) / totalObj) * 100) + "%" : "—";
+  var totalRenta = totalRea > 0 ? Math.round((totalMarge / totalRea) * 100) + "%" : "—";
+
+  return '<div class="stat-card objectifs-card" style="grid-column:1/-1">' +
+    '<div class="stat-card-title">🎯 Suivi objectifs mensuels — ' + new Date().getFullYear() + '</div>' +
+
+    '<div class="obj-table-wrap">' +
+      '<table class="obj-table">' +
+        '<thead>' +
+          '<tr>' +
+            '<th>Mois</th>' +
+            '<th>Objectif</th>' +
+            '<th>Réalisé sécurisé</th>' +
+            '<th>Potentiel</th>' +
+            '<th>Réalisé + potentiel</th>' +
+            '<th>% atteint</th>' +
+            '<th>% projeté</th>' +
+            '<th>Coûts</th>' +
+            '<th>Rentabilité €</th>' +
+            '<th>Rentabilité %</th>' +
+            '<th>Bénéfice manuel</th>' +
+          '</tr>' +
+        '</thead>' +
+        '<tbody>' + htmlRows + '</tbody>' +
+        '<tfoot>' +
+          '<tr>' +
+            '<td>TOTAL ANNÉE</td>' +
+            '<td>' + fmtEur(totalObj) + '</td>' +
+            '<td>' + fmtEur(totalRea) + '</td>' +
+            '<td>' + fmtEur(totalPot) + '</td>' +
+            '<td>' + fmtEur(totalRea + totalPot) + '</td>' +
+            '<td>' + totalAtteinte + '</td>' +
+            '<td>' + totalProjection + '</td>' +
+            '<td>' + fmtEur(totalCouts) + '</td>' +
+            '<td>' + fmtEur(totalMarge) + '</td>' +
+            '<td>' + totalRenta + '</td>' +
+            '<td>' + fmtEur(totalBenef) + '</td>' +
+          '</tr>' +
+        '</tfoot>' +
+      '</table>' +
+    '</div>' +
+  '</div>';
+}
 function renderStats() {
   var chsBase = getStatsChs();
   var grid = document.getElementById("stats-grid");
@@ -2887,6 +3166,7 @@ function renderStats() {
   var monthly = getMonthlyFinanceStats();
 
   grid.innerHTML =
+    renderObjectifsMensuelsTable() +
 '<div class="stat-card stats-synthese-card">' +
   '<div class="stat-card-title">Synthèse période</div>' +
       '<div class="kpi-grid">' +
