@@ -672,35 +672,40 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
     <!-- STOCK -->
     <div id="stk-stock" style="padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">Stock théorique actuel</div>
+  <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">
+    Stock théorique actuel
+  </div>
 
-        <select class="filter-sel" id="stock-agence-filter" onchange="currentStockAgence=this.value;renderStockTable();renderHistorique();">
-          <select class="filter-sel" id="stock-mois-filter" onchange="renderStockTable()">
-  <option value="all">Tous mois</option>
-  <option value="0">Janvier</option>
-  <option value="1">Février</option>
-  <option value="2">Mars</option>
-  <option value="3">Avril</option>
-  <option value="4">Mai</option>
-  <option value="5">Juin</option>
-  <option value="6">Juillet</option>
-  <option value="7">Août</option>
-  <option value="8">Septembre</option>
-  <option value="9">Octobre</option>
-  <option value="10">Novembre</option>
-  <option value="11">Décembre</option>
-</select>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <select class="filter-sel" id="stock-agence-filter" onchange="currentStockAgence=this.value;renderStockTable();">
+      <option value="global">Global</option>
+      <option value="Nantes">Nantes</option>
+      <option value="Ternay">Ternay</option>
+      <option value="Metz">Metz</option>
+    </select>
 
-<select class="filter-sel" id="stock-annee-filter" onchange="renderStockTable()"></select>
-          <option value="global">Global</option>
-          <option value="Nantes">Nantes</option>
-          <option value="Ternay">Ternay</option>
-          <option value="Metz">Metz</option>
-        </select>
+    <select class="filter-sel" id="stock-mois-filter" onchange="renderStockTable()">
+      <option value="all">Tous mois</option>
+      <option value="0">Janvier</option>
+      <option value="1">Février</option>
+      <option value="2">Mars</option>
+      <option value="3">Avril</option>
+      <option value="4">Mai</option>
+      <option value="5">Juin</option>
+      <option value="6">Juillet</option>
+      <option value="7">Août</option>
+      <option value="8">Septembre</option>
+      <option value="9">Octobre</option>
+      <option value="10">Novembre</option>
+      <option value="11">Décembre</option>
+    </select>
 
-        <button class="btn-add" onclick="openModalEntreeStock()">+ Entrée stock</button>
-        <button class="btn-add" onclick="openModalTransfertAgence()">⇄ Transfert agence</button>
-      </div>
+    <select class="filter-sel" id="stock-annee-filter" onchange="renderStockTable()"></select>
+
+    <button class="btn-add" onclick="openModalEntreeStock()">+ Entrée stock</button>
+    <button class="btn-add" onclick="openModalTransfertAgence()">⇄ Transfert agence</button>
+  </div>
+</div>
 
       <table style="width:100%;border-collapse:collapse;font-size:11px" id="stock-table">
         <thead>
