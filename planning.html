@@ -88,48 +88,275 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 
 /* ── GRILLE PLANNING ── */
-#plan-wrap{flex:1;overflow:auto;position:relative}
-#plan-grid{min-width:max-content;user-select:none}
-.pg-head{display:flex;background:var(--dark2);position:sticky;top:0;z-index:30;min-width:max-content}
-.pg-team-col{width:155px;flex-shrink:0;padding:6px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-right:1px solid var(--dark4);color:rgba(255,255,255,.6);display:flex;align-items:center}
-.pg-days-head{display:flex;flex:1}
-.pg-week-group{display:flex;flex-direction:column}
-.pg-week-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-align:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1);letter-spacing:.3px}
-.pg-week-days{display:flex}
-.pg-day-h{min-width:32px;max-width:32px;text-align:center;padding:3px 1px;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;border-right:1px solid var(--dark4);display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
-.pg-day-h:hover{background:var(--dark4)}
-.pg-day-h.we{background:#1c1c1c;color:rgba(255,255,255,.3)}
-.pg-day-h.today{background:var(--blue)}
-.pg-day-h.ferie{background:#1e2a35;color:rgba(255,255,255,.4)}
-.pg-day-num{font-size:11px;font-weight:800;color:#fff}
-.pg-day-wd{font-size:7px;opacity:.7;color:rgba(255,255,255,.7)}
+/* ── GRILLE PLANNING ── */
+:root{
+  --plan-team-w: 190px;
+  --plan-day-w: 48px;
+  --plan-row-h: 90px;
+}
+
+#plan-wrap{
+  flex:1;
+  overflow:auto;
+  position:relative;
+}
+
+#plan-grid{
+  min-width:max-content;
+  user-select:none;
+}
+
+.pg-head{
+  display:flex;
+  background:var(--dark2);
+  position:sticky;
+  top:0;
+  z-index:30;
+  min-width:max-content;
+}
+
+.pg-team-col{
+  width:var(--plan-team-w);
+  min-width:var(--plan-team-w);
+  max-width:var(--plan-team-w);
+  flex-shrink:0;
+  padding:8px 12px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:900;
+  font-size:13px;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  border-right:1px solid var(--dark4);
+  color:#fff;
+  display:flex;
+  align-items:center;
+}
+
+.pg-days-head{
+  display:flex;
+  flex:1;
+}
+
+.pg-week-group{
+  display:flex;
+  flex-direction:column;
+}
+
+.pg-week-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;
+  font-weight:900;
+  color:#fff;
+  text-align:center;
+  padding:4px 0;
+  border-bottom:1px solid rgba(255,255,255,.18);
+  letter-spacing:.5px;
+  background:#181818;
+}
+
+.pg-week-days{
+  display:flex;
+}
+
+.pg-day-h{
+  width:var(--plan-day-w);
+  min-width:var(--plan-day-w);
+  max-width:var(--plan-day-w);
+  height:38px;
+  text-align:center;
+  padding:4px 2px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;
+  font-weight:800;
+  border-right:1px solid var(--dark4);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  cursor:pointer;
+}
+
+.pg-day-h:hover{
+  background:var(--dark4);
+}
+
+.pg-day-h.we{
+  background:#151515;
+  color:rgba(255,255,255,.65);
+}
+
+.pg-day-h.today{
+  background:var(--blue);
+}
+
+.pg-day-h.ferie{
+  background:#1e2a35;
+  color:#fff;
+}
+
+.pg-day-num{
+  font-size:15px;
+  font-weight:900;
+  color:#fff;
+  line-height:1;
+}
+
+.pg-day-wd{
+  font-size:10px;
+  font-weight:800;
+  opacity:.9;
+  color:rgba(255,255,255,.85);
+  line-height:1;
+}
 
 /* Ligne équipe */
-.pg-row{display:flex;border-bottom:1px solid var(--light3);min-height:60px}
-.pg-row.st-row{background:rgba(230,126,34,.03)}
-.pg-team-lbl{width:155px;flex-shrink:0;padding:5px 10px;border-right:1px solid var(--light3);display:flex;flex-direction:column;justify-content:center;gap:1px;position:sticky;left:0;background:#fff;z-index:10}
-.pg-row.st-row .pg-team-lbl{background:#fefcf9}
-.pg-team-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
-.pg-team-members{font-size:10px;color:var(--text3);font-weight:600}
-.pg-team-base{font-size:9px;color:var(--text3)}
-.pg-cells-wrap{display:flex;flex:1;position:relative}
-.pg-cell{min-width:32px;max-width:32px;border-right:1px solid var(--light3);cursor:pointer;transition:background .1s;position:relative}
-.pg-cell:hover{background:var(--light2)}
-.pg-cell.we{background:#dcdbd7}
-.pg-cell.ferie{background:#cccac3}
-.pg-cell.we_travaille{background:rgba(231,76,60,.06)}
-.pg-blocks{position:absolute;inset:0;pointer-events:none}
+.pg-row{
+  display:flex;
+  border-bottom:1px solid var(--light3);
+  min-height:var(--plan-row-h);
+}
+
+.pg-row.st-row{
+  background:rgba(230,126,34,.03);
+}
+
+.pg-team-lbl{
+  width:var(--plan-team-w);
+  min-width:var(--plan-team-w);
+  max-width:var(--plan-team-w);
+  flex-shrink:0;
+  padding:10px 12px;
+  border-right:1px solid var(--light3);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:3px;
+  position:sticky;
+  left:0;
+  background:#fff;
+  z-index:10;
+}
+
+.pg-row.st-row .pg-team-lbl{
+  background:#fefcf9;
+}
+
+.pg-team-name{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:900;
+  font-size:16px;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+}
+
+.pg-team-members{
+  font-size:13px;
+  color:var(--text3);
+  font-weight:700;
+}
+
+.pg-team-base{
+  font-size:12px;
+  color:var(--text3);
+  font-weight:600;
+}
+
+.pg-cells-wrap{
+  display:flex;
+  flex:1;
+  position:relative;
+}
+
+.pg-cell{
+  width:var(--plan-day-w);
+  min-width:var(--plan-day-w);
+  max-width:var(--plan-day-w);
+  border-right:1px solid var(--light3);
+  cursor:pointer;
+  transition:background .1s;
+  position:relative;
+}
+
+.pg-cell:hover{
+  background:var(--light2);
+}
+
+.pg-cell.we{
+  background:#d2d1cc;
+}
+
+.pg-cell.ferie{
+  background:#bdbbb4;
+}
+
+.pg-cell.we_travaille{
+  background:rgba(231,76,60,.08);
+}
+
+.pg-blocks{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+
 /* Bloc chantier */
-.pg-block{position:absolute;top:3px;bottom:3px;border-radius:2px;display:flex;align-items:center;padding:0 5px;cursor:pointer;z-index:5;overflow:hidden;transition:opacity .15s;box-shadow:0 1px 3px rgba(0,0,0,.15);pointer-events:all}
-.pg-block:hover{opacity:.85;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.pg-block-txt{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.2px}
-.pg-block-icon{font-size:8px;margin-right:2px;flex-shrink:0}
-/* Hachures pour sans commande */
-.pg-block.hachure{background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.3) 4px,rgba(255,255,255,.3) 8px)!important}
-/* Pointillés pour date non validée */
-.pg-block.pointille{border:2px dashed rgba(255,255,255,.7)!important;background-image:none!important}
-/* WE/férié travaillé */
-.pg-block.we-worked::after{content:'★';position:absolute;top:1px;right:2px;font-size:7px;color:rgba(255,255,255,.8)}
+.pg-block{
+  position:absolute;
+  top:7px;
+  bottom:7px;
+  border-radius:3px;
+  display:flex;
+  align-items:center;
+  padding:0 8px;
+  cursor:pointer;
+  z-index:5;
+  overflow:hidden;
+  transition:opacity .15s;
+  box-shadow:0 1px 4px rgba(0,0,0,.18);
+  pointer-events:all;
+}
+
+.pg-block:hover{
+  opacity:.88;
+  z-index:20;
+  box-shadow:0 2px 10px rgba(0,0,0,.28);
+}
+
+.pg-block-txt{
+  font-size:14px;
+  font-weight:900;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-family:'Barlow Condensed',sans-serif;
+  text-transform:uppercase;
+  letter-spacing:.25px;
+}
+
+.pg-block-icon{
+  font-size:12px;
+  margin-right:4px;
+  flex-shrink:0;
+}
+
+.pg-block.hachure{
+  background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(255,255,255,.3) 4px,rgba(255,255,255,.3) 8px)!important;
+}
+
+.pg-block.pointille{
+  border:2px dashed rgba(255,255,255,.8)!important;
+  background-image:none!important;
+}
+
+.pg-block.we-worked::after{
+  content:'★';
+  position:absolute;
+  top:2px;
+  right:4px;
+  font-size:10px;
+  color:rgba(255,255,255,.9);
+}
 
 /* Vue annuelle */
 #annual-grid{flex:1;overflow:auto;padding:12px}
@@ -1393,7 +1620,7 @@ function renderPlanning() {
   var eqs = filterEq === "all" ? equipes : equipes.filter(function(e) { return e.id === filterEq; });
 
   var todayStr = dateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-
+var dayW = 48;
   // Grouper par semaines
   var weeks = [], curW = null;
   for (var d = 1; d <= nb; d++) {
@@ -1454,8 +1681,9 @@ function renderPlanning() {
       var finM = fin.getMonth() === currentM && fin.getFullYear() === currentY;
       var sd = Math.max(1, debM ? deb.getDate() : 1);
       var ed = Math.min(nb, finM ? fin.getDate() : nb);
-      var left = (sd - 1) * 32;
-      var width = (ed - sd + 1) * 32 - 2;
+var dayW = 48;
+var left = (sd - 1) * dayW;
+var width = (ed - sd + 1) * dayW - 2;
       var tc = TYPE_CFG[ch.type] || TYPE_CFG.jour;
       var extraCls = "";
       if (!ch.commande) extraCls = "hachure";
@@ -1548,8 +1776,8 @@ function renderAnnuel() {
         var finM = fin.getMonth() === mIdx && fin.getFullYear() === currentY;
         var sd = Math.max(1, debM ? deb.getDate() : 1);
         var ed = Math.min(nb, finM ? fin.getDate() : nb);
-        var left = (sd - 1) * 32;
-        var width = (ed - sd + 1) * 32 - 2;
+        var left = (sd - 1) dayW;
+        var width = (ed - sd + 1) * dayW - 2;
         var tc = TYPE_CFG[ch.type] || TYPE_CFG.jour;
         var extraCls = !ch.commande ? "hachure" : (!ch.date_ok ? "pointille" : "");
         html += '<div class="pg-block ' + extraCls + '"'
