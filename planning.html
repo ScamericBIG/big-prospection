@@ -28,6 +28,26 @@
   --eq-anthony:#c47a1a;
   --eq-alain:#7a1ac4;
   --eq-st:#e67e22;
+  #content-stocks .filter-sel,
+#content-stocks select,
+#content-stocks option {
+  font-size: 14px !important;
+}
+
+#content-stocks .filter-sel {
+  padding: 7px 10px !important;
+  min-height: 34px;
+}
+
+#content-stocks .stk-btn {
+  font-size: 13px !important;
+  padding: 7px 12px !important;
+}
+
+#content-stocks .btn-add {
+  font-size: 13px !important;
+  padding: 8px 14px !important;
+}
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);color:var(--text);font-size:13px}
@@ -863,7 +883,9 @@ function initApp() {
   buildEqSelect();
   buildTeamChips();
   buildEquipesGrid();
+  if (typeof populateHistoriqueFilters === "function") {
   populateHistoriqueFilters();
+}
   populateAnalyseEqFilter();
   populateStatsMths();
  Promise.all([
@@ -874,8 +896,8 @@ function initApp() {
   renderPlanning();
   renderStats();
   renderAnalyse();
-  renderStockTable();
-  renderHistorique();
+if (typeof renderStockTable === "function") renderStockTable();
+if (typeof renderHistorique === "function") renderHistorique();
 });
 loadClients();
 }
