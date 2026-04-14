@@ -796,6 +796,31 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 .pg-resize-handle:hover {
   background: rgba(0,0,0,.45);
 }
+
+  .renta-red {
+  background:#fdeaea !important;
+  color:#9f1d1d !important;
+}
+
+.renta-orange {
+  background:#fff3df !important;
+  color:#a35b00 !important;
+}
+
+.renta-green {
+  background:#e9f8ef !important;
+  color:#146b38 !important;
+}
+
+.renta-blue {
+  background:#e8eefb !important;
+  color:#002D9C !important;
+}
+
+.renta-none {
+  background:#f5f5f3 !important;
+  color:#777 !important;
+}
 /* ── TOAST ── */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
 #toast.show{transform:translateY(0);opacity:1}
@@ -862,22 +887,37 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 
   <!-- STATS -->
   <div class="tab-content" id="content-stats">
-    <div class="stats-toolbar">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;text-transform:uppercase">Statistiques équipes</div>
-      <select class="filter-sel" id="stats-period" onchange="renderStats()">
-        <option value="month">Ce mois-ci</option>
-        <option value="year">Cette année</option>
-        <option value="all">Tout</option>
-      </select>
-      <select class="filter-sel" id="stats-month" onchange="renderStats()"></select>
-      <select class="filter-sel" id="stats-ca" onchange="renderStats()">
-        <option value="all">Tous chargés d'affaires</option>
-        <option value="Emeric">Emeric</option>
-        <option value="Mathis">Mathis</option>
-        <option value="Marie">Marie</option>
-        <option value="Christophe">Christophe</option>
-      </select>
-    </div>
+<div class="stats-toolbar">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;text-transform:uppercase">Statistiques équipes</div>
+
+  <select class="filter-sel" id="stats-period" onchange="renderStats()">
+    <option value="month">Ce mois-ci</option>
+    <option value="year">Cette année</option>
+    <option value="all">Tout</option>
+  </select>
+
+  <select class="filter-sel" id="stats-month" onchange="renderStats()"></select>
+
+  <select class="filter-sel" id="stats-ca" onchange="renderStats()">
+    <option value="all">Tous chargés d'affaires</option>
+    <option value="Emeric">Emeric</option>
+    <option value="Mathis">Mathis</option>
+    <option value="Marie">Marie</option>
+    <option value="Christophe">Christophe</option>
+  </select>
+
+  <select class="filter-sel" id="stats-eq" onchange="renderStats()">
+    <option value="all">Toutes les équipes</option>
+  </select>
+
+  <select class="filter-sel" id="stats-renta" onchange="renderStats()">
+    <option value="all">Toutes rentabilités</option>
+    <option value="red">Rouge &lt; 30%</option>
+    <option value="orange">Orange 30-49%</option>
+    <option value="green">Vert 50-70%</option>
+    <option value="blue">Bleu &gt; 70%</option>
+  </select>
+</div>
     <div id="stats-wrap"><div class="stats-grid" id="stats-grid"></div></div>
   </div>
 
@@ -1543,6 +1583,7 @@ function initApp() {
 }
   populateAnalyseEqFilter();
   populateStatsMths();
+  populateStatsEqFilter();
  Promise.all([
   loadChantiers(),
   loadBonsSupabase(),
@@ -2581,89 +2622,326 @@ function populateStatsMths() {
   }
   sel.innerHTML = html;
 }
+function populateStatsEqFilter() {
+  var sel = document.getElementById("stats-eq");
+  if (!sel) return;
 
+  var current = sel.value || "all";
+
+  sel.innerHTML = '<option value="all">Toutes les équipes</option>' +
+    equipes.map(function(eq) {
+      return '<option value="' + eq.id + '">' + eq.nom + '</option>';
+    }).join("");
+
+  sel.value = current;
+}
 function getStatsChs() {
   var period = (document.getElementById("stats-period") || {value:"month"}).value;
-  var mSel   = parseInt((document.getElementById("stats-month") || {value: new Date().getMonth()}).value);
-  var caFil  = (document.getElementById("stats-ca") || {value:"all"}).value;
-  var now    = new Date();
+  var mSel = parseInt((document.getElementById("stats-month") || {value:new Date().getMonth()}).value, 10);
+  var caFil = (document.getElementById("stats-ca") || {value:"all"}).value;
+  var eqFil = (document.getElementById("stats-eq") || {value:"all"}).value;
+  var now = new Date();
+
   return chantiers.filter(function(ch) {
     var d = new Date(ch.date_debut);
     if (period === "month" && (d.getMonth() !== mSel || d.getFullYear() !== now.getFullYear())) return false;
-    if (period === "year"  && d.getFullYear() !== now.getFullYear()) return false;
+    if (period === "year" && d.getFullYear() !== now.getFullYear()) return false;
     if (caFil !== "all" && ch.ca !== caFil) return false;
+    if (eqFil !== "all" && (!ch.equipes || ch.equipes.indexOf(eqFil) < 0)) return false;
     return true;
   });
 }
+function getRentaColorClass(taux) {
+  if (taux === null || isNaN(taux)) return "renta-none";
+  if (taux < 30) return "renta-red";
+  if (taux < 50) return "renta-orange";
+  if (taux <= 70) return "renta-green";
+  return "renta-blue";
+}
 
+function getRentaLabel(taux) {
+  if (taux === null || isNaN(taux)) return "—";
+  return Math.round(taux) + "%";
+}
+
+function getChantierFinance(ch) {
+  var ad = analyseData[ch.id] || {};
+  var caHT = parseFloat(ad.ca_ht) || 0;
+  var primes = parseFloat(ad.primes) || 0;
+  var coutMP = getCoutMP(ch.id);
+
+  var jours = daysBetween(ch.date_debut, ch.date_fin_reel || ch.date_fin);
+
+  var coutMO = 0;
+  (ch.equipes || []).forEach(function(eqId) {
+    var eq = equipes.find(function(e) { return e.id === eqId; });
+    if (eq) coutMO += jours * (parseFloat(eq.cout_journalier) || 0);
+  });
+
+  var marge = caHT - coutMO - coutMP - primes;
+  var taux = caHT > 0 ? (marge / caHT) * 100 : null;
+
+  return {
+    caHT: caHT,
+    coutMO: coutMO,
+    coutMP: coutMP,
+    primes: primes,
+    marge: marge,
+    taux: taux
+  };
+}
+
+function passRentaFilter(taux) {
+  var fil = (document.getElementById("stats-renta") || {value:"all"}).value;
+  if (fil === "all") return true;
+  if (taux === null || isNaN(taux)) return false;
+
+  if (fil === "red") return taux < 30;
+  if (fil === "orange") return taux >= 30 && taux < 50;
+  if (fil === "green") return taux >= 50 && taux <= 70;
+  if (fil === "blue") return taux > 70;
+
+  return true;
+}
 function renderStats() {
-  var chs = getStatsChs();
+  var chsBase = getStatsChs();
   var grid = document.getElementById("stats-grid");
   if (!grid) return;
 
-  var totalJours  = chs.reduce(function(s,c){ return s + daysBetween(c.date_debut, c.date_fin); }, 0);
-  var totalNuits  = chs.reduce(function(s,c){ return s + (c.nuits_reel || c.nuits || 0); }, 0);
-  var totalWE     = chs.filter(function(c){ return c.we_travaille; }).length;
-  var sansCmd     = chs.filter(function(c){ return !c.commande; }).length;
-  var dateProv    = chs.filter(function(c){ return c.commande && !c.date_ok; }).length;
-
-  var eqStats = equipes.map(function(eq) {
-    var ec     = chs.filter(function(c){ return c.equipes && c.equipes.indexOf(eq.id) >= 0; });
-    var jours  = ec.reduce(function(s,c){ return s + daysBetween(c.date_debut, c.date_fin_reel || c.date_fin); }, 0);
-    var joursP = ec.reduce(function(s,c){ return s + daysBetween(c.date_debut, c.date_fin); }, 0);
-    var nuits  = ec.reduce(function(s,c){ return s + (c.nuits_reel || c.nuits || 0); }, 0);
-    var we     = ec.filter(function(c){ return c.we_travaille; }).length;
-    var perf   = joursP > 0 ? Math.round(jours / joursP * 100) : null;
-    return {eq: eq, nb: ec.length, jours: jours, joursP: joursP, nuits: nuits, we: we, perf: perf};
-  }).sort(function(a,b){ return b.nb - a.nb; });
-  var maxJours = Math.max.apply(null, eqStats.map(function(e){ return e.jours; }).concat([1]));
-
-  var eqRows = "";
-  eqStats.forEach(function(es, i) {
-    var bg = i % 2 ? "background:var(--light)" : "";
-    var pc = es.jours > 0 ? Math.round(es.jours / maxJours * 100) : 0;
-    var perfColor = es.perf === null ? "var(--text2)" : (es.perf < 100 ? "#1a8c4a" : "#c0392b");
-    eqRows += '<tr style="border-top:1px solid var(--light3);' + bg + '">'
-      + '<td style="padding:5px 8px;font-weight:700;color:' + es.eq.couleur + ';font-family:\'Barlow Condensed\',sans-serif">' + es.eq.nom + '</td>'
-      + '<td style="padding:5px 8px;text-align:center;font-weight:700">' + es.nb + '</td>'
-      + '<td style="padding:5px 8px">'
-      + '<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:12px;background:var(--light2);position:relative">'
-      + '<div style="width:' + pc + '%;height:100%;background:' + es.eq.couleur + ';position:relative;min-width:2px">'
-      + '<span style="position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;color:var(--text2);white-space:nowrap">' + es.jours + 'j</span>'
-      + '</div></div></div></td>'
-      + '<td style="padding:5px 8px;text-align:center;color:#002D9C;font-weight:700">' + es.nuits + '</td>'
-      + '<td style="padding:5px 8px;text-align:center;color:#e67e22;font-weight:700">' + (es.we || "—") + '</td>'
-      + '<td style="padding:5px 8px;text-align:center"><span style="font-weight:700;color:' + perfColor + '">'
-      + (es.perf !== null ? es.perf + "%" : "—") + '</span></td>'
-      + '</tr>';
+  var chs = chsBase.filter(function(ch) {
+    return passRentaFilter(getChantierFinance(ch).taux);
   });
 
-  var html = '<div class="stat-card" style="grid-column:1/-1">'
-    + '<div class="stat-card-title">Vue densemble</div>'
-    + '<div class="kpi-grid">'
-    + '<div class="kpi"><div class="kpi-val">' + chs.length + '</div><div class="kpi-lbl">Chantiers</div></div>'
-    + '<div class="kpi"><div class="kpi-val">' + fmtN(totalJours) + '</div><div class="kpi-lbl">Jours terrain</div></div>'
-    + '<div class="kpi"><div class="kpi-val">' + totalNuits + '</div><div class="kpi-lbl">Nuits</div></div>'
-    + '<div class="kpi"><div class="kpi-val">' + totalWE + '</div><div class="kpi-lbl">WE/Feriers</div></div>'
-    + '</div>'
-    + (sansCmd ? '<span class="badge badge-danger">Attention ' + sansCmd + ' sans commande</span>' : "")
-    + (dateProv ? '<span class="badge badge-warn">Date non validee ' + dateProv + '</span>' : "")
-    + '</div>'
-    + '<div class="stat-card" style="grid-column:1/-1">'
-    + '<div class="stat-card-title">Performance par equipe</div>'
-    + '<table style="width:100%;border-collapse:collapse;font-size:10px">'
-    + '<thead><tr style="background:var(--light)">'
-    + '<th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text3)">Equipe</th>'
-    + '<th style="padding:5px 8px;text-align:center;font-size:9px;color:var(--text3)">Chantiers</th>'
-    + '<th style="padding:5px 8px;text-align:left;font-size:9px;color:var(--text3)">Jours terrain</th>'
-    + '<th style="padding:5px 8px;text-align:center;font-size:9px;color:#002D9C">Nuits</th>'
-    + '<th style="padding:5px 8px;text-align:center;font-size:9px;color:#e67e22">WE/Fer.</th>'
-    + '<th style="padding:5px 8px;text-align:center;font-size:9px;color:#1a8c4a">Perf.</th>'
-    + '</tr></thead><tbody>' + eqRows + '</tbody></table></div>';
+  var totalJours = chs.reduce(function(s,c){ return s + daysBetween(c.date_debut, c.date_fin_reel || c.date_fin); }, 0);
+  var totalNuits = chs.reduce(function(s,c){ return s + (c.nuits_reel || c.nuits || 0); }, 0);
+  var totalWE = chs.filter(function(c){ return c.we_travaille; }).length;
+  var sansCmd = chs.filter(function(c){ return !c.commande; }).length;
+  var dateProv = chs.filter(function(c){ return c.commande && !c.date_ok; }).length;
 
-  grid.innerHTML = html;
+  var totalCA = 0, totalMO = 0, totalMP = 0, totalPrimes = 0, totalMarge = 0;
+
+  chs.forEach(function(ch) {
+    var f = getChantierFinance(ch);
+    totalCA += f.caHT;
+    totalMO += f.coutMO;
+    totalMP += f.coutMP;
+    totalPrimes += f.primes;
+    totalMarge += f.marge;
+  });
+
+  var tauxGlobal = totalCA > 0 ? (totalMarge / totalCA) * 100 : null;
+  var tauxClass = getRentaColorClass(tauxGlobal);
+
+  var eqStats = equipes.map(function(eq) {
+    var ec = chs.filter(function(c){ return c.equipes && c.equipes.indexOf(eq.id) >= 0; });
+
+    var jours = ec.reduce(function(s,c){ return s + daysBetween(c.date_debut, c.date_fin_reel || c.date_fin); }, 0);
+    var nuits = ec.reduce(function(s,c){ return s + (c.nuits_reel || c.nuits || 0); }, 0);
+    var we = ec.filter(function(c){ return c.we_travaille; }).length;
+
+    var ca = 0, mo = 0, mp = 0, primes = 0, marge = 0;
+
+    ec.forEach(function(ch) {
+      var f = getChantierFinance(ch);
+      ca += f.caHT;
+      mo += f.coutMO;
+      mp += f.coutMP;
+      primes += f.primes;
+      marge += f.marge;
+    });
+
+    var taux = ca > 0 ? (marge / ca) * 100 : null;
+
+    return {
+      eq: eq,
+      nb: ec.length,
+      jours: jours,
+      nuits: nuits,
+      we: we,
+      ca: ca,
+      mo: mo,
+      mp: mp,
+      primes: primes,
+      marge: marge,
+      taux: taux
+    };
+  }).sort(function(a,b){ return b.ca - a.ca; });
+
+  var caStats = ["Emeric", "Mathis", "Marie", "Christophe"].map(function(caName) {
+    var cc = chs.filter(function(ch) { return ch.ca === caName; });
+
+    var ca = 0, mo = 0, mp = 0, primes = 0, marge = 0;
+
+    cc.forEach(function(ch) {
+      var f = getChantierFinance(ch);
+      ca += f.caHT;
+      mo += f.coutMO;
+      mp += f.coutMP;
+      primes += f.primes;
+      marge += f.marge;
+    });
+
+    var taux = ca > 0 ? (marge / ca) * 100 : null;
+
+    return {
+      nom: caName,
+      nb: cc.length,
+      ca: ca,
+      mo: mo,
+      mp: mp,
+      primes: primes,
+      marge: marge,
+      taux: taux
+    };
+  }).sort(function(a,b){ return b.ca - a.ca; });
+
+  var chantierRows = chs.map(function(ch, i) {
+    var f = getChantierFinance(ch);
+    var cls = getRentaColorClass(f.taux);
+    var eqNames = (ch.equipes || []).map(function(eqId) {
+      var eq = equipes.find(function(e) { return e.id === eqId; });
+      return eq ? eq.nom : eqId;
+    }).join(", ");
+
+    return '<tr class="' + cls + '" style="border-top:1px solid var(--light3)">'
+      + '<td style="padding:8px 10px;font-weight:800">' + ch.client + '<br><span style="font-size:10px;color:var(--text3);font-weight:600">' + (ch.adresse || "") + '</span></td>'
+      + '<td style="padding:8px 10px;text-align:center">' + (ch.ca || "—") + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;color:var(--blue);font-weight:800">' + (eqNames || "—") + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;color:#1a8c4a;font-weight:800">' + fmtEur(f.caHT) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;color:#c47a1a;font-weight:800">' + fmtEur(f.coutMO + f.coutMP + f.primes) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;font-weight:800">' + fmtEur(f.marge) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;font-weight:900">' + getRentaLabel(f.taux) + '</td>'
+      + '</tr>';
+  }).join("");
+
+  var eqRows = eqStats.map(function(es) {
+    var cls = getRentaColorClass(es.taux);
+    return '<tr class="' + cls + '" style="border-top:1px solid var(--light3)">'
+      + '<td style="padding:8px 10px;font-weight:900;color:' + es.eq.couleur + '">' + es.eq.nom + '</td>'
+      + '<td style="padding:8px 10px;text-align:center">' + es.nb + '</td>'
+      + '<td style="padding:8px 10px;text-align:center">' + es.jours + 'j</td>'
+      + '<td style="padding:8px 10px;text-align:center;color:#1a8c4a;font-weight:800">' + fmtEur(es.ca) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;color:#c47a1a;font-weight:800">' + fmtEur(es.mo + es.mp + es.primes) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;font-weight:800">' + fmtEur(es.marge) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;font-weight:900">' + getRentaLabel(es.taux) + '</td>'
+      + '</tr>';
+  }).join("");
+
+  var caRows = caStats.map(function(cs) {
+    var cls = getRentaColorClass(cs.taux);
+    return '<tr class="' + cls + '" style="border-top:1px solid var(--light3)">'
+      + '<td style="padding:8px 10px;font-weight:900">' + cs.nom + '</td>'
+      + '<td style="padding:8px 10px;text-align:center">' + cs.nb + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;color:#1a8c4a;font-weight:800">' + fmtEur(cs.ca) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;color:#c47a1a;font-weight:800">' + fmtEur(cs.mo + cs.mp + cs.primes) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;font-weight:800">' + fmtEur(cs.marge) + '</td>'
+      + '<td style="padding:8px 10px;text-align:center;font-weight:900">' + getRentaLabel(cs.taux) + '</td>'
+      + '</tr>';
+  }).join("");
+
+  var monthly = getMonthlyFinanceStats();
+
+  grid.innerHTML =
+    '<div class="stat-card">' +
+      '<div class="stat-card-title">Synthèse période</div>' +
+      '<div class="kpi-grid">' +
+        '<div class="kpi"><div class="kpi-val">' + chs.length + '</div><div class="kpi-lbl">Chantiers</div></div>' +
+        '<div class="kpi"><div class="kpi-val">' + totalJours + '</div><div class="kpi-lbl">Jours</div></div>' +
+        '<div class="kpi"><div class="kpi-val">' + totalNuits + '</div><div class="kpi-lbl">Nuits</div></div>' +
+        '<div class="kpi"><div class="kpi-val">' + totalWE + '</div><div class="kpi-lbl">WE / Fériés</div></div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px">' +
+        '<div class="kpi"><div class="kpi-val" style="font-size:24px;color:#1a8c4a">' + fmtEur(totalCA) + '</div><div class="kpi-lbl">CA HT</div></div>' +
+        '<div class="kpi"><div class="kpi-val" style="font-size:24px;color:#c47a1a">' + fmtEur(totalMO + totalMP + totalPrimes) + '</div><div class="kpi-lbl">Coûts</div></div>' +
+        '<div class="kpi"><div class="kpi-val" style="font-size:24px">' + fmtEur(totalMarge) + '</div><div class="kpi-lbl">Marge</div></div>' +
+        '<div class="kpi ' + tauxClass + '"><div class="kpi-val" style="font-size:24px">' + getRentaLabel(tauxGlobal) + '</div><div class="kpi-lbl">Rentabilité</div></div>' +
+        '<div class="kpi"><div class="kpi-val" style="font-size:24px;color:#c0392b">' + sansCmd + '/' + dateProv + '</div><div class="kpi-lbl">Sans cmd / date prov.</div></div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="stat-card">' +
+      '<div class="stat-card-title">Graphique mensuel CA / Coûts / Marges</div>' +
+      renderMonthlyChart(monthly) +
+    '</div>' +
+
+    '<div class="stat-card" style="grid-column:1/-1">' +
+      '<div class="stat-card-title">Rentabilité par équipe</div>' +
+      '<table style="width:100%;border-collapse:collapse">' +
+        '<thead><tr style="background:var(--dark2);color:#fff">' +
+          '<th style="padding:8px;text-align:left">Équipe</th><th>Chantiers</th><th>Jours</th><th>CA HT</th><th>Coûts</th><th>Marge</th><th>Taux</th>' +
+        '</tr></thead><tbody>' + eqRows + '</tbody></table>' +
+    '</div>' +
+
+    '<div class="stat-card" style="grid-column:1/-1">' +
+      '<div class="stat-card-title">Rentabilité par chargé d’affaires</div>' +
+      '<table style="width:100%;border-collapse:collapse">' +
+        '<thead><tr style="background:var(--dark2);color:#fff">' +
+          '<th style="padding:8px;text-align:left">Chargé</th><th>Chantiers</th><th>CA HT</th><th>Coûts</th><th>Marge</th><th>Taux</th>' +
+        '</tr></thead><tbody>' + caRows + '</tbody></table>' +
+    '</div>' +
+
+    '<div class="stat-card" style="grid-column:1/-1">' +
+      '<div class="stat-card-title">Détail chantiers par rentabilité</div>' +
+      '<table style="width:100%;border-collapse:collapse">' +
+        '<thead><tr style="background:var(--dark2);color:#fff">' +
+          '<th style="padding:8px;text-align:left">Client / Site</th><th>Chargé</th><th>Équipe</th><th>CA HT</th><th>Coûts</th><th>Marge</th><th>Taux</th>' +
+        '</tr></thead><tbody>' + (chantierRows || '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text3)">Aucun chantier</td></tr>') + '</tbody></table>' +
+    '</div>';
 }
 
+  function getMonthlyFinanceStats() {
+  var year = new Date().getFullYear();
+  var caFil = (document.getElementById("stats-ca") || {value:"all"}).value;
+  var eqFil = (document.getElementById("stats-eq") || {value:"all"}).value;
+
+  var months = MOIS_FR.map(function(m, idx) {
+    return {mois:m, idx:idx, ca:0, couts:0, marge:0};
+  });
+
+  chantiers.forEach(function(ch) {
+    var d = new Date(ch.date_debut);
+    if (d.getFullYear() !== year) return;
+    if (caFil !== "all" && ch.ca !== caFil) return;
+    if (eqFil !== "all" && (!ch.equipes || ch.equipes.indexOf(eqFil) < 0)) return;
+
+    var f = getChantierFinance(ch);
+    months[d.getMonth()].ca += f.caHT;
+    months[d.getMonth()].couts += f.coutMO + f.coutMP + f.primes;
+    months[d.getMonth()].marge += f.marge;
+  });
+
+  return months;
+}
+
+function renderMonthlyChart(months) {
+  var max = Math.max.apply(null, months.map(function(m) {
+    return Math.max(m.ca, m.couts, Math.abs(m.marge));
+  }).concat([1]));
+
+  return '<div style="display:flex;gap:8px;align-items:flex-end;height:260px;padding:10px 4px;border-left:1px solid var(--light3);border-bottom:1px solid var(--light3);overflow-x:auto">' +
+    months.map(function(m) {
+      var hCA = Math.round((m.ca / max) * 210);
+      var hCouts = Math.round((m.couts / max) * 210);
+      var hMarge = Math.round((Math.abs(m.marge) / max) * 210);
+      var margeColor = m.marge >= 0 ? "#1a8c4a" : "#c0392b";
+
+      return '<div style="min-width:70px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:240px">' +
+        '<div style="display:flex;gap:3px;align-items:flex-end;height:210px">' +
+          '<div title="CA ' + fmtEur(m.ca) + '" style="width:14px;height:' + hCA + 'px;background:#1a8c4a"></div>' +
+          '<div title="Coûts ' + fmtEur(m.couts) + '" style="width:14px;height:' + hCouts + 'px;background:#c47a1a"></div>' +
+          '<div title="Marge ' + fmtEur(m.marge) + '" style="width:14px;height:' + hMarge + 'px;background:' + margeColor + '"></div>' +
+        '</div>' +
+        '<div style="font-size:10px;font-weight:800;margin-top:6px">' + m.mois.substring(0,3) + '</div>' +
+      '</div>';
+    }).join("") +
+  '</div>' +
+  '<div style="display:flex;gap:16px;margin-top:8px;font-size:11px;font-weight:800">' +
+    '<span style="color:#1a8c4a">■ CA</span>' +
+    '<span style="color:#c47a1a">■ Coûts</span>' +
+    '<span style="color:#002D9C">■ Marge positive</span>' +
+    '<span style="color:#c0392b">■ Marge négative</span>' +
+  '</div>';
+}
 // ── ÉQUIPES ──
 function buildEqSelect() {
   var sel = document.getElementById("filter-eq");
