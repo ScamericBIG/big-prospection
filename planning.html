@@ -44,7 +44,6 @@
   font-size: 13px !important;
   padding: 8px 14px !important;
 }
-}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);color:var(--text);font-size:13px}
 
@@ -1776,8 +1775,8 @@ function renderAnnuel() {
         var finM = fin.getMonth() === mIdx && fin.getFullYear() === currentY;
         var sd = Math.max(1, debM ? deb.getDate() : 1);
         var ed = Math.min(nb, finM ? fin.getDate() : nb);
-        var left = (sd - 1) dayW;
-        var width = (ed - sd + 1) * dayW - 2;
+        var left = (sd - 1) * 48;
+var width = (ed - sd + 1) * 48 - 2;
         var tc = TYPE_CFG[ch.type] || TYPE_CFG.jour;
         var extraCls = !ch.commande ? "hachure" : (!ch.date_ok ? "pointille" : "");
         html += '<div class="pg-block ' + extraCls + '"'
