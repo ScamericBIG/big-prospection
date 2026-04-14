@@ -1149,7 +1149,7 @@ const EQ_AGENCE = {
   "eq-anthony": "Ternay",
   "eq-alain": "Ternay",
   "eq-geoffroy": "Metz",
-  "eq-marchal": "Metz"
+  "eq-marchal": "Belgique"
 };
 
 let currentStockAgence = "global";
@@ -2346,13 +2346,15 @@ function signedQty(mv) {
   return 0;
 }
 function getMouvementAgence(mv) {
-  if (mv.agence) return mv.agence;
   if (mv.eq_id && EQ_AGENCE[mv.eq_id]) return EQ_AGENCE[mv.eq_id];
 
-  var chef = String(mv.chef_prenom || "").toLowerCase();
+  var chef = String(mv.chef_prenom || mv.created_by || "").toLowerCase();
+
   if (chef.indexOf("geoffroy") >= 0) return "Metz";
   if (chef.indexOf("nicolas") >= 0) return "Nantes";
-  if (chef.indexOf("anthony") >= 0 || chef.indexOf("alain") >= 0) return "Lyon";
+  if (chef.indexOf("anthony") >= 0 || chef.indexOf("alain") >= 0) return "Ternay";
+
+  if (mv.agence && mv.agence !== "Non renseignée") return mv.agence;
 
   return "";
 }
@@ -2396,7 +2398,7 @@ function renderStockTable() {
       + '<td style="padding:6px 10px;text-align:center">—</td>'
       + '<td style="padding:6px 10px;text-align:center">—</td>'
       + '<td style="padding:6px 10px;text-align:center">—</td>'
-      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#e6c300">' + theo.toFixed(2).replace(".00","") + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#111">' + theo.toFixed(2).replace(".00","") + '</td>'
       + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#1a8c4a">' + fmtEur(val) + '</td>'
       + '<td style="padding:6px 10px;text-align:center;font-weight:700;color:' + alerteColor + '">' + alerte + '</td>'
       + '</tr>';
