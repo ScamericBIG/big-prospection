@@ -27,11 +27,7 @@
   --eq-nicolas:#1a8c4a;
   --eq-anthony:#c47a1a;
   --eq-alain:#7a1ac4;
-  --eq-st:#e67e22;
-  #content-stocks .filter-sel,
-#content-stocks select,
-#content-stocks option {
-  font-size: 14px !important;
+ --eq-st:#e67e22;
 }
 
 #content-stocks .filter-sel {
@@ -252,6 +248,31 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 .site-sugg-item .ssi-nom{font-size:12px;font-weight:700;color:var(--text)}
 .site-sugg-item .ssi-meta{font-size:10px;color:var(--text3);margin-top:1px}
 .sugg-item:last-child{border-bottom:none}
+  #content-stocks .filter-sel,
+#content-stocks select,
+#content-stocks option {
+  font-size: 15px !important;
+}
+
+#content-stocks .filter-sel {
+  padding: 9px 12px !important;
+  min-height: 38px !important;
+}
+
+#content-stocks .stk-btn {
+  font-size: 14px !important;
+  padding: 9px 14px !important;
+}
+
+#content-stocks .btn-add {
+  font-size: 14px !important;
+  padding: 10px 16px !important;
+}
+
+#content-stocks th,
+#content-stocks td {
+  font-size: 13px !important;
+}
 /* ── TOAST ── */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
 #toast.show{transform:translateY(0);opacity:1}
@@ -395,6 +416,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
     </div>
     <div style="flex:1;overflow:auto">
       <!-- STOCK -->
+      <div id="stk-stock" style="padding:12px">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
   <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">Stock théorique actuel</div>
 
@@ -421,6 +443,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
           </tr></thead>
           <tbody id="stock-tbody"></tbody>
         </table>
+        </div>
       </div>
       <!-- BON DE SORTIE -->
       <div id="stk-sortie" style="display:none;padding:12px">
@@ -459,53 +482,54 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
         </div>
         <button class="btn-add" style="margin-top:10px;width:100%" onclick="validerBonRetour()">✅ Valider le bon de retour</button>
       </div>
-      <!-- HISTORIQUE -->
-      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📋 Historique global des mouvements</div>
+     <!-- HISTORIQUE -->
+<div id="stk-historique" style="display:none;padding:12px">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📋 Historique global des mouvements</div>
 
-<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-  <select class="filter-sel" id="hist-agence" onchange="renderHistorique()">
-    <option value="all">Toutes agences</option>
-    <option value="Nantes">Nantes</option>
-    <option value="Lyon">Lyon</option>
-    <option value="Metz">Metz</option>
-  </select>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+    <select class="filter-sel" id="hist-agence" onchange="renderHistorique()">
+      <option value="all">Toutes agences</option>
+      <option value="Nantes">Nantes</option>
+      <option value="Lyon">Lyon</option>
+      <option value="Metz">Metz</option>
+    </select>
 
-  <select class="filter-sel" id="hist-type" onchange="renderHistorique()">
-    <option value="all">Tous types</option>
-    <option value="entree">Entrée</option>
-    <option value="sortie_chantier">Sortie chantier</option>
-    <option value="retour_chantier">Retour chantier</option>
-    <option value="transfert_sortie">Transfert sortie</option>
-    <option value="transfert_entree">Transfert entrée</option>
-    <option value="perte">Perte</option>
-    <option value="ajustement">Ajustement inventaire</option>
-  </select>
+    <select class="filter-sel" id="hist-type" onchange="renderHistorique()">
+      <option value="all">Tous types</option>
+      <option value="entree">Entrée</option>
+      <option value="sortie_chantier">Sortie chantier</option>
+      <option value="retour_chantier">Retour chantier</option>
+      <option value="transfert_sortie">Transfert sortie</option>
+      <option value="transfert_entree">Transfert entrée</option>
+      <option value="perte">Perte</option>
+      <option value="ajustement">Ajustement inventaire</option>
+    </select>
 
-  <select class="filter-sel" id="hist-produit" onchange="renderHistorique()">
-    <option value="all">Tous produits</option>
-  </select>
+    <select class="filter-sel" id="hist-produit" onchange="renderHistorique()">
+      <option value="all">Tous produits</option>
+    </select>
 
-  <select class="filter-sel" id="hist-mois" onchange="renderHistorique()">
-    <option value="all">Tous mois</option>
-    <option value="0">Janvier</option>
-    <option value="1">Février</option>
-    <option value="2">Mars</option>
-    <option value="3">Avril</option>
-    <option value="4">Mai</option>
-    <option value="5">Juin</option>
-    <option value="6">Juillet</option>
-    <option value="7">Août</option>
-    <option value="8">Septembre</option>
-    <option value="9">Octobre</option>
-    <option value="10">Novembre</option>
-    <option value="11">Décembre</option>
-  </select>
+    <select class="filter-sel" id="hist-mois" onchange="renderHistorique()">
+      <option value="all">Tous mois</option>
+      <option value="0">Janvier</option>
+      <option value="1">Février</option>
+      <option value="2">Mars</option>
+      <option value="3">Avril</option>
+      <option value="4">Mai</option>
+      <option value="5">Juin</option>
+      <option value="6">Juillet</option>
+      <option value="7">Août</option>
+      <option value="8">Septembre</option>
+      <option value="9">Octobre</option>
+      <option value="10">Novembre</option>
+      <option value="11">Décembre</option>
+    </select>
 
-  <select class="filter-sel" id="hist-annee" onchange="renderHistorique()"></select>
+    <select class="filter-sel" id="hist-annee" onchange="renderHistorique()"></select>
+  </div>
+
+  <div id="historique-list"></div>
 </div>
-
-<div id="historique-list"></div>
-
   <!-- ÉQUIPES -->
   <div class="tab-content" id="content-equipes">
     <div style="padding:10px 12px;background:#fff;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:10px;flex-shrink:0">
