@@ -4078,14 +4078,12 @@ var coutMP = getCoutMP(c.id);
       + '<td style="padding:6px 8px;text-align:center;font-size:11px">' + jours + 'j</td>'
 + '<td class="analyse-cost-cell">' + (coutMO > 0 ? fmtEur(coutMO) : "—") + '</td>'
 + '<td class="analyse-cost-cell">' + (coutMP > 0 ? fmtEur(coutMP) : "—") + '</td>'
-+ '<td style="padding:6px 8px;text-align:center"><input class="analyse-money-input" type="text" value="' + fmtMoneyInput(prim) + '" placeholder="0 €"'
++ '<td style="padding:6px 8px;text-align:center">'
++ '<input class="analyse-money-input" type="text" value="' + fmtMoneyInput(prim) + '" placeholder="0 €"'
 + ' onfocus="onMoneyInputFocus(this)"'
 + ' onblur="onMoneyInputBlur(this, \'' + c.id + '\', \'primes\')"'
-+ ' style="width:120px;padding:5px;border:1.5px solid var(--light3);font-size:14px;text-align:center;outline:none;font-weight:800"/></td>'
-      + ' style="width:70px;padding:3px;border:1.5px solid var(--light3);font-size:10px;text-align:center;outline:none"/></td>'
-      + '<td style="padding:6px 8px;text-align:center;font-weight:800;color:' + rc + '">' + (caHT > 0 ? fmtEur(renta) : "—") + '</td>'
-      + '<td style="padding:6px 8px;text-align:center;font-weight:800;color:' + tc2 + '">' + (caHT > 0 ? taux + "%" : "—") + '</td>'
-      + '</tr>';
++ ' style="width:120px;padding:5px;border:1.5px solid var(--light3);font-size:14px;text-align:center;outline:none;font-weight:800"/>'
++ '</td>'
   });
 
   tbody.innerHTML = rows || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--text3)">Aucun chantier termine en ' + annee + (currentCA !== "all" ? " pour " + currentCA : "") + '</td></tr>';
