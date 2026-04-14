@@ -373,7 +373,70 @@ var mesBonsRetour = [];
   var SITE_CONTACT_FIELD = "contact";
 var SITE_TEL_FIELD = "tel";
 var currentChantierModal = null; // chantier actif pour le modal
+const EQ_AGENCE = {
+  "eq-nicolas": "Nantes",
+  "eq-anthony": "Lyon",
+  "eq-alain": "Lyon",
+  "eq-geoffroy": "Metz",
+  "eq-marchal": "Metz"
+};
 
+function getAgenceChef() {
+  return EQ_AGENCE[currentChef.eq_id] || "Metz";
+}
+
+function makeId(prefix) {
+  return prefix + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+}
+
+async function insertStockMouvementsChef(bon, type) {
+  var agence = getAgenceChef();
+
+  var mouvements = bon.lignes.map(function(l) {
+    return {
+      id: makeId("mvt-" + type),
+      created_at: new Date().toISOString(),
+
+      produit_id: l.produit_id,
+      produit_nom: l.nom,
+      unite: l.unite,
+
+      agence: agence,
+      type_mouvement: type,
+
+      qte: parseFloat(l.qte) || 0,
+
+      chantier_id: bon.chantier_id,
+      chantier_nom: bon.chantier_nom,
+      bon_id: bon.id,
+
+      chef_id: currentChef.id,
+      chef_prenom: currentChef.prenom,
+      eq_id: currentChef.eq_id,
+
+      commentaire: bon.commentaire || "",
+      created_by: currentChef.prenom
+    };
+  });
+
+  try {
+    var r = await fetch(SB_URL + "/rest/v1/stock_mouvements", {
+      method: "POST",
+      headers: Object.assign(sbH(true), {"Prefer": "resolution=merge-duplicates,return=minimal"}),
+      body: JSON.stringify(mouvements)
+    });
+
+    if (!r.ok && r.status !== 201 && r.status !== 204) {
+      console.error("insertStockMouvementsChef:", r.status, await r.text());
+      return false;
+    }
+
+    return true;
+  } catch(e) {
+    console.error("insertStockMouvementsChef:", e);
+    return false;
+  }
+}
 // ── HELPERS ──
 function sbH(write) {
   var h = {"apikey": SB_ANON, "Authorization": "Bearer " + SB_ANON};
@@ -874,9 +937,10 @@ if (editingId) {
     var errTxt = await r.text();
     console.error("Supabase bons_sortie:", r.status, errTxt);
     saveLocalBon("sortie", bon);
-  } else {
-    mesBonsSortie.push(bon);
-  }
+} else {
+  mesBonsSortie.push(bon);
+  await insertStockMouvementsChef(bon, "sortie_chantier");
+}
 } catch (e) {
   console.error(e);
   saveLocalBon("sortie", bon);
@@ -1220,8 +1284,8 @@ function saveLocalBon(type, bon) {
 
     var m2 = mesBonsRetour.findIndex(function(b) { return b.id === bon.id; });
     if (m2 >= 0) mesBonsRetour[m2] = bon;
-    else mesBonsRetour.push(bon);
-  }
+mesBonsRetour.push(bon);
+await insertStockMouvementsChef(bon, "retour_chantier");
 
   localStorage.setItem(key, JSON.stringify(data));
   toast("Sauvegardé localement (Supabase inaccessible)", "");
