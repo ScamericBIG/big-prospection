@@ -375,11 +375,18 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
     </div>
     <div style="flex:1;overflow:auto">
       <!-- STOCK -->
-      <div id="stk-stock" style="padding:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">Stock théorique actuel</div>
-          <button class="btn-add" onclick="openModalEntreeStock()">+ Entrée stock</button>
-        </div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+  <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">Stock théorique actuel</div>
+
+  <select class="filter-sel" id="stock-agence-filter" onchange="currentStockAgence=this.value;renderStockTable();renderHistorique();">
+    <option value="global">Global</option>
+    <option value="Nantes">Nantes</option>
+    <option value="Lyon">Lyon</option>
+    <option value="Metz">Metz</option>
+  </select>
+  <button class="btn-add" onclick="openModalEntreeStock()">+ Entrée stock</button>
+  <button class="btn-add" onclick="openModalTransfertAgence()">⇄ Transfert agence</button>
+</div>
         <table style="width:100%;border-collapse:collapse;font-size:11px" id="stock-table">
           <thead><tr style="background:var(--dark2);color:#fff">
             <th style="padding:6px 10px;text-align:left;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;text-transform:uppercase">Produit</th>
@@ -433,12 +440,51 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
         <button class="btn-add" style="margin-top:10px;width:100%" onclick="validerBonRetour()">✅ Valider le bon de retour</button>
       </div>
       <!-- HISTORIQUE -->
-      <div id="stk-historique" style="display:none;padding:12px">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📋 Historique des mouvements</div>
-        <div id="historique-list"></div>
-      </div>
-    </div>
-  </div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;margin-bottom:10px">📋 Historique global des mouvements</div>
+
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+  <select class="filter-sel" id="hist-agence" onchange="renderHistorique()">
+    <option value="all">Toutes agences</option>
+    <option value="Nantes">Nantes</option>
+    <option value="Lyon">Lyon</option>
+    <option value="Metz">Metz</option>
+  </select>
+
+  <select class="filter-sel" id="hist-type" onchange="renderHistorique()">
+    <option value="all">Tous types</option>
+    <option value="entree">Entrée</option>
+    <option value="sortie_chantier">Sortie chantier</option>
+    <option value="retour_chantier">Retour chantier</option>
+    <option value="transfert_sortie">Transfert sortie</option>
+    <option value="transfert_entree">Transfert entrée</option>
+    <option value="perte">Perte</option>
+    <option value="ajustement">Ajustement inventaire</option>
+  </select>
+
+  <select class="filter-sel" id="hist-produit" onchange="renderHistorique()">
+    <option value="all">Tous produits</option>
+  </select>
+
+  <select class="filter-sel" id="hist-mois" onchange="renderHistorique()">
+    <option value="all">Tous mois</option>
+    <option value="0">Janvier</option>
+    <option value="1">Février</option>
+    <option value="2">Mars</option>
+    <option value="3">Avril</option>
+    <option value="4">Mai</option>
+    <option value="5">Juin</option>
+    <option value="6">Juillet</option>
+    <option value="7">Août</option>
+    <option value="8">Septembre</option>
+    <option value="9">Octobre</option>
+    <option value="10">Novembre</option>
+    <option value="11">Décembre</option>
+  </select>
+
+  <select class="filter-sel" id="hist-annee" onchange="renderHistorique()"></select>
+</div>
+
+<div id="historique-list"></div>
 
   <!-- ÉQUIPES -->
   <div class="tab-content" id="content-equipes">
@@ -715,6 +761,19 @@ const PRODUITS_BIG = [
   {id:"p28",nom:"CABLE H07VK",       unite:"ML",         prix:0.35},
 ];
 
+  const AGENCES = ["Nantes", "Lyon", "Metz"];
+
+const EQ_AGENCE = {
+  "eq-nicolas": "Nantes",
+  "eq-anthony": "Lyon",
+  "eq-alain": "Lyon",
+  "eq-geoffroy": "Metz",
+  "eq-marchal": "Metz"
+};
+
+let currentStockAgence = "global";
+let stockMouvements = [];
+  
 // ── STATE ──
 let currentUser = null;
 let equipes = JSON.parse(localStorage.getItem("big_equipes") || "null") || EQ_DEFAULT;
@@ -804,12 +863,19 @@ function initApp() {
   buildEqSelect();
   buildTeamChips();
   buildEquipesGrid();
+  populateHistoriqueFilters();
   populateAnalyseEqFilter();
   populateStatsMths();
- Promise.all([loadChantiers(), loadBonsSupabase()]).then(function() {
+ Promise.all([
+  loadChantiers(),
+  loadBonsSupabase(),
+  loadStockMouvements()
+]).then(function() {
   renderPlanning();
   renderStats();
   renderAnalyse();
+  renderStockTable();
+  renderHistorique();
 });
 loadClients();
 }
@@ -1778,45 +1844,120 @@ function getTheo(pid) {
   var s = stocksData[pid] || {init:0, entrees:0, sorties:0, retours:0};
   return s.init + s.entrees - s.sorties + s.retours;
 }
+function getAgenceForEquipe(eqId) {
+  return EQ_AGENCE[eqId] || "Metz";
+}
 
+function getProduitById(pid) {
+  return PRODUITS_BIG.find(function(p) { return p.id === pid; }) || null;
+}
+
+function makeId(prefix) {
+  return prefix + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+}
+
+async function insertStockMouvement(mv) {
+  try {
+    var r = await fetch(SB_URL + "/rest/v1/stock_mouvements", {
+      method: "POST",
+      headers: Object.assign(sbH(true), {"Prefer": "resolution=merge-duplicates,return=minimal"}),
+      body: JSON.stringify(mv)
+    });
+
+    if (!r.ok && r.status !== 201 && r.status !== 204) {
+      console.error("insertStockMouvement:", r.status, await r.text());
+      return false;
+    }
+
+    return true;
+  } catch(e) {
+    console.error("insertStockMouvement:", e);
+    return false;
+  }
+}
+
+async function loadStockMouvements() {
+  try {
+    var r = await fetch(
+      SB_URL + "/rest/v1/stock_mouvements?order=created_at.desc&limit=10000",
+      {headers: sbH()}
+    );
+
+    if (r.ok) {
+      stockMouvements = await r.json();
+    } else {
+      console.error("loadStockMouvements:", r.status, await r.text());
+      stockMouvements = [];
+    }
+  } catch(e) {
+    console.error("loadStockMouvements:", e);
+    stockMouvements = [];
+  }
+}
+
+function signedQty(mv) {
+  var q = parseFloat(mv.qte) || 0;
+
+  if (mv.type_mouvement === "entree") return q;
+  if (mv.type_mouvement === "retour_chantier") return q;
+  if (mv.type_mouvement === "transfert_entree") return q;
+  if (mv.type_mouvement === "ajustement") return q;
+
+  if (mv.type_mouvement === "sortie_chantier") return -q;
+  if (mv.type_mouvement === "transfert_sortie") return -q;
+  if (mv.type_mouvement === "perte") return -q;
+
+  return 0;
+}
+
+function getStockAgenceProduit(pid, agence) {
+  return stockMouvements
+    .filter(function(mv) {
+      if (mv.produit_id !== pid) return false;
+      if (agence !== "global" && mv.agence !== agence) return false;
+      return true;
+    })
+    .reduce(function(sum, mv) {
+      return sum + signedQty(mv);
+    }, 0);
+}
 function renderStockTable() {
   var tbody = document.getElementById("stock-tbody");
   if (!tbody) return;
-  var html = "", totalVal = 0;
+
+  var html = "";
+  var totalVal = 0;
+  var agence = currentStockAgence || "global";
+
   PRODUITS_BIG.forEach(function(p, i) {
-    var s = stocksData[p.id] || {init:0, entrees:0, sorties:0, retours:0};
-    var theo = getTheo(p.id);
+    var theo = getStockAgenceProduit(p.id, agence);
     var val = Math.max(0, theo) * p.prix;
     totalVal += val;
+
     var alerte = theo <= 0 ? "RUPTURE" : (theo <= 3 ? "Bas" : "OK");
     var alerteColor = theo <= 0 ? "#c0392b" : (theo <= 3 ? "#c47a1a" : "#1a8c4a");
     var bg = i % 2 ? "background:var(--light);" : "";
+
     html += '<tr style="' + bg + 'border-top:1px solid var(--light3)">'
       + '<td style="padding:6px 10px;font-weight:700">' + p.nom + '</td>'
       + '<td style="padding:6px 10px;text-align:center;color:var(--text3)">' + p.unite + '</td>'
-      + '<td style="padding:6px 10px;text-align:center"><input type="number" min="0" value="' + (s.init||0) + '"'
-      + ' onchange="updateStockInit(\'' + p.id + '\',this.value)"'
-      + ' style="width:60px;padding:3px;border:1.5px solid var(--light3);text-align:center;font-size:11px"/></td>'
-      + '<td style="padding:6px 10px;text-align:center;color:#1a8c4a;font-weight:700">' + (s.entrees||0) + '</td>'
-      + '<td style="padding:6px 10px;text-align:center;color:#c0392b;font-weight:700">' + (s.sorties||0) + '</td>'
-      + '<td style="padding:6px 10px;text-align:center;color:#1a6fc4;font-weight:700">' + (s.retours||0) + '</td>'
-      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:' + (theo<=0?"#c0392b":theo<=3?"#c47a1a":"var(--text)") + '">' + theo + '</td>'
-      + '<td style="padding:6px 10px;text-align:center;font-weight:700;color:#1a8c4a">' + val.toFixed(2) + ' EUR</td>'
-      + '<td style="padding:6px 10px;text-align:center;font-size:11px;color:' + alerteColor + '">' + alerte + '</td>'
+      + '<td style="padding:6px 10px;text-align:center">—</td>'
+      + '<td style="padding:6px 10px;text-align:center">—</td>'
+      + '<td style="padding:6px 10px;text-align:center">—</td>'
+      + '<td style="padding:6px 10px;text-align:center">—</td>'
+      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#e6c300">' + theo.toFixed(2).replace(".00","") + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#1a8c4a">' + fmtEur(val) + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;font-weight:700;color:' + alerteColor + '">' + alerte + '</td>'
       + '</tr>';
   });
+
+  html += '<tr style="background:var(--dark2);color:#fff;font-weight:800">'
+    + '<td colspan="7" style="padding:8px 10px;text-align:right">VALEUR STOCK ' + agence.toUpperCase() + '</td>'
+    + '<td style="padding:8px 10px;text-align:center;color:#4ade80">' + fmtEur(totalVal) + '</td>'
+    + '<td></td>'
+    + '</tr>';
+
   tbody.innerHTML = html;
-  var tbl = document.getElementById("stock-table");
-  if (tbl) {
-    var ef = tbl.querySelector("tfoot");
-    if (ef) ef.remove();
-    var tf = document.createElement("tfoot");
-    tf.innerHTML = '<tr style="background:var(--dark2);color:#fff;font-weight:700">'
-      + '<td colspan="7" style="padding:8px 10px;font-family:\'Barlow Condensed\',sans-serif;text-transform:uppercase">Total valorise</td>'
-      + '<td style="padding:8px 10px;text-align:center;color:#e6c300">' + totalVal.toFixed(2) + ' EUR</td>'
-      + '<td></td></tr>';
-    tbl.appendChild(tf);
-  }
 }
 
 function updateStockInit(pid, val) {
@@ -1825,19 +1966,131 @@ function updateStockInit(pid, val) {
   saveStocks(); renderStockTable();
 }
 
-function openModalEntreeStock() {
+async function openModalEntreeStock() {
+  var agence = prompt("Agence ? Nantes / Lyon / Metz", currentStockAgence !== "global" ? currentStockAgence : "Metz");
+  if (!agence || AGENCES.indexOf(agence) < 0) {
+    toast("Agence invalide", "error");
+    return;
+  }
+
   var qty = prompt("Entrez: NOM_PRODUIT QUANTITE (ex: SPALL 5)");
   if (!qty) return;
+
   var parts = qty.trim().split(/\s+/);
   var qnum = parseFloat(parts[parts.length - 1]);
   var nomParts = parts.slice(0, -1).join(" ").toUpperCase();
-  var p = PRODUITS_BIG.find(function(x) { return x.nom.indexOf(nomParts) >= 0 || nomParts.indexOf(x.nom) >= 0; });
-  if (!p || isNaN(qnum)) { toast("Produit non trouve ou quantite invalide", "error"); return; }
-  if (!stocksData[p.id]) stocksData[p.id] = {init:0, entrees:0, sorties:0, retours:0};
-  stocksData[p.id].entrees += qnum;
-  mouvements.unshift({date: new Date().toISOString(), type:"entree", produit:p.id, nom:p.nom, qte:qnum, user: currentUser ? currentUser.name : ""});
-  saveStocks(); saveBons(); renderStockTable(); renderHistorique();
-  toast("+" + qnum + " " + p.unite + " " + p.nom, "success");
+
+  var p = PRODUITS_BIG.find(function(x) {
+    return x.nom.indexOf(nomParts) >= 0 || nomParts.indexOf(x.nom) >= 0;
+  });
+
+  if (!p || isNaN(qnum) || qnum <= 0) {
+    toast("Produit non trouvé ou quantité invalide", "error");
+    return;
+  }
+
+  var mv = {
+    id: makeId("mvt-entree"),
+    created_at: new Date().toISOString(),
+    produit_id: p.id,
+    produit_nom: p.nom,
+    unite: p.unite,
+    agence: agence,
+    type_mouvement: "entree",
+    qte: qnum,
+    commentaire: "Entrée stock manuelle",
+    created_by: currentUser ? currentUser.name : ""
+  };
+
+  var ok = await insertStockMouvement(mv);
+  if (ok) {
+    stockMouvements.unshift(mv);
+    renderStockTable();
+    renderHistorique();
+    toast("Entrée stock ajoutée", "success");
+  } else {
+    toast("Erreur enregistrement entrée stock", "error");
+  }
+}
+
+  async function openModalTransfertAgence() {
+  var source = prompt("Agence source ? Nantes / Lyon / Metz", "Metz");
+  if (!source || AGENCES.indexOf(source) < 0) {
+    toast("Agence source invalide", "error");
+    return;
+  }
+
+  var dest = prompt("Agence destination ? Nantes / Lyon / Metz", source === "Metz" ? "Lyon" : "Metz");
+  if (!dest || AGENCES.indexOf(dest) < 0 || dest === source) {
+    toast("Agence destination invalide", "error");
+    return;
+  }
+
+  var qty = prompt("Entrez: NOM_PRODUIT QUANTITE (ex: SPALL 5)");
+  if (!qty) return;
+
+  var parts = qty.trim().split(/\s+/);
+  var qnum = parseFloat(parts[parts.length - 1]);
+  var nomParts = parts.slice(0, -1).join(" ").toUpperCase();
+
+  var p = PRODUITS_BIG.find(function(x) {
+    return x.nom.indexOf(nomParts) >= 0 || nomParts.indexOf(x.nom) >= 0;
+  });
+
+  if (!p || isNaN(qnum) || qnum <= 0) {
+    toast("Produit non trouvé ou quantité invalide", "error");
+    return;
+  }
+
+  var stockSource = getStockAgenceProduit(p.id, source);
+  if (stockSource < qnum) {
+    if (!confirm("Stock source insuffisant (" + stockSource + "). Continuer quand même ?")) return;
+  }
+
+  var transfertId = makeId("transfert");
+
+  var mvSortie = {
+    id: transfertId + "-sortie",
+    created_at: new Date().toISOString(),
+    produit_id: p.id,
+    produit_nom: p.nom,
+    unite: p.unite,
+    agence: source,
+    type_mouvement: "transfert_sortie",
+    qte: qnum,
+    agence_source: source,
+    agence_destination: dest,
+    commentaire: "Transfert vers " + dest,
+    created_by: currentUser ? currentUser.name : ""
+  };
+
+  var mvEntree = {
+    id: transfertId + "-entree",
+    created_at: new Date().toISOString(),
+    produit_id: p.id,
+    produit_nom: p.nom,
+    unite: p.unite,
+    agence: dest,
+    type_mouvement: "transfert_entree",
+    qte: qnum,
+    agence_source: source,
+    agence_destination: dest,
+    commentaire: "Transfert depuis " + source,
+    created_by: currentUser ? currentUser.name : ""
+  };
+
+  var ok1 = await insertStockMouvement(mvSortie);
+  var ok2 = await insertStockMouvement(mvEntree);
+
+  if (ok1 && ok2) {
+    stockMouvements.unshift(mvEntree);
+    stockMouvements.unshift(mvSortie);
+    renderStockTable();
+    renderHistorique();
+    toast("Transfert agence enregistré", "success");
+  } else {
+    toast("Erreur transfert agence", "error");
+  }
 }
 
 function loadBonsDropdowns() {
@@ -1960,24 +2213,74 @@ function validerBonRetour() {
 function renderHistorique() {
   var cont = document.getElementById("historique-list");
   if (!cont) return;
-  if (!mouvements.length) { cont.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px">Aucun mouvement</div>'; return; }
-  var typeLabels = {entree:"Entree stock", sortie:"Sortie chantier", retour:"Retour chantier", correction:"Correction"};
-  var typeColors = {entree:"#1a8c4a", sortie:"#c0392b", retour:"#1a6fc4", correction:"#c47a1a"};
+
+  var agence = (document.getElementById("hist-agence") || {value:"all"}).value;
+  var type = (document.getElementById("hist-type") || {value:"all"}).value;
+  var produit = (document.getElementById("hist-produit") || {value:"all"}).value;
+  var mois = (document.getElementById("hist-mois") || {value:"all"}).value;
+  var annee = (document.getElementById("hist-annee") || {value:"all"}).value;
+
+  var data = stockMouvements.filter(function(mv) {
+    var d = new Date(mv.created_at || mv.date);
+
+    if (agence !== "all" && mv.agence !== agence) return false;
+    if (type !== "all" && mv.type_mouvement !== type) return false;
+    if (produit !== "all" && mv.produit_id !== produit) return false;
+    if (mois !== "all" && d.getMonth() !== parseInt(mois, 10)) return false;
+    if (annee !== "all" && d.getFullYear() !== parseInt(annee, 10)) return false;
+
+    return true;
+  });
+
+  if (!data.length) {
+    cont.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px">Aucun mouvement</div>';
+    return;
+  }
+
+  var typeLabels = {
+    entree: "Entrée stock",
+    sortie_chantier: "Sortie chantier",
+    retour_chantier: "Retour chantier",
+    transfert_sortie: "Transfert sortant",
+    transfert_entree: "Transfert entrant",
+    perte: "Perte",
+    ajustement: "Ajustement inventaire"
+  };
+
+  var typeColors = {
+    entree: "#1a8c4a",
+    retour_chantier: "#1a6fc4",
+    transfert_entree: "#1a8c4a",
+    sortie_chantier: "#c0392b",
+    transfert_sortie: "#c47a1a",
+    perte: "#c0392b",
+    ajustement: "#7a1ac4"
+  };
+
   var html = "";
-  mouvements.slice(0, 100).forEach(function(mv) {
-    var d = new Date(mv.date).toLocaleString("fr-FR", {day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"});
-    var ch = chantiers.find(function(c) { return c.id === mv.chantier; });
-    var color = typeColors[mv.type] || "#888";
-    var p = PRODUITS_BIG.find(function(x) { return x.id === mv.produit; });
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--light3)">'
-      + '<span style="font-size:10px;padding:2px 7px;background:' + color + '18;color:' + color + ';font-weight:700;white-space:nowrap">' + (typeLabels[mv.type]||mv.type) + '</span>'
-      + '<span style="font-weight:700;font-size:11px;flex:1">' + mv.nom + '</span>'
-      + '<span style="font-size:11px;font-weight:700;color:' + (mv.type==="retour"?"#1a6fc4":mv.type==="entree"?"#1a8c4a":"#c0392b") + '">'
-      + (mv.type==="sortie"?"-":"+") + mv.qte + " " + (p ? p.unite : "") + '</span>'
-      + (ch ? '<span style="font-size:10px;color:var(--text3)">' + ch.client + '</span>' : "")
-      + '<span style="font-size:10px;color:var(--text3);white-space:nowrap">' + d + '</span>'
+
+  data.slice(0, 300).forEach(function(mv) {
+    var d = new Date(mv.created_at || mv.date).toLocaleString("fr-FR", {
+      day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit"
+    });
+
+    var color = typeColors[mv.type_mouvement] || "#888";
+    var sign = signedQty(mv) >= 0 ? "+" : "-";
+
+    html += '<div style="background:#fff;border-left:3px solid ' + color + ';padding:8px 10px;margin-bottom:5px;border-bottom:1px solid var(--light3)">'
+      + '<div style="display:flex;justify-content:space-between;gap:8px">'
+      + '<div style="font-weight:800;font-size:11px">' + (typeLabels[mv.type_mouvement] || mv.type_mouvement) + ' — ' + (mv.produit_nom || mv.produit_id) + '</div>'
+      + '<div style="font-size:10px;color:var(--text3)">' + d + '</div>'
+      + '</div>'
+      + '<div style="font-size:11px;margin-top:3px">'
+      + '<strong>' + mv.agence + '</strong> · ' + sign + Math.abs(parseFloat(mv.qte) || 0) + ' ' + (mv.unite || '')
+      + (mv.chantier_nom ? ' · Chantier : ' + mv.chantier_nom : '')
+      + (mv.agence_source && mv.agence_destination ? ' · ' + mv.agence_source + ' → ' + mv.agence_destination : '')
+      + '</div>'
+      + (mv.commentaire ? '<div style="font-size:10px;color:var(--text3);margin-top:3px">' + mv.commentaire + '</div>' : '')
       + '</div>';
   });
+
   cont.innerHTML = html;
 }
 
@@ -1993,7 +2296,26 @@ function selStk(el) {
   if (stk === "retour")     loadBonsDropdowns();
   if (stk === "historique") renderHistorique();
 }
+  
+function populateHistoriqueFilters() {
+  var hp = document.getElementById("hist-produit");
+  if (hp) {
+    hp.innerHTML = '<option value="all">Tous produits</option>' +
+      PRODUITS_BIG.map(function(p) {
+        return '<option value="' + p.id + '">' + p.nom + '</option>';
+      }).join("");
+  }
 
+  var hy = document.getElementById("hist-annee");
+  if (hy) {
+    var y = new Date().getFullYear();
+    var html = '<option value="all">Toutes années</option>';
+    for (var i = y - 3; i <= y + 1; i++) {
+      html += '<option value="' + i + '"' + (i === y ? " selected" : "") + '>' + i + '</option>';
+    }
+    hy.innerHTML = html;
+  }
+}
 // ── ANALYSE CHANTIER ──
 function selCA(el) {
   document.querySelectorAll(".ca-btn").forEach(function(b) { b.classList.remove("active"); });
