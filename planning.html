@@ -675,6 +675,23 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
         <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase">Stock théorique actuel</div>
 
         <select class="filter-sel" id="stock-agence-filter" onchange="currentStockAgence=this.value;renderStockTable();renderHistorique();">
+          <select class="filter-sel" id="stock-mois-filter" onchange="renderStockTable()">
+  <option value="all">Tous mois</option>
+  <option value="0">Janvier</option>
+  <option value="1">Février</option>
+  <option value="2">Mars</option>
+  <option value="3">Avril</option>
+  <option value="4">Mai</option>
+  <option value="5">Juin</option>
+  <option value="6">Juillet</option>
+  <option value="7">Août</option>
+  <option value="8">Septembre</option>
+  <option value="9">Octobre</option>
+  <option value="10">Novembre</option>
+  <option value="11">Décembre</option>
+</select>
+
+<select class="filter-sel" id="stock-annee-filter" onchange="renderStockTable()"></select>
           <option value="global">Global</option>
           <option value="Nantes">Nantes</option>
           <option value="Ternay">Ternay</option>
@@ -1246,6 +1263,7 @@ function initApp() {
   buildEquipesGrid();
   if (typeof populateHistoriqueFilters === "function") {
   populateHistoriqueFilters();
+    populateStockYearFilter();
 }
   populateAnalyseEqFilter();
   populateStatsMths();
@@ -2374,6 +2392,77 @@ function getStockAgenceProduit(pid, agence) {
       return sum + signedQty(mv);
     }, 0);
 }
+  function mouvementInStockPeriod(mv) {
+  var mois = (document.getElementById("stock-mois-filter") || {value:"all"}).value;
+  var annee = (document.getElementById("stock-annee-filter") || {value:"all"}).value;
+
+  var d = new Date(mv.created_at || mv.date);
+  if (isNaN(d.getTime())) return false;
+
+  if (mois !== "all" && d.getMonth() !== parseInt(mois, 10)) return false;
+  if (annee !== "all" && d.getFullYear() !== parseInt(annee, 10)) return false;
+
+  return true;
+}
+
+function getStockDetailsProduit(pid, agence) {
+  var details = {
+    init: 0,
+    entrees: 0,
+    sorties: 0,
+    retours: 0,
+    transfertsIn: 0,
+    transfertsOut: 0,
+    pertes: 0,
+    ajustements: 0,
+    theo: 0
+  };
+
+  stockMouvements.forEach(function(mv) {
+    if (mv.produit_id !== pid) return;
+
+    var mvAgence = getMouvementAgence(mv);
+    if (agence !== "global" && mvAgence !== agence) return;
+
+    // Stock théorique global jusqu'à aujourd'hui
+    details.theo += signedQty(mv);
+
+    // Détail uniquement sur le mois/année sélectionné
+    if (!mouvementInStockPeriod(mv)) return;
+
+    var q = parseFloat(mv.qte) || 0;
+
+    if (mv.type_mouvement === "entree") details.entrees += q;
+    if (mv.type_mouvement === "retour_chantier") details.retours += q;
+    if (mv.type_mouvement === "transfert_entree") details.transfertsIn += q;
+
+    if (mv.type_mouvement === "sortie_chantier") details.sorties += q;
+    if (mv.type_mouvement === "transfert_sortie") details.transfertsOut += q;
+    if (mv.type_mouvement === "perte") details.pertes += q;
+    if (mv.type_mouvement === "ajustement") details.ajustements += q;
+  });
+
+  return details;
+}
+
+function populateStockYearFilter() {
+  var sel = document.getElementById("stock-annee-filter");
+  if (!sel) return;
+
+  var current = new Date().getFullYear();
+  var html = '<option value="all">Toutes années</option>';
+
+  for (var y = current - 3; y <= current + 1; y++) {
+    html += '<option value="' + y + '"' + (y === current ? " selected" : "") + '>' + y + '</option>';
+  }
+
+  sel.innerHTML = html;
+}
+  function fmtQty(n) {
+  n = parseFloat(n) || 0;
+  if (Math.abs(n) < 0.0001) return "—";
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, "");
+}
 function renderStockTable() {
   var tbody = document.getElementById("stock-tbody");
   if (!tbody) return;
@@ -2383,9 +2472,15 @@ function renderStockTable() {
   var agence = currentStockAgence || "global";
 
   PRODUITS_BIG.forEach(function(p, i) {
-    var theo = getStockAgenceProduit(p.id, agence);
+    var d = getStockDetailsProduit(p.id, agence);
+
+    var theo = d.theo;
     var val = theo * p.prix;
     totalVal += val;
+
+    var entrees = d.entrees + d.transfertsIn + d.ajustements;
+    var sorties = d.sorties + d.transfertsOut + d.pertes;
+    var retours = d.retours;
 
     var alerte = theo <= 0 ? "RUPTURE" : (theo <= 3 ? "Bas" : "OK");
     var alerteColor = theo <= 0 ? "#c0392b" : (theo <= 3 ? "#c47a1a" : "#1a8c4a");
@@ -2395,10 +2490,10 @@ function renderStockTable() {
       + '<td style="padding:6px 10px;font-weight:700">' + p.nom + '</td>'
       + '<td style="padding:6px 10px;text-align:center;color:var(--text3)">' + p.unite + '</td>'
       + '<td style="padding:6px 10px;text-align:center">—</td>'
-      + '<td style="padding:6px 10px;text-align:center">—</td>'
-      + '<td style="padding:6px 10px;text-align:center">—</td>'
-      + '<td style="padding:6px 10px;text-align:center">—</td>'
-      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#111">' + theo.toFixed(2).replace(".00","") + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;color:#1a8c4a;font-weight:800">' + fmtQty(entrees) + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;color:#c0392b;font-weight:800">' + fmtQty(sorties) + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;color:#1a6fc4;font-weight:800">' + fmtQty(retours) + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#111">' + fmtQty(theo) + '</td>'
       + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#1a8c4a">' + fmtEur(val) + '</td>'
       + '<td style="padding:6px 10px;text-align:center;font-weight:700;color:' + alerteColor + '">' + alerte + '</td>'
       + '</tr>';
@@ -2412,7 +2507,6 @@ function renderStockTable() {
 
   tbody.innerHTML = html;
 }
-
 function updateStockInit(pid, val) {
   if (!stocksData[pid]) stocksData[pid] = {init:0, entrees:0, sorties:0, retours:0};
   stocksData[pid].init = parseFloat(val) || 0;
