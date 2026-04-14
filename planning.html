@@ -842,6 +842,30 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
 .stats-finance-grid .kpi-lbl {
   white-space: nowrap;
 }
+  .stats-synthese-card {
+  grid-column: span 2;
+  min-width: 950px;
+}
+
+.stats-finance-grid {
+  grid-template-columns: repeat(5, minmax(170px, 1fr)) !important;
+}
+
+.stats-finance-grid .kpi {
+  overflow: visible !important;
+}
+
+.stats-finance-grid .kpi-val {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  font-size: 19px !important;
+}
+
+.stats-finance-grid .kpi-lbl {
+  white-space: nowrap !important;
+  font-size: 11px !important;
+}
 /* ── TOAST ── */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
 #toast.show{transform:translateY(0);opacity:1}
@@ -2863,8 +2887,8 @@ function renderStats() {
   var monthly = getMonthlyFinanceStats();
 
   grid.innerHTML =
-    '<div class="stat-card">' +
-      '<div class="stat-card-title">Synthèse période</div>' +
+'<div class="stat-card stats-synthese-card">' +
+  '<div class="stat-card-title">Synthèse période</div>' +
       '<div class="kpi-grid">' +
         '<div class="kpi"><div class="kpi-val">' + chs.length + '</div><div class="kpi-lbl">Chantiers</div></div>' +
         '<div class="kpi"><div class="kpi-val">' + totalJours + '</div><div class="kpi-lbl">Jours</div></div>' +
