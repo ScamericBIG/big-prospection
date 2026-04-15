@@ -1445,8 +1445,22 @@ function buildDetailHTML(site){
       <div class="info-cell"><div class="info-label">Construction</div><div class="info-value">${site.annee||'—'}</div></div>
       <div class="info-cell"><div class="info-label">Décennale</div><div class="info-value" style="color:${hd?'#c0392b':'#1a8c4a'}">${hd?'Hors garantie':'Couverte'}</div></div>
       <div class="info-cell"><div class="info-label">Groupe</div><div class="info-value" style="font-size:11px">${site.groupe||'—'}</div></div>
-      <div class="info-cell" style="grid-column:1/-1"><div class="info-label">Adresse</div><div class="info-value" style="font-size:11px">${site.ville||'—'} · Dept. ${site.dept||'—'}</div></div>
-    </div>
+      <div class="info-cell">
+  <div class="info-label">Adresse</div>
+  <div class="info-value">${site.adresse || '—'}</div>
+</div>
+<div class="info-cell">
+  <div class="info-label">Ville</div>
+  <div class="info-value">${site.ville || '—'}</div>
+</div>
+<div class="info-cell">
+  <div class="info-label">CP</div>
+  <div class="info-value">${site.cp || '—'}</div>
+</div>
+<div class="info-cell">
+  <div class="info-label">Dépt.</div>
+  <div class="info-value">${site.dept || '—'}</div>
+</div>
   </div>
 
   <div class="dp-section">
@@ -2033,6 +2047,8 @@ async function ajouterSite(){
     const props = d.features[0].properties;
     const dept = (props.postcode || '').substring(0, 2);
     const ville = props.city || props.label || '';
+    const cp = props.postcode || '';
+    const adresseClean = props.name || adresse;
     const id = `manual-${Date.now()}`;
     const score = 50;
     const prio = 'B';
@@ -2045,6 +2061,8 @@ async function ajouterSite(){
       cat: cat,
       ville: ville,
       dept: dept,
+      cp: cp,
+      adresse: adresseClean,
       sector: sector,
       lat: parseFloat(lat.toFixed(6)),
       lng: parseFloat(lng.toFixed(6)),
