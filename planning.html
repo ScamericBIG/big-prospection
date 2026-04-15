@@ -2002,9 +2002,14 @@ function getSiteDisplayLabel(site) {
 }
 
 function getSiteAdressePlanning(site) {
-  if (site.adresse && site.ville) return site.adresse + ", " + site.ville + (site.dept ? " (" + site.dept + ")" : "");
-  if (site.adresse) return site.adresse;
-  if (site.ville) return site.ville + (site.dept ? " (" + site.dept + ")" : "");
+  var ligne1 = site.adresse || "";
+  var ligne2 = [site.cp || "", site.ville || ""].join(" ").trim();
+
+  if (ligne1 && ligne2) return ligne1 + ", " + ligne2;
+  if (ligne1) return ligne1;
+  if (ligne2) return ligne2;
+
+  if (site.ville && site.dept) return site.ville + " (" + site.dept + ")";
   return "";
 }
 
@@ -2075,14 +2080,14 @@ function refreshClientDatalist(query) {
     }) || null;
   }
 
-  if (site) {
-    siteIdEl.value = site.id || "";
-    if (adrEl && !adrEl.value.trim()) {
-      adrEl.value = getSiteAdressePlanning(site);
-    }
-  } else {
-    siteIdEl.value = "";
-  }
+ if (site) {
+   siteIdEl.value = site.id || "";
+   if (adrEl) {
+     adrEl.value = getSiteAdressePlanning(site);
+   }
+ } else {
+   siteIdEl.value = "";
+}
 }
 
 // ── NAVIGATION ──
