@@ -1222,6 +1222,7 @@ function bindAuthEvents(){
 }
 
 bindAuthEvents();
+bindAuthEvents();
 document.getElementById('auth-password').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 function doLogout(){
@@ -1429,7 +1430,7 @@ function switchSector(sector){
 
 // ── DÉTAIL SITE ──
 function openDetail(site){
-  document.getElementById('dp-name').textContent = site.nom;
+  document.getElementById('dp-name').textContent = site.nom || '';
   document.getElementById('dp-loc').textContent = `${site.ville || ''} · ${site.naf_label || site.naf || ''} · Dept. ${site.dept || ''}`;
   document.getElementById('dp-body').innerHTML = buildDetailHTML(site);
   document.getElementById('detail-panel').classList.add('open');
@@ -1439,8 +1440,8 @@ function openDetail(site){
   }
 
   setTimeout(function(){
-    renderActivites(site.id);
-    renderRdvSite(site.id);
+    if(typeof renderActivites === 'function') renderActivites(site.id);
+    if(typeof renderRdvSite === 'function') renderRdvSite(site.id);
   }, 200);
 }
 
@@ -1790,52 +1791,6 @@ function rdvStatutColor(statut){
 }
 
 async function renderRdvSite(siteId){
-  const el = document.getElementById(`site-rdv-log-${siteId}`);
-  if(!el) return;
-
-  const rdvs = await chargerRdvSite(siteId);
-
-  if(!rdvs.length){
-    el.innerHTML = '<div style="font-size:11px;color:var(--text3)">Aucun rendez-vous pour ce site</div>';
-    return;
-  }
-
-  const ICONS = {
-    visite:'🏭',
-    appel:'📞',
-    devis:'📋',
-    suivi:'🔄',
-    relance:'📩'
-  };
-
-  el.innerHTML = rdvs.map(rdv => {
-    const d = rdv.date_rdv
-      ? new Date(rdv.date_rdv).toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric'})
-      : '—';
-
-    const color = rdvStatutColor(rdv.statut);
-
-    return `
-      <div class="site-rdv-item" onclick="ouvrirRdv(${JSON.stringify(rdv).replace(/"/g,'&quot;')})">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
-          <span style="font-size:15px">${ICONS[rdv.type] || '📅'}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;font-weight:800;color:var(--text)">
-              ${d}${rdv.heure ? ' · ' + rdv.heure : ''}
-            </div>
-            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">
-              ${rdv.type || 'RDV'}
-            </div>
-          </div>
-          <span style="font-size:10px;font-weight:800;padding:2px 6px;background:${color}22;color:${color}">
-            ${rdvStatutLabel(rdv.statut)}
-          </span>
-        </div>
-        ${rdv.notes ? `<div style="font-size:11px;color:var(--text2);line-height:1.4;border-top:1px solid var(--light3);padding-top:4px;margin-top:4px">${escapeHtml(rdv.notes)}</div>` : ''}
-      </div>
-    `;
-  }).join('');
-}
 
 // ── GPS ──
 async function corrigerGPS(id,nom,ville,dept){
@@ -2472,31 +2427,43 @@ function renderRdvList(){
 function openModalRdv(siteId){document.getElementById('rdv-site-display').textContent=siteId?allSitesCache.find(s=>s.id===siteId)?.nom||siteId:'Non spécifié';window._rdvSiteId=siteId;document.getElementById('modal-rdv').classList.add('open');}
 function closeModalRdv(){document.getElementById('modal-rdv').classList.remove('open');}
 async function sauvegarderRdv(){
-  const date=document.getElementById('rdv-date').value;
-  if(!date){showToast('Date obligatoire','error');return;}
-  const rdv={id:`rdv-${Date.now()}`,site_id:window._rdvSiteId,user_email:currentUser.email,user_name:currentUser.name,date_rdv:date,heure:document.getElementById('rdv-heure').value||null,type:document.getElementById('rdv-type').value,statut:document.getElementById('rdv-statut').value,notes:document.getElementById('rdv-notes').value.trim()||null};
-  const r=await fetch(`${SUPABASE_URL}/rest/v1/rendez_vous`,{method:'POST',headers:{...sbHeaders(true),"Prefer":"return=minimal"},body:JSON.stringify(rdv)});
-  if(r.ok){
-  allRdvCache.unshift(rdv);
+  const date = document.getElementById('rdv-date').value;
 
-  await ajouterActivite(
-    rdv.site_id,
-    rdv.type || 'rdv',
-    rdv.date_rdv,
-    'RDV ' + (rdv.statut || 'planifie') + ' — ' + (rdv.notes || '')
-  );
-
-  closeModalRdv();
-  renderRdvList();
-
-  if(rdv.site_id){
-    renderRdvSite(rdv.site_id);
-    renderActivites(rdv.site_id);
+  if(!date){
+    showToast('Date obligatoire','error');
+    return;
   }
 
-  showToast('RDV enregistré','success');
-}
-  else showToast('Erreur enregistrement','error');
+  const rdv = {
+    id: `rdv-${Date.now()}`,
+    site_id: window._rdvSiteId,
+    user_email: currentUser.email,
+    user_name: currentUser.name,
+    date_rdv: date,
+    heure: document.getElementById('rdv-heure').value || null,
+    type: document.getElementById('rdv-type').value,
+    statut: document.getElementById('rdv-statut').value,
+    notes: document.getElementById('rdv-notes').value.trim() || null
+  };
+
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rendez_vous`, {
+    method: 'POST',
+    headers: {...sbHeaders(true), "Prefer":"return=minimal"},
+    body: JSON.stringify(rdv)
+  });
+
+  if(r.ok){
+    allRdvCache.unshift(rdv);
+    closeModalRdv();
+    renderRdvList();
+    showToast('RDV enregistré','success');
+
+    if(rdv.site_id){
+      renderRdvSite(rdv.site_id);
+    }
+  } else {
+    showToast('Erreur enregistrement','error');
+  }
 }
 function ouvrirRdv(rdv){const site=allSitesCache.find(s=>s.id===rdv.site_id);if(site)openDetail(site);openModalRdv(rdv.site_id);}
 
