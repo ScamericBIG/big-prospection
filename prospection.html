@@ -2619,7 +2619,7 @@ if(_savedUser){
 
     var email = emailEl ? emailEl.value.trim().toLowerCase() : "";
     var pass  = passEl ? passEl.value : "";
-    var user  = window.USERS ? USERS[email] : null;
+    var user = (typeof USERS !== "undefined") ? USERS[email] : null;
 
     if (user && pass.length >= 4) {
       window.currentUser = Object.assign({ email: email }, user);
