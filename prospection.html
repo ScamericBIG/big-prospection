@@ -212,6 +212,25 @@ select.input-field{cursor:pointer}
 .map-ctrl-btn:hover{border-color:var(--blue);color:var(--blue)}
 .map-ctrl-btn.active{background:var(--blue);color:var(--white);border-color:var(--blue)}
 
+.comment-item {
+  background: #fff;
+  padding: 7px 0;
+}
+
+.site-rdv-item {
+  border-left: 3px solid var(--blue);
+  background: var(--light);
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.site-rdv-item:hover {
+  background: var(--blue-light);
+  border-left-color: var(--blue);
+}
+  
 /* TOAST */
 #toast{position:fixed;bottom:16px;right:16px;background:var(--dark);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:var(--white);font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:270px}
 #toast.show{transform:translateY(0);opacity:1}
@@ -1372,12 +1391,19 @@ function switchSector(sector){
 
 // ── DÉTAIL SITE ──
 function openDetail(site){
-  document.getElementById('dp-name').textContent=site.nom;
-  document.getElementById('dp-loc').textContent=`${site.ville||''} · ${site.naf_label||site.naf||''} · Dept. ${site.dept||''}`;
-  document.getElementById('dp-body').innerHTML=buildDetailHTML(site);
+  document.getElementById('dp-name').textContent = site.nom;
+  document.getElementById('dp-loc').textContent = `${site.ville || ''} · ${site.naf_label || site.naf || ''} · Dept. ${site.dept || ''}`;
+  document.getElementById('dp-body').innerHTML = buildDetailHTML(site);
   document.getElementById('detail-panel').classList.add('open');
-  if(map&&site.lat&&site.lng)map.panTo([site.lat,site.lng],{animate:true});
-  setTimeout(()=>renderActivites(site.id),200);
+
+  if (map && site.lat && site.lng) {
+    map.panTo([site.lat, site.lng], { animate: true });
+  }
+
+  setTimeout(function() {
+    renderActivites(site.id);
+    renderRdvSite(site.id);
+  }, 200);
 }
 
 function closeDetail(){document.getElementById('detail-panel').classList.remove('open');}
@@ -1517,17 +1543,38 @@ function buildDetailHTML(site){
     </div>
   </div>
 
-  <div class="dp-section">
-    <div class="dp-section-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>Notes & activité</span>
-    </div>
-    <textarea class="note-area" id="note-area-${site.id}" placeholder="Compte-rendu, remarque…"></textarea>
-    <button class="btn btn-secondary btn-sm btn-full" onclick="saveNote('${site.id}')" style="margin-bottom:9px">Enregistrer la note</button>
-    <div class="activity-log" id="activity-log-${site.id}"><div style="font-size:11px;color:var(--text3)">Chargement…</div></div>
+<div class="dp-section">
+  <div class="dp-section-title" style="display:flex;align-items:center;justify-content:space-between">
+    <span>💬 Commentaires du site</span>
   </div>
 
-  <div class="dp-section">
-    <div class="dp-section-title">Coordonnées GPS</div>
+  <textarea class="note-area" id="note-area-${site.id}" placeholder="Nouveau commentaire…"></textarea>
+
+  <button class="btn btn-secondary btn-sm btn-full" onclick="saveNote('${site.id}')" style="margin-bottom:9px">
+    + Ajouter le commentaire
+  </button>
+
+  <div class="activity-log" id="activity-log-${site.id}">
+    <div style="font-size:11px;color:var(--text3)">Chargement des commentaires…</div>
+  </div>
+</div>
+
+<div class="dp-section">
+  <div class="dp-section-title" style="display:flex;align-items:center;justify-content:space-between">
+    <span>📅 Historique des RDV</span>
+  </div>
+
+  <div id="site-rdv-log-${site.id}">
+    <div style="font-size:11px;color:var(--text3)">Chargement des rendez-vous…</div>
+  </div>
+
+  <button class="btn btn-primary btn-sm" onclick="openModalRdv('${site.id}')" style="width:100%;padding:10px;font-size:12px;font-weight:800;margin-top:8px">
+    📅 Ajouter un RDV pour ce site
+  </button>
+</div>
+
+<div class="dp-section">
+  <div class="dp-section-title">Coordonnées GPS</div>
     <div style="font-size:10px;display:flex;align-items:center;justify-content:space-between;gap:6px">
       <span id="gps-display-${site.id}">${site.lat?site.lat.toFixed(4)+'°N, '+site.lng.toFixed(4)+'°E':'Non renseigné'}</span>
       <button onclick="corrigerGPS('${site.id}','${(site.nom||'').replace(/'/g,'\\\'').replace(/"/g,'')}','${(site.ville||'').replace(/'/g,'\\\'').replace(/"/g,'')}','${site.dept||''}')"
@@ -1537,12 +1584,6 @@ function buildDetailHTML(site){
     </div>
     <div id="gps-status-${site.id}" style="font-size:10px;color:var(--text3);margin-top:2px"></div>
   </div>
-  <div class="dp-section">
-    <div class="dp-section-title">Planifier un rendez-vous</div>
-    <button class="btn btn-primary btn-sm" onclick="openModalRdv('${site.id}')" style="width:100%;padding:10px;font-size:12px;font-weight:800">
-      📅 Ajouter un RDV pour ce site
-    </button>
-  </div>`;
 }
 
 // ── CRUD SUPABASE ──
@@ -1621,10 +1662,15 @@ async function saveNote(id){
 // ── ACTIVITÉS ──
 async function chargerActivites(siteId){
   try{
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/activites?site_id=eq.${encodeURIComponent(siteId)}&order=created_at.desc&limit=20`,{headers:sbHeaders()});
-    if(!r.ok)return[];
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/activites?site_id=eq.${encodeURIComponent(siteId)}&type=eq.note&order=created_at.desc&limit=50`,
+      {headers:sbHeaders()}
+    );
+    if(!r.ok) return [];
     return await r.json();
-  }catch{return[];}
+  }catch(e){
+    return [];
+  }
 }
 
 async function ajouterActivite(siteId,type,dateRdv,contenu){
@@ -1643,20 +1689,113 @@ async function ajouterActivite(siteId,type,dateRdv,contenu){
 }
 
 async function renderActivites(siteId){
-  const logEl=document.getElementById(`activity-log-${siteId}`);
-  if(!logEl)return;
-  const acts=await chargerActivites(siteId);
-  const ICONS={visite:'🏭',appel:'📞',devis:'📋',suivi:'🔄',relance:'📩',note:'📝'};
-  if(!acts.length){logEl.innerHTML='<div style="font-size:11px;color:var(--text3)">Aucune activité</div>';return;}
-  logEl.innerHTML=acts.map(a=>{
-    const d=new Date(a.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    return`<div class="activity-item">
-      <div class="activity-bar"></div>
-      <div class="activity-text">
-        <span style="font-weight:700;margin-right:4px">${ICONS[a.type]||'•'} ${a.user_name}</span>${a.contenu||''}
+  const logEl = document.getElementById(`activity-log-${siteId}`);
+  if(!logEl) return;
+
+  const acts = await chargerActivites(siteId);
+
+  if(!acts.length){
+    logEl.innerHTML = '<div style="font-size:11px;color:var(--text3)">Aucun commentaire pour ce site</div>';
+    return;
+  }
+
+  logEl.innerHTML = acts.map(a => {
+    const d = new Date(a.created_at).toLocaleDateString('fr-FR', {
+      day:'2-digit',
+      month:'2-digit',
+      year:'numeric'
+    });
+
+    const h = new Date(a.created_at).toLocaleTimeString('fr-FR', {
+      hour:'2-digit',
+      minute:'2-digit'
+    });
+
+    return `
+      <div class="activity-item comment-item">
+        <div class="activity-bar"></div>
+        <div class="activity-text">
+          <div style="font-weight:800;color:var(--text);margin-bottom:2px">
+            📝 ${a.user_name || 'Utilisateur'} 
+            <span style="font-size:10px;color:var(--text3);font-weight:600">— ${d} à ${h}</span>
+          </div>
+          <div style="white-space:pre-wrap">${escapeHtml(a.contenu || '')}</div>
+        </div>
       </div>
-      <div class="activity-date">${d}</div>
-    </div>`;
+    `;
+  }).join('');
+}
+
+async function chargerRdvSite(siteId){
+  try{
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/rendez_vous?site_id=eq.${encodeURIComponent(siteId)}&order=date_rdv.desc,heure.desc&limit=50`,
+      {headers:sbHeaders()}
+    );
+    if(!r.ok) return [];
+    return await r.json();
+  }catch(e){
+    return [];
+  }
+}
+
+function rdvStatutLabel(statut){
+  if(statut === 'effectue') return 'Effectué';
+  if(statut === 'annule') return 'Annulé';
+  return 'Planifié';
+}
+
+function rdvStatutColor(statut){
+  if(statut === 'effectue') return '#1a8c4a';
+  if(statut === 'annule') return '#888';
+  return '#1a6fc4';
+}
+
+async function renderRdvSite(siteId){
+  const el = document.getElementById(`site-rdv-log-${siteId}`);
+  if(!el) return;
+
+  const rdvs = await chargerRdvSite(siteId);
+
+  if(!rdvs.length){
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3)">Aucun rendez-vous pour ce site</div>';
+    return;
+  }
+
+  const ICONS = {
+    visite:'🏭',
+    appel:'📞',
+    devis:'📋',
+    suivi:'🔄',
+    relance:'📩'
+  };
+
+  el.innerHTML = rdvs.map(rdv => {
+    const d = rdv.date_rdv
+      ? new Date(rdv.date_rdv).toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric'})
+      : '—';
+
+    const color = rdvStatutColor(rdv.statut);
+
+    return `
+      <div class="site-rdv-item" onclick="ouvrirRdv(${JSON.stringify(rdv).replace(/"/g,'&quot;')})">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">
+          <span style="font-size:15px">${ICONS[rdv.type] || '📅'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;color:var(--text)">
+              ${d}${rdv.heure ? ' · ' + rdv.heure : ''}
+            </div>
+            <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700">
+              ${rdv.type || 'RDV'}
+            </div>
+          </div>
+          <span style="font-size:10px;font-weight:800;padding:2px 6px;background:${color}22;color:${color}">
+            ${rdvStatutLabel(rdv.statut)}
+          </span>
+        </div>
+        ${rdv.notes ? `<div style="font-size:11px;color:var(--text2);line-height:1.4;border-top:1px solid var(--light3);padding-top:4px;margin-top:4px">${escapeHtml(rdv.notes)}</div>` : ''}
+      </div>
+    `;
   }).join('');
 }
 
@@ -2299,7 +2438,26 @@ async function sauvegarderRdv(){
   if(!date){showToast('Date obligatoire','error');return;}
   const rdv={id:`rdv-${Date.now()}`,site_id:window._rdvSiteId,user_email:currentUser.email,user_name:currentUser.name,date_rdv:date,heure:document.getElementById('rdv-heure').value||null,type:document.getElementById('rdv-type').value,statut:document.getElementById('rdv-statut').value,notes:document.getElementById('rdv-notes').value.trim()||null};
   const r=await fetch(`${SUPABASE_URL}/rest/v1/rendez_vous`,{method:'POST',headers:{...sbHeaders(true),"Prefer":"return=minimal"},body:JSON.stringify(rdv)});
-  if(r.ok){allRdvCache.unshift(rdv);closeModalRdv();renderRdvList();showToast('RDV enregistré','success');}
+  if(r.ok){
+  allRdvCache.unshift(rdv);
+
+  await ajouterActivite(
+    rdv.site_id,
+    rdv.type || 'rdv',
+    rdv.date_rdv,
+    'RDV ' + (rdv.statut || 'planifie') + ' — ' + (rdv.notes || '')
+  );
+
+  closeModalRdv();
+  renderRdvList();
+
+  if(rdv.site_id){
+    renderRdvSite(rdv.site_id);
+    renderActivites(rdv.site_id);
+  }
+
+  showToast('RDV enregistré','success');
+}
   else showToast('Erreur enregistrement','error');
 }
 function ouvrirRdv(rdv){const site=allSitesCache.find(s=>s.id===rdv.site_id);if(site)openDetail(site);openModalRdv(rdv.site_id);}
