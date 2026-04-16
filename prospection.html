@@ -2607,7 +2607,78 @@ if(_savedUser){
 }
 
 </script>
+<script>
+/* PATCH URGENCE LOGIN — ne dépend ni du onclick ni de auth-login-btn */
+(function() {
+  function forceLoginFromAuthCard(btn) {
+    var card = btn.closest(".auth-card") || document;
 
+    var emailEl = card.querySelector("#auth-email") || document.getElementById("auth-email");
+    var passEl  = card.querySelector("#auth-password") || document.getElementById("auth-password");
+    var errEl   = card.querySelector("#auth-err") || document.getElementById("auth-err");
+
+    var email = emailEl ? emailEl.value.trim().toLowerCase() : "";
+    var pass  = passEl ? passEl.value : "";
+    var user  = window.USERS ? USERS[email] : null;
+
+    if (user && pass.length >= 4) {
+      window.currentUser = Object.assign({ email: email }, user);
+      localStorage.setItem("big_user", JSON.stringify(window.currentUser));
+
+      var auth = document.getElementById("auth-screen");
+      var app = document.getElementById("app");
+      var userName = document.getElementById("user-name");
+
+      if (auth) auth.style.display = "none";
+      if (app) app.classList.add("visible");
+      if (userName) userName.textContent = window.currentUser.name || "";
+
+      if (typeof initApp === "function") {
+        try {
+          initApp();
+        } catch (e) {
+          console.error("initApp:", e);
+        }
+      }
+
+      return true;
+    }
+
+    if (errEl) {
+      errEl.style.display = "block";
+      setTimeout(function() {
+        errEl.style.display = "none";
+      }, 3000);
+    }
+
+    return false;
+  }
+
+  document.addEventListener("click", function(e) {
+    var btn = e.target.closest(".auth-btn");
+    if (!btn) return;
+
+    e.preventDefault();
+    forceLoginFromAuthCard(btn);
+  });
+
+  document.addEventListener("keydown", function(e) {
+    if (e.key !== "Enter") return;
+
+    var active = document.activeElement;
+    if (!active) return;
+
+    if (active.id === "auth-password" || active.id === "auth-email") {
+      var card = active.closest(".auth-card");
+      var btn = card ? card.querySelector(".auth-btn") : document.querySelector(".auth-btn");
+      if (btn) {
+        e.preventDefault();
+        forceLoginFromAuthCard(btn);
+      }
+    }
+  });
+})();
+</script>
 <div id="toast"></div>
 </body>
 </html>
