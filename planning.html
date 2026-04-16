@@ -1024,6 +1024,54 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
     <div class="tab" onclick="showTab('equipes')" id="tab-equipes">👷 Équipes</div>
   </div>
 
+  #planning-alerts-list {
+  display: none;
+  padding: 10px 14px;
+  background: #fff7e6;
+  border-bottom: 1px solid #f0c47a;
+  flex-shrink: 0;
+}
+
+.plan-alert-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #8a5a00;
+  margin-bottom: 6px;
+}
+
+.plan-alert-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plan-alert-item {
+  padding: 6px 9px;
+  background: #fff;
+  border-left: 3px solid #c47a1a;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+.plan-alert-item.sans-cmd {
+  border-left-color: #c0392b;
+}
+
+.plan-alert-item.date-ko {
+  border-left-color: #c47a1a;
+}
+
+.plan-alert-meta {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  margin-top: 2px;
+}
   <!-- PLANNING -->
   <div class="tab-content active" id="content-planning">
     <div id="plan-toolbar">
@@ -1051,6 +1099,9 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
         <div class="leg-item"><div class="leg-dot" style="background:#888"></div>Sans commande</div>
       </div>
     </div>
+    
+    <div id="planning-alerts-list"></div>
+    
     <div id="plan-wrap">
       <div id="plan-grid"></div>
       <div id="annual-grid" style="display:none"><div class="annual-wrap" id="annual-wrap"></div></div>
@@ -1286,6 +1337,7 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
         </select>
 
         <select class="filter-sel" id="hist-annee" onchange="renderHistorique()"></select>
+        <button class="btn-sm" onclick="renderHistoriqueProduits()">📦 Détail produits</button>
       </div>
 
       <div id="historique-list"></div>
@@ -1766,6 +1818,7 @@ function initApp() {
   renderAnalyse();
 if (typeof renderStockTable === "function") renderStockTable();
 if (typeof renderHistorique === "function") renderHistorique();
+if (typeof renderPlanningAlerts === "function") renderPlanningAlerts();
 });
 loadClients();
 }
@@ -2120,8 +2173,41 @@ function showTab(name) {
 }
 
 // ── PLANNING MENSUEL ──
+  function renderPlanningAlerts() {
+  var box = document.getElementById("planning-alerts-list");
+  if (!box) return;
+
+  var alertes = chantiers.filter(function(ch) {
+    return !ch.commande || !ch.date_ok;
+  }).sort(function(a, b) {
+    return new Date(a.date_debut || "2100-01-01") - new Date(b.date_debut || "2100-01-01");
+  });
+
+  if (!alertes.length) {
+    box.style.display = "none";
+    box.innerHTML = "";
+    return;
+  }
+
+  box.style.display = "block";
+
+  box.innerHTML =
+    '<div class="plan-alert-title">⚠ Chantiers à confirmer — ' + alertes.length + '</div>' +
+    '<div class="plan-alert-items">' +
+      alertes.map(function(ch) {
+        var cls = !ch.commande ? "sans-cmd" : "date-ko";
+        var label = !ch.commande ? "Sans commande" : "Date non confirmée";
+
+        return '<div class="plan-alert-item ' + cls + '" onclick="openDetail(\'' + ch.id + '\')">' +
+          ch.client +
+          '<span class="plan-alert-meta">' + label + ' · ' + fmtDate(ch.date_debut) + ' → ' + fmtDate(ch.date_fin) + '</span>' +
+        '</div>';
+      }).join("") +
+    '</div>';
+}
 function renderPlanning() {
   if (currentView === "year") { renderAnnuel(); return; }
+  renderPlanningAlerts();
 
   var nb = daysInMonth(currentY, currentM);
   var lbl = document.getElementById("month-label");
@@ -2698,6 +2784,23 @@ async function deleteCh() {
   }
 }
 
+function getMapsUrlFromAdresse(adresse) {
+  var q = String(adresse || "").trim();
+  if (!q) return "";
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+}
+
+function openChantierMaps(chId) {
+  var ch = chantiers.find(function(c) { return c.id === chId; });
+  if (!ch || !ch.adresse) {
+    toast("Adresse chantier manquante", "error");
+    return;
+  }
+
+  var url = getMapsUrlFromAdresse(ch.adresse);
+  if (url) window.open(url, "_blank");
+}
+  
 // ── DÉTAIL ──
 function openDetail(id) {
   var ch = chantiers.find(function(c) { return c.id === id; });
@@ -2720,6 +2823,7 @@ function openDetail(id) {
     + '<div style="font-size:16px;font-weight:800;font-family:\'Barlow Condensed\',sans-serif">' + ch.client + '</div>'
     + (ch.adresse ? '<div style="font-size:11px;color:var(--text2);margin-top:3px">📍 ' + ch.adresse + '</div>' : "")
     + (ch.ca     ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">CA : ' + ch.ca + '</div>' : "")
+    + (ch.adresse ? '<button class="btn-sm" style="margin-top:8px;border-color:var(--blue);color:var(--blue);background:#fff" onclick="openChantierMaps(\'' + ch.id + '\')">🗺 Ouvrir dans Maps</button>' : "")
     + '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">'
     + (!ch.commande ? '<span class="badge badge-danger">Sans commande</span>' : '<span class="badge badge-ok">Commande recue</span>')
     + (ch.commande && !ch.date_ok ? '<span class="badge badge-warn">Date non validee</span>' : "")
@@ -3593,6 +3697,8 @@ function renderStockTable() {
 
   var html = "";
   var totalVal = 0;
+  var totalNegatif = 0;
+  var nbNegatifs = 0;
   var agence = currentStockAgence || "global";
 
   PRODUITS_BIG.forEach(function(p, i) {
@@ -3602,13 +3708,18 @@ function renderStockTable() {
     var val = theo * p.prix;
     totalVal += val;
 
+    if (theo < 0) {
+      nbNegatifs++;
+      totalNegatif += val;
+    }
+
     var entrees = d.entrees + d.transfertsIn + d.ajustements;
     var sorties = d.sorties + d.transfertsOut + d.pertes;
     var retours = d.retours;
 
-    var alerte = theo <= 0 ? "RUPTURE" : (theo <= 3 ? "Bas" : "OK");
-    var alerteColor = theo <= 0 ? "#c0392b" : (theo <= 3 ? "#c47a1a" : "#1a8c4a");
-    var bg = i % 2 ? "background:var(--light);" : "";
+    var alerte = theo < 0 ? "NÉGATIF" : (theo === 0 ? "RUPTURE" : (theo <= 3 ? "Bas" : "OK"));
+    var alerteColor = theo < 0 ? "#7f0000" : (theo === 0 ? "#c0392b" : (theo <= 3 ? "#c47a1a" : "#1a8c4a"));
+    var bg = theo < 0 ? "background:#fdeaea;" : (i % 2 ? "background:var(--light);" : "");
 
     html += '<tr style="' + bg + 'border-top:1px solid var(--light3)">'
       + '<td style="padding:6px 10px;font-weight:700">' + p.nom + '</td>'
@@ -3617,20 +3728,63 @@ function renderStockTable() {
       + '<td style="padding:6px 10px;text-align:center;color:#1a8c4a;font-weight:800">' + fmtQty(entrees) + '</td>'
       + '<td style="padding:6px 10px;text-align:center;color:#c0392b;font-weight:800">' + fmtQty(sorties) + '</td>'
       + '<td style="padding:6px 10px;text-align:center;color:#1a6fc4;font-weight:800">' + fmtQty(retours) + '</td>'
-      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#111">' + fmtQty(theo) + '</td>'
-      + '<td style="padding:6px 10px;text-align:center;font-weight:800;color:#1a8c4a">' + fmtEur(val) + '</td>'
-      + '<td style="padding:6px 10px;text-align:center;font-weight:700;color:' + alerteColor + '">' + alerte + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;font-weight:900;color:' + (theo < 0 ? "#c0392b" : "#111") + '">' + fmtQty(theo) + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;font-weight:900;color:' + (val < 0 ? "#c0392b" : "#1a8c4a") + '">' + fmtEur(val) + '</td>'
+      + '<td style="padding:6px 10px;text-align:center;font-weight:900;color:' + alerteColor + '">' + alerte + '</td>'
       + '</tr>';
   });
 
   html += '<tr style="background:var(--dark2);color:#fff;font-weight:800">'
     + '<td colspan="7" style="padding:8px 10px;text-align:right">VALEUR STOCK ' + agence.toUpperCase() + '</td>'
-    + '<td style="padding:8px 10px;text-align:center;color:#4ade80">' + fmtEur(totalVal) + '</td>'
+    + '<td style="padding:8px 10px;text-align:center;color:' + (totalVal < 0 ? "#ff9b9b" : "#4ade80") + '">' + fmtEur(totalVal) + '</td>'
     + '<td></td>'
     + '</tr>';
 
+  if (nbNegatifs > 0) {
+    html += '<tr style="background:#7f0000;color:#fff;font-weight:900">'
+      + '<td colspan="7" style="padding:8px 10px;text-align:right">⚠ ÉCART NÉGATIF VALORISÉ — ' + nbNegatifs + ' produit(s)</td>'
+      + '<td style="padding:8px 10px;text-align:center">' + fmtEur(totalNegatif) + '</td>'
+      + '<td></td>'
+      + '</tr>';
+  }
+
   tbody.innerHTML = html;
+
+  renderStockAgenceResume();
 }
+
+  function getStockValueAgence(agence) {
+  return PRODUITS_BIG.reduce(function(sum, p) {
+    var d = getStockDetailsProduit(p.id, agence);
+    return sum + ((d.theo || 0) * (parseFloat(p.prix) || 0));
+  }, 0);
+}
+
+function renderStockAgenceResume() {
+  var stockBox = document.getElementById("stk-stock");
+  if (!stockBox) return;
+
+  var old = document.getElementById("stock-agence-resume");
+  if (old) old.remove();
+
+  var agences = ["global", "Nantes", "Ternay", "Metz"];
+
+  var html = '<div id="stock-agence-resume" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:12px">';
+
+  agences.forEach(function(ag) {
+    var val = getStockValueAgence(ag);
+    html += '<div style="background:#fff;border:1px solid var(--light3);padding:10px;border-left:4px solid ' + (val < 0 ? "#c0392b" : "var(--blue)") + '">'
+      + '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:12px;font-weight:900;text-transform:uppercase;color:var(--text3)">' + (ag === "global" ? "Global" : ag) + '</div>'
+      + '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:' + (val < 0 ? "#c0392b" : "#1a8c4a") + '">' + fmtEur(val) + '</div>'
+      + '</div>';
+  });
+
+  html += '</div>';
+
+  var table = document.getElementById("stock-table");
+  if (table) table.insertAdjacentHTML("beforebegin", html);
+}
+  
 function updateStockInit(pid, val) {
   if (!stocksData[pid]) stocksData[pid] = {init:0, entrees:0, sorties:0, retours:0};
   stocksData[pid].init = parseFloat(val) || 0;
@@ -3904,7 +4058,104 @@ function renderHistorique() {
 
   cont.innerHTML = html;
 }
+function renderHistoriqueProduits() {
+  var cont = document.getElementById("historique-list");
+  if (!cont) return;
 
+  var agence = (document.getElementById("hist-agence") || {value:"all"}).value;
+  var mois = (document.getElementById("hist-mois") || {value:"all"}).value;
+  var annee = (document.getElementById("hist-annee") || {value:"all"}).value;
+
+  var data = stockMouvements.filter(function(mv) {
+    var d = new Date(mv.created_at || mv.date);
+    var mvAgence = getMouvementAgence(mv);
+
+    if (agence !== "all" && mvAgence !== agence) return false;
+    if (mois !== "all" && d.getMonth() !== parseInt(mois, 10)) return false;
+    if (annee !== "all" && d.getFullYear() !== parseInt(annee, 10)) return false;
+
+    return true;
+  });
+
+  var byProd = {};
+
+  data.forEach(function(mv) {
+    var pid = mv.produit_id || mv.produit || "";
+    if (!pid) return;
+
+    var p = PRODUITS_BIG.find(function(x) { return x.id === pid; });
+
+    if (!byProd[pid]) {
+      byProd[pid] = {
+        pid: pid,
+        nom: mv.produit_nom || mv.nom || (p ? p.nom : pid),
+        unite: mv.unite || (p ? p.unite : ""),
+        prix: p ? (parseFloat(p.prix) || 0) : 0,
+        entree: 0,
+        sortie: 0,
+        retour: 0,
+        transfertIn: 0,
+        transfertOut: 0,
+        perte: 0,
+        ajustement: 0,
+        total: 0
+      };
+    }
+
+    var q = parseFloat(mv.qte) || 0;
+    var signed = signedQty(mv);
+    byProd[pid].total += signed;
+
+    if (mv.type_mouvement === "entree") byProd[pid].entree += q;
+    if (mv.type_mouvement === "sortie_chantier") byProd[pid].sortie += q;
+    if (mv.type_mouvement === "retour_chantier") byProd[pid].retour += q;
+    if (mv.type_mouvement === "transfert_entree") byProd[pid].transfertIn += q;
+    if (mv.type_mouvement === "transfert_sortie") byProd[pid].transfertOut += q;
+    if (mv.type_mouvement === "perte") byProd[pid].perte += q;
+    if (mv.type_mouvement === "ajustement") byProd[pid].ajustement += q;
+  });
+
+  var rows = Object.values(byProd).sort(function(a, b) {
+    return a.nom.localeCompare(b.nom, "fr");
+  });
+
+  if (!rows.length) {
+    cont.innerHTML = '<div style="color:var(--text3);text-align:center;padding:20px;font-size:12px">Aucun mouvement produit</div>';
+    return;
+  }
+
+  cont.innerHTML =
+    '<table style="width:100%;border-collapse:collapse;background:#fff;font-size:12px">' +
+      '<thead><tr style="background:var(--dark2);color:#fff">' +
+        '<th style="padding:8px;text-align:left">Produit</th>' +
+        '<th style="padding:8px;text-align:center">Entrées</th>' +
+        '<th style="padding:8px;text-align:center">Sorties</th>' +
+        '<th style="padding:8px;text-align:center">Retours</th>' +
+        '<th style="padding:8px;text-align:center">Transferts +</th>' +
+        '<th style="padding:8px;text-align:center">Transferts -</th>' +
+        '<th style="padding:8px;text-align:center">Pertes</th>' +
+        '<th style="padding:8px;text-align:center">Total</th>' +
+        '<th style="padding:8px;text-align:center">Valeur</th>' +
+      '</tr></thead>' +
+      '<tbody>' +
+        rows.map(function(r, i) {
+          var val = r.total * r.prix;
+          return '<tr style="' + (i % 2 ? "background:var(--light)" : "") + ';border-top:1px solid var(--light3)">' +
+            '<td style="padding:8px;font-weight:900">' + r.nom + '<br><span style="font-size:10px;color:var(--text3)">' + r.unite + '</span></td>' +
+            '<td style="padding:8px;text-align:center;color:#1a8c4a;font-weight:800">' + fmtQty(r.entree) + '</td>' +
+            '<td style="padding:8px;text-align:center;color:#c0392b;font-weight:800">' + fmtQty(r.sortie) + '</td>' +
+            '<td style="padding:8px;text-align:center;color:#1a6fc4;font-weight:800">' + fmtQty(r.retour) + '</td>' +
+            '<td style="padding:8px;text-align:center;color:#1a8c4a;font-weight:800">' + fmtQty(r.transfertIn) + '</td>' +
+            '<td style="padding:8px;text-align:center;color:#c47a1a;font-weight:800">' + fmtQty(r.transfertOut) + '</td>' +
+            '<td style="padding:8px;text-align:center;color:#c0392b;font-weight:800">' + fmtQty(r.perte) + '</td>' +
+            '<td style="padding:8px;text-align:center;font-weight:900;color:' + (r.total < 0 ? "#c0392b" : "#111") + '">' + fmtQty(r.total) + '</td>' +
+            '<td style="padding:8px;text-align:center;font-weight:900;color:' + (val < 0 ? "#c0392b" : "#1a8c4a") + '">' + fmtEur(val) + '</td>' +
+          '</tr>';
+        }).join("") +
+      '</tbody>' +
+    '</table>';
+}
+  
 function selStk(el) {
   document.querySelectorAll(".stk-btn").forEach(function(b) { b.classList.remove("active"); });
   el.classList.add("active");
