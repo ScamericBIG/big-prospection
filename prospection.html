@@ -2489,21 +2489,40 @@ async function autocompleteAddr(inputId, suggId){
       const r=await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=6&type=housenumber,street,municipality`);
       const data=await r.json();
       if(!data.features?.length){if(suggEl)suggEl.style.display='none';return;}
-      suggEl.innerHTML=data.features.map(f=>{
-        const props=f.properties;
-        const label=props.label||'';
-        const city=props.city||props.municipality||'';
-        const context=props.context||'';
-        return`<div class="addr-suggestion-item" onclick="selectAddr('${inputId}','${suggId}','${label.replace(/'/g,'\'')}',[${f.geometry.coordinates[1]},${f.geometry.coordinates[0]}])">
-          <strong>${label}</strong>
-          ${context?`<span> — ${context}</span>`:''}
-        </div>`;
-      }).join('');
+suggEl.innerHTML = data.features.map(function(f, idx) {
+  const props = f.properties;
+  const label = props.label || "";
+  const context = props.context || "";
+  const lat = f.geometry.coordinates[1];
+  const lng = f.geometry.coordinates[0];
+
+  if (!window._addrSuggestions) window._addrSuggestions = {};
+  window._addrSuggestions[suggId] = window._addrSuggestions[suggId] || {};
+  window._addrSuggestions[suggId][idx] = {
+    label: label,
+    coords: [lat, lng]
+  };
+
+  return `
+    <div class="addr-suggestion-item" onclick="selectAddrFromSuggestion('${inputId}','${suggId}',${idx})">
+      <strong>${escapeHtml(label)}</strong>
+      ${context ? `<span> — ${escapeHtml(context)}</span>` : ""}
+    </div>
+  `;
+}).join("");
       suggEl.style.display='block';
     }catch(e){if(suggEl)suggEl.style.display='none';}
   },300);
 }
+function selectAddrFromSuggestion(inputId, suggId, idx) {
+  const data = window._addrSuggestions &&
+               window._addrSuggestions[suggId] &&
+               window._addrSuggestions[suggId][idx];
 
+  if (!data) return;
+
+  selectAddr(inputId, suggId, data.label, data.coords);
+}
 function selectAddr(inputId,suggId,label,coords){
   const inp=document.getElementById(inputId);
   if(inp)inp.value=label;
