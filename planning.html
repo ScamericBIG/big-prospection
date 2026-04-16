@@ -993,36 +993,6 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* ── TOAST ── */
-#toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
-#toast.show{transform:translateY(0);opacity:1}
-#toast.success{border-left-color:#1a8c4a}
-#toast.error{border-left-color:#c0392b}
-
-/* Stats toolbar */
-.stats-toolbar{padding:8px 12px;background:#fff;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
-</style>
-</head>
-<body>
-
-<div id="app">
-  <div id="topbar">
-    <div class="tl-logo-box"><div class="tl-logo-txt">BIG</div></div>
-    <div class="tl-sep"></div>
-    <div class="tl-title">Planning Équipes</div>
-    <div class="tl-spacer"></div>
-    <span id="tl-user"></span>
-    <a href="index.html" class="tl-btn">⊞ Accueil</a>
-    <a href="prospection.html" class="tl-btn">🗺 Prospection</a>
-  </div>
-
-  <div id="tab-bar">
-    <div class="tab active" onclick="showTab('planning')" id="tab-planning">📅 Planning</div>
-    <div class="tab" onclick="showTab('stats')" id="tab-stats">📊 Stats équipes</div>
-    <div class="tab" onclick="showTab('analyse')" id="tab-analyse">💰 Analyse chantier</div>
-    <div class="tab" onclick="showTab('stocks')" id="tab-stocks">📦 Stocks & bons</div>
-    <div class="tab" onclick="showTab('equipes')" id="tab-equipes">👷 Équipes</div>
-  </div>
 
   #planning-alerts-list {
   display: none;
@@ -1072,6 +1042,38 @@ html,body{height:100%;font-family:'Barlow',sans-serif;background:var(--light);co
   color: var(--text3);
   margin-top: 2px;
 }
+  
+/* ── TOAST ── */
+#toast{position:fixed;bottom:16px;right:16px;background:var(--dark2);border-left:3px solid var(--blue);padding:9px 14px;font-size:12px;color:#fff;font-weight:600;box-shadow:var(--shadow2);z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:280px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-left-color:#1a8c4a}
+#toast.error{border-left-color:#c0392b}
+
+/* Stats toolbar */
+.stats-toolbar{padding:8px 12px;background:#fff;border-bottom:1px solid var(--light3);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <div class="tl-logo-box"><div class="tl-logo-txt">BIG</div></div>
+    <div class="tl-sep"></div>
+    <div class="tl-title">Planning Équipes</div>
+    <div class="tl-spacer"></div>
+    <span id="tl-user"></span>
+    <a href="index.html" class="tl-btn">⊞ Accueil</a>
+    <a href="prospection.html" class="tl-btn">🗺 Prospection</a>
+  </div>
+
+  <div id="tab-bar">
+    <div class="tab active" onclick="showTab('planning')" id="tab-planning">📅 Planning</div>
+    <div class="tab" onclick="showTab('stats')" id="tab-stats">📊 Stats équipes</div>
+    <div class="tab" onclick="showTab('analyse')" id="tab-analyse">💰 Analyse chantier</div>
+    <div class="tab" onclick="showTab('stocks')" id="tab-stocks">📦 Stocks & bons</div>
+    <div class="tab" onclick="showTab('equipes')" id="tab-equipes">👷 Équipes</div>
+  </div>
+
   <!-- PLANNING -->
   <div class="tab-content active" id="content-planning">
     <div id="plan-toolbar">
