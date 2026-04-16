@@ -1820,7 +1820,7 @@ function initApp() {
   renderAnalyse();
 if (typeof renderStockTable === "function") renderStockTable();
 if (typeof renderHistorique === "function") renderHistorique();
-if (typeof renderPlanningAlerts === "function") renderPlanningAlerts();
+if (typeof renderPlanningAlerts === "function") 
 });
 loadClients();
 }
@@ -2175,11 +2175,11 @@ function showTab(name) {
 }
 
 // ── PLANNING MENSUEL ──
-  function renderPlanningAlerts() {
+function renderPlanningAlerts() {
   var box = document.getElementById("planning-alerts-list");
   if (!box) return;
 
-  var alertes = chantiers.filter(function(ch) {
+  var alertes = (chantiers || []).filter(function(ch) {
     return !ch.commande || !ch.date_ok;
   }).sort(function(a, b) {
     return new Date(a.date_debut || "2100-01-01") - new Date(b.date_debut || "2100-01-01");
@@ -2201,15 +2201,20 @@ function showTab(name) {
         var label = !ch.commande ? "Sans commande" : "Date non confirmée";
 
         return '<div class="plan-alert-item ' + cls + '" onclick="openDetail(\'' + ch.id + '\')">' +
-          ch.client +
-          '<span class="plan-alert-meta">' + label + ' · ' + fmtDate(ch.date_debut) + ' → ' + fmtDate(ch.date_fin) + '</span>' +
+          escapeHtml(ch.client || "Chantier sans nom") +
+          '<span class="plan-alert-meta">' +
+            label + ' · ' +
+            (ch.date_debut ? fmtDate(ch.date_debut) : "—") +
+            ' → ' +
+            (ch.date_fin ? fmtDate(ch.date_fin) : "—") +
+          '</span>' +
         '</div>';
       }).join("") +
     '</div>';
 }
 function renderPlanning() {
   if (currentView === "year") { renderAnnuel(); return; }
-  renderPlanningAlerts();
+
 
   var nb = daysInMonth(currentY, currentM);
   var lbl = document.getElementById("month-label");
@@ -2304,8 +2309,14 @@ html += '<div class="pg-block ' + extraCls + '"'
     html += "</div></div></div>";
   });
 
-  var grid = document.getElementById("plan-grid");
-  if (grid) grid.innerHTML = html;
+var grid = document.getElementById("plan-grid");
+if (grid) grid.innerHTML = html;
+
+try {
+  renderPlanningAlerts();
+} catch (e) {
+  console.error("renderPlanningAlerts:", e);
+}
 }
 var planningDragState = null;
 
