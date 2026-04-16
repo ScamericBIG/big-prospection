@@ -739,7 +739,7 @@ select.input-field{cursor:pointer}
     <div class="auth-body">
       <div class="auth-field"><label>Email</label><input type="email" id="auth-email" placeholder="votre@big-france.com" autocomplete="email"/></div>
       <div class="auth-field"><label>Mot de passe</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"/></div>
-      <button class="auth-btn" onclick="doLogin()">Accéder à l'espace</button>
+      <button class="auth-btn" id="auth-login-btn" type="button">Accéder à l'espace</button>
       <div class="auth-err" id="auth-err">Email ou mot de passe incorrect</div>
     </div>
     <div class="auth-footer">Accès réservé aux chargés d'affaires BIG</div>
@@ -1167,23 +1167,61 @@ function recalculerScores(sites){
 }
 
 // ── AUTH ──
+// ── AUTH ──
 function doLogin(){
-  const email=document.getElementById('auth-email').value.trim().toLowerCase();
-  const pass=document.getElementById('auth-password').value;
-  const user=USERS[email];
-  if(user&&pass.length>=4){
-    currentUser={email,...user};
-    localStorage.setItem('big_user',JSON.stringify(currentUser));
-    document.getElementById('auth-screen').style.display='none';
-    document.getElementById('app').classList.add('visible');
-    document.getElementById('user-name').textContent=currentUser.name;
-    initApp();
-  }else{
-    const e=document.getElementById('auth-err');
-    e.style.display='block';
-    setTimeout(()=>e.style.display='none',3000);
+  const emailEl = document.getElementById('auth-email');
+  const passEl = document.getElementById('auth-password');
+  const errEl = document.getElementById('auth-err');
+
+  const email = emailEl ? emailEl.value.trim().toLowerCase() : '';
+  const pass = passEl ? passEl.value : '';
+  const user = USERS[email];
+
+  if(user && pass.length >= 4){
+    currentUser = {email: email, ...user};
+    localStorage.setItem('big_user', JSON.stringify(currentUser));
+
+    const auth = document.getElementById('auth-screen');
+    const app = document.getElementById('app');
+    const userName = document.getElementById('user-name');
+
+    if(auth) auth.style.display = 'none';
+    if(app) app.classList.add('visible');
+    if(userName) userName.textContent = currentUser.name;
+
+    try {
+      initApp();
+    } catch(e) {
+      console.error('initApp:', e);
+    }
+
+    return;
+  }
+
+  if(errEl){
+    errEl.style.display = 'block';
+    setTimeout(function(){
+      errEl.style.display = 'none';
+    }, 3000);
   }
 }
+
+function bindAuthEvents(){
+  const btn = document.getElementById('auth-login-btn');
+  const pwd = document.getElementById('auth-password');
+
+  if(btn){
+    btn.addEventListener('click', doLogin);
+  }
+
+  if(pwd){
+    pwd.addEventListener('keydown', function(e){
+      if(e.key === 'Enter') doLogin();
+    });
+  }
+}
+
+bindAuthEvents();
 document.getElementById('auth-password').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 function doLogout(){
