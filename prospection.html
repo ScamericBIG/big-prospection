@@ -1396,11 +1396,11 @@ function openDetail(site){
   document.getElementById('dp-body').innerHTML = buildDetailHTML(site);
   document.getElementById('detail-panel').classList.add('open');
 
-  if (map && site.lat && site.lng) {
+  if(map && site.lat && site.lng){
     map.panTo([site.lat, site.lng], { animate: true });
   }
 
-  setTimeout(function() {
+  setTimeout(function(){
     renderActivites(site.id);
     renderRdvSite(site.id);
   }, 200);
