@@ -1169,46 +1169,22 @@ function recalculerScores(sites){
 // ── AUTH ──
 // ── AUTH ──
 function doLogin(){
-  const emailEl = document.getElementById('auth-email');
-  const passEl = document.getElementById('auth-password');
-  const errEl = document.getElementById('auth-err');
-
-  const email = emailEl ? emailEl.value.trim().toLowerCase() : '';
-  const pass = passEl ? passEl.value : '';
-  const user = USERS[email];
-
-  if(user && pass.length >= 4){
-    currentUser = {email: email, ...user};
-    localStorage.setItem('big_user', JSON.stringify(currentUser));
-
-    const auth = document.getElementById('auth-screen');
-    const app = document.getElementById('app');
-    const userName = document.getElementById('user-name');
-
-    if(auth) auth.style.display = 'none';
-    if(app) app.classList.add('visible');
-    if(userName) userName.textContent = currentUser.name;
-
-    try {
-      initApp();
-    } catch(e) {
-      console.error('initApp:', e);
-    }
-
-    return;
-  }
-
-  if(errEl){
-    errEl.style.display = 'block';
-    setTimeout(function(){
-      errEl.style.display = 'none';
-    }, 3000);
+  const email=document.getElementById('auth-email').value.trim().toLowerCase();
+  const pass=document.getElementById('auth-password').value;
+  const user=USERS[email];
+  if(user&&pass.length>=4){
+    currentUser={email,...user};
+    localStorage.setItem('big_user',JSON.stringify(currentUser));
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').classList.add('visible');
+    document.getElementById('user-name').textContent=currentUser.name;
+    initApp();
+  }else{
+    const e=document.getElementById('auth-err');
+    e.style.display='block';
+    setTimeout(()=>e.style.display='none',3000);
   }
 }
-
-
-bindAuthEvents();
-bindAuthEvents();
 document.getElementById('auth-password').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 function doLogout(){
@@ -2606,78 +2582,6 @@ if(_savedUser){
   }catch(e){localStorage.removeItem('big_user');}
 }
 
-</script>
-<script>
-/* PATCH URGENCE LOGIN — ne dépend ni du onclick ni de auth-login-btn */
-(function() {
-  function forceLoginFromAuthCard(btn) {
-    var card = btn.closest(".auth-card") || document;
-
-    var emailEl = card.querySelector("#auth-email") || document.getElementById("auth-email");
-    var passEl  = card.querySelector("#auth-password") || document.getElementById("auth-password");
-    var errEl   = card.querySelector("#auth-err") || document.getElementById("auth-err");
-
-    var email = emailEl ? emailEl.value.trim().toLowerCase() : "";
-    var pass  = passEl ? passEl.value : "";
-    var user = (typeof USERS !== "undefined") ? USERS[email] : null;
-
-    if (user && pass.length >= 4) {
-      window.currentUser = Object.assign({ email: email }, user);
-      localStorage.setItem("big_user", JSON.stringify(window.currentUser));
-
-      var auth = document.getElementById("auth-screen");
-      var app = document.getElementById("app");
-      var userName = document.getElementById("user-name");
-
-      if (auth) auth.style.display = "none";
-      if (app) app.classList.add("visible");
-      if (userName) userName.textContent = window.currentUser.name || "";
-
-      if (typeof initApp === "function") {
-        try {
-          initApp();
-        } catch (e) {
-          console.error("initApp:", e);
-        }
-      }
-
-      return true;
-    }
-
-    if (errEl) {
-      errEl.style.display = "block";
-      setTimeout(function() {
-        errEl.style.display = "none";
-      }, 3000);
-    }
-
-    return false;
-  }
-
-  document.addEventListener("click", function(e) {
-    var btn = e.target.closest(".auth-btn");
-    if (!btn) return;
-
-    e.preventDefault();
-    forceLoginFromAuthCard(btn);
-  });
-
-  document.addEventListener("keydown", function(e) {
-    if (e.key !== "Enter") return;
-
-    var active = document.activeElement;
-    if (!active) return;
-
-    if (active.id === "auth-password" || active.id === "auth-email") {
-      var card = active.closest(".auth-card");
-      var btn = card ? card.querySelector(".auth-btn") : document.querySelector(".auth-btn");
-      if (btn) {
-        e.preventDefault();
-        forceLoginFromAuthCard(btn);
-      }
-    }
-  });
-})();
 </script>
 <div id="toast"></div>
 </body>
