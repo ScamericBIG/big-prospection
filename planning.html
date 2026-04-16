@@ -1810,7 +1810,7 @@ function initApp() {
   populateAnalyseEqFilter();
   populateStatsMths();
   populateStatsEqFilter();
- Promise.all([
+Promise.all([
   loadChantiers(),
   loadBonsSupabase(),
   loadStockMouvements()
@@ -1818,10 +1818,12 @@ function initApp() {
   renderPlanning();
   renderStats();
   renderAnalyse();
-if (typeof renderStockTable === "function") renderStockTable();
-if (typeof renderHistorique === "function") renderHistorique();
-if (typeof renderPlanningAlerts === "function") 
+
+  if (typeof renderStockTable === "function") renderStockTable();
+  if (typeof renderHistorique === "function") renderHistorique();
+  if (typeof renderPlanningAlerts === "function") renderPlanningAlerts();
 });
+
 loadClients();
 }
 
