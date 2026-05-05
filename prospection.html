@@ -2361,13 +2361,6 @@ function _updateNavInfo() {
 // ══════════════════════════════════════════════════════════════
 var _lfSite = null; // site affiché dans la fiche liste
 
-function openDetailById(id) {
-  _ficheList  = _getCurrentFilteredList();
-  _ficheIndex = _ficheList.findIndex(function(s) { return s.id === id; });
-  var src  = allSitesGlobalCache.length ? allSitesGlobalCache : allSitesCache;
-  var site = src.find(function(s) { return s.id === id; });
-  if (site) openFicheListe(site);
-}
 
 function navigateFiche(direction) {
   if (!_ficheList.length) return;
