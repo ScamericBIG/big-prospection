@@ -2365,7 +2365,7 @@ var _lfSite = null; // site affiché dans la fiche liste
 function navigateFiche(direction) {
   if (!_ficheList.length) return;
   _ficheIndex = Math.max(0, Math.min(_ficheList.length - 1, _ficheIndex + direction));
-  _openDetailWithNav(_ficheList[_ficheIndex]);
+  openFicheListe(_ficheList[_ficheIndex]);
 }
 
 function closeFicheListe() {
