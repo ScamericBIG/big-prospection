@@ -2,7 +2,7 @@
 import { store } from './store.js';
 import { etat, infos, emettre, ecouter, nomCA, sauverTournee } from './etat.js';
 import {
-  CATEGORIES, STATUTS, TYPES_ACTIVITE, ROLES_CONTACT, decennale, fmtM2, fmtDate, fmtDateHeure, fmtEuro, esc, aujourdhui, ANNEE, uuid,
+  CATEGORIES, STATUTS, TYPES_ACTIVITE, ROLES_CONTACT, decennale, surfaceEstimee, anneeEstimee, fmtM2, fmtDate, fmtDateHeure, fmtEuro, esc, aujourdhui, ANNEE, uuid,
 } from './metier.js';
 import { $, $$, toast, ouvrirModale, fermerModale, confirmer, lireForm, versDatetimeLocal, debounce } from './ui.js';
 import { marquerSelection, centrerSur } from './carte.js';
@@ -87,8 +87,8 @@ function rendreFiche(corps, s) {
   const groupes = store.liste('groupes').sort((a, b) => a.nom.localeCompare(b.nom));
   corps.innerHTML = `
     <div class="chiffres">
-      <div class="chiffre"><span>Surface</span><b>${fmtM2(i.surface)}</b></div>
-      <div class="chiffre"><span>Construit en</span><b>${i.annee || '—'}</b>${age != null ? `<span>${age} an${age > 1 ? 's' : ''}</span>` : ''}</div>
+      <div class="chiffre"><span>Surface${surfaceEstimee(s) ? ' (estimée)' : ''}</span><b>${surfaceEstimee(s) ? '≈ ' : ''}${fmtM2(i.surface)}</b></div>
+      <div class="chiffre"><span>Construit en${anneeEstimee(s) ? ' (estimé)' : ''}</span><b>${anneeEstimee(s) && i.annee ? '≈ ' : ''}${i.annee || '—'}</b>${age != null ? `<span>${age} an${age > 1 ? 's' : ''}</span>` : ''}</div>
       <div class="chiffre"><span>Score</span><b>${i.score}/100</b><span>Priorité ${i.prio}</span></div>
     </div>
     <dl class="infos">
@@ -100,7 +100,7 @@ function rendreFiche(corps, s) {
       ${s.siren || s.siret ? `<dt>SIREN / SIRET</dt><dd>${esc(s.siret || s.siren)}</dd>` : ''}
       ${groupe ? `<dt>Groupe</dt><dd><a href="#" id="fi-voir-groupe">${esc(groupe.nom)}</a></dd>` : ''}
       ${od.icpe ? `<dt>ICPE</dt><dd>${esc(od.icpe.nom || '')}<br><small>${esc(od.icpe.regime || '')}${od.icpe.rubriques?.length ? ' · rubriques ' + esc(od.icpe.rubriques.join(', ')) : ''}${od.icpe.seveso ? ' · Seveso ' + esc(od.icpe.seveso) : ''}</small></dd>` : ''}
-      <dt>Source</dt><dd><small>${esc({ bdnb: 'BDNB (open data bâtiments)', osm: 'OpenStreetMap', import: 'Import de fichier', manuel: 'Saisie manuelle', demo: 'Données de démonstration' }[s.source] || s.source)}${s.surface_m2 != null || s.annee_construction != null || s.categorie ? ' · corrigé par l’équipe' : ''}</small></dd>
+      <dt>Source</dt><dd><small>${esc({ bdnb: 'BDNB (open data bâtiments)', osm: 'OpenStreetMap', import: 'Import de fichier', manuel: 'Saisie manuelle', demo: 'Données de démonstration', ebauche: 'Ancienne base (ébauche)' }[s.source] || s.source)}${s.surface_m2 != null || s.annee_construction != null || s.categorie ? ' · corrigé par l’équipe' : ''}</small></dd>
     </dl>
     <div class="liens-rapides">
       <a class="btn btn-petit" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat && s.lng ? s.lat + ',' + s.lng : q}">🧭 Itinéraire</a>
@@ -132,8 +132,8 @@ function rendreFiche(corps, s) {
       <div class="grille-form">
         <label>Type de site<select name="categorie"><option value="">Auto : ${esc(CATEGORIES[s.categorie_auto || 'AUTRE'].libelle)}</option>${Object.entries(CATEGORIES).map(([k, v]) => `<option value="${k}" ${s.categorie === k ? 'selected' : ''}>${v.libelle}</option>`).join('')}</select></label>
         <label>Groupe<select name="groupe_id"><option value="">— Aucun —</option>${groupes.map(g => `<option value="${g.id}" ${s.groupe_id === g.id ? 'selected' : ''}>${esc(g.nom)}</option>`).join('')}<option value="_nouveau">+ Nouveau groupe…</option></select></label>
-        <label>Surface (m²)<input type="number" name="surface_m2" min="0" step="100" value="${s.surface_m2 ?? ''}" placeholder="${s.surface_auto ? 'Open data : ' + s.surface_auto : ''}"></label>
-        <label>Année de construction<input type="number" name="annee_construction" min="1850" max="${ANNEE + 2}" value="${s.annee_construction ?? ''}" placeholder="${s.annee_auto ? 'Open data : ' + s.annee_auto : 'Inconnue'}"></label>
+        <label>Surface (m²)<input type="number" name="surface_m2" min="0" step="100" value="${s.surface_m2 ?? ''}" placeholder="${s.surface_auto ? (surfaceEstimee(s) ? 'Estimation : ' : 'Open data : ') + s.surface_auto : ''}"></label>
+        <label>Année de construction<input type="number" name="annee_construction" min="1850" max="${ANNEE + 2}" value="${s.annee_construction ?? ''}" placeholder="${s.annee_auto ? (anneeEstimee(s) ? 'Estimation : ' : 'Open data : ') + s.annee_auto : 'Inconnue'}"></label>
       </div>
       <details style="margin-top:12px"><summary class="lien" style="text-decoration:none">✎ Modifier le nom / l'adresse</summary>
         <div class="grille-form" style="margin-top:10px">

@@ -1,7 +1,7 @@
 // Vue liste : tableau triable des sites filtrés + export CSV / Excel
 import { store } from './store.js';
 import { sitesFiltres, infos, ecouter, emettre, nomCA } from './etat.js';
-import { CATEGORIES, STATUTS, decennale, fmtN, fmtDate, esc, rappelEnRetard } from './metier.js';
+import { CATEGORIES, STATUTS, decennale, surfaceEstimee, anneeEstimee, fmtN, fmtDate, esc, rappelEnRetard } from './metier.js';
 import { $, $$, debounce, toast } from './ui.js';
 
 const PAGE = 100;
@@ -12,8 +12,8 @@ const COLONNES = [
   { k: 'ville', t: 'Ville', v: s => s.ville || '' },
   { k: 'cp', t: 'CP', v: s => s.code_postal || '' },
   { k: 'cat', t: 'Type', v: s => CATEGORIES[infos(s).cat].libelle, h: s => `<span class="badge"><span class="rond" style="background:${CATEGORIES[infos(s).cat].couleur}"></span>${esc(CATEGORIES[infos(s).cat].libelle)}</span>` },
-  { k: 'surface', t: 'Surface (m²)', v: s => infos(s).surface ?? -1, h: s => fmtN(infos(s).surface), cls: 'num' },
-  { k: 'annee', t: 'Année', v: s => infos(s).annee ?? 0, h: s => infos(s).annee || '—', cls: 'num' },
+  { k: 'surface', t: 'Surface (m²)', v: s => infos(s).surface ?? -1, h: s => (surfaceEstimee(s) ? '≈ ' : '') + fmtN(infos(s).surface), cls: 'num' },
+  { k: 'annee', t: 'Année', v: s => infos(s).annee ?? 0, h: s => infos(s).annee ? (anneeEstimee(s) ? '≈ ' : '') + infos(s).annee : '—', cls: 'num' },
   { k: 'dec', t: 'Décennale', v: s => decennale(s).code, h: s => { const d = decennale(s); return d.code === 'inconnue' ? '—' : `<span class="badge ${d.classe}">${d.code === 'sous' ? 'Sous déc.' : 'Hors déc.'}</span>`; } },
   { k: 'score', t: 'Score', v: s => infos(s).score, h: s => `<span class="badge prio-${infos(s).prio}">${infos(s).prio} · ${infos(s).score}</span>` },
   { k: 'statut', t: 'Statut', v: s => STATUTS[s.statut]?.ordre ?? 0, h: s => `<span class="badge"><span class="rond" style="background:${STATUTS[s.statut]?.couleur}"></span>${esc(STATUTS[s.statut]?.libelle || '')}</span>` },
@@ -56,7 +56,7 @@ function lignesExport() {
     const i = infos(s), g = s.groupe_id && store.get('groupes', s.groupe_id);
     return {
       'Nom': s.nom, 'Raison sociale': s.enseigne || '', 'Groupe': g?.nom || '', 'Adresse': s.adresse || '', 'Code postal': s.code_postal || '', 'Ville': s.ville || '', 'Pays': s.pays,
-      'Type': CATEGORIES[i.cat].libelle, 'Surface m²': i.surface ?? '', 'Année construction': i.annee ?? '', 'Décennale': decennale(s).libelle,
+      'Type': CATEGORIES[i.cat].libelle, 'Surface m²': i.surface ?? '', 'Surface estimée': surfaceEstimee(s) ? 'oui' : '', 'Année construction': i.annee ?? '', 'Année estimée': anneeEstimee(s) ? 'oui' : '', 'Décennale': decennale(s).libelle,
       'Score': i.score, 'Priorité': i.prio, 'Statut': STATUTS[s.statut]?.libelle || '', 'Standard': s.standard_tel || '',
       'Dernier appel': s.date_dernier_appel || '', 'Prochain rappel': s.date_prochain_rappel || '', 'RDV': s.date_rdv ? new Date(s.date_rdv).toLocaleString('fr-FR') : '',
       "Chargé d'affaires": s.assigne_a ? nomCA(s.assigne_a) : '', 'Commentaire': s.commentaire || '', 'SIRET': s.siret || s.siren || '', 'NAF': s.naf || '',

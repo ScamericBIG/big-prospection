@@ -48,14 +48,18 @@ export const surfaceDe = s => s.surface_m2 ?? s.surface_auto ?? null;
 export const anneeDe = s => s.annee_construction ?? s.annee_auto ?? null;
 export const ageDe = s => { const a = anneeDe(s); return a ? ANNEE - a : null; };
 
+// Valeurs estimées (reprise de l'ancienne base) : affichées avec « ≈ » tant qu'elles ne sont ni saisies ni confirmées par l'open data
+export const surfaceEstimee = s => s.surface_m2 == null && !!s.infos_od?.estimation?.surface;
+export const anneeEstimee = s => s.annee_construction == null && !!s.infos_od?.estimation?.annee;
+
 // Garantie décennale : couverte pendant 10 ans après la réception (≈ année de construction)
 export function decennale(s) {
   const a = anneeDe(s);
   if (!a) return { code: 'inconnue', libelle: 'Année inconnue', classe: 'neutre' };
-  const fin = a + 10;
+  const fin = a + 10, est = anneeEstimee(s) ? ' (année estimée)' : '';
   return fin > ANNEE
-    ? { code: 'sous', libelle: `Sous décennale (jusqu'en ${fin})`, court: 'Sous décennale', classe: 'info' }
-    : { code: 'hors', libelle: `Hors décennale depuis ${fin}`, court: 'Hors décennale', classe: 'ok' };
+    ? { code: 'sous', libelle: `Sous décennale (jusqu'en ${fin})${est}`, court: 'Sous décennale' + (est ? ' ≈' : ''), classe: 'info' }
+    : { code: 'hors', libelle: `Hors décennale depuis ${fin}${est}`, court: 'Hors décennale' + (est ? ' ≈' : ''), classe: 'ok' };
 }
 
 // Score de potentiel (0-100) : surface (50 pts) + ancienneté (40 pts) + activité (10 pts)

@@ -282,33 +282,81 @@ create policy secteur_dep_maj on public.secteur_departements for all to authenti
 --    Insère les nouveaux sites ; pour les sites existants, ne met à jour QUE les données open data
 --    (jamais le nom, l'adresse ni la qualification saisis par l'équipe).
 -- ---------------------------------------------------------------------
+create index if not exists sites_lat_idx on public.sites (lat);
+create index if not exists sites_siret_idx on public.sites (left(siret, 9));
+create index if not exists sites_fusion_idx on public.sites ((infos_od->'fusion'->>'source_id'));
+
 create or replace function public.import_sites(rows jsonb) returns integer
 language plpgsql security definer set search_path = public as $$
-declare n integer;
+declare
+  r record; sid uuid; n integer := 0;
 begin
-  insert into public.sites as s (nom, enseigne, proprietaire, siren, siret, naf, naf_libelle,
-                                 adresse, code_postal, ville, departement, pays, lat, lng,
-                                 categorie_auto, surface_auto, annee_auto, statut, source, source_id, infos_od, updated_by)
-  select r.nom, r.enseigne, r.proprietaire, r.siren, r.siret, r.naf, r.naf_libelle,
-         r.adresse, r.code_postal, r.ville, r.departement, coalesce(r.pays,'FR'), r.lat, r.lng,
-         r.categorie_auto, r.surface_auto, r.annee_auto, 'a_qualifier', r.source, r.source_id,
-         coalesce(r.infos_od,'{}'::jsonb), 'import-opendata'
-    from jsonb_to_recordset(rows) as r(nom text, enseigne text, proprietaire text, siren text, siret text,
+  for r in select * from jsonb_to_recordset(rows) as x(nom text, enseigne text, proprietaire text, siren text, siret text,
          naf text, naf_libelle text, adresse text, code_postal text, ville text, departement text, pays text,
          lat double precision, lng double precision, categorie_auto text, surface_auto integer, annee_auto integer,
          source text, source_id text, infos_od jsonb)
-  on conflict (source, source_id) do update set
-         categorie_auto = excluded.categorie_auto,
-         surface_auto   = excluded.surface_auto,
-         annee_auto     = coalesce(excluded.annee_auto, s.annee_auto),
-         naf            = coalesce(s.naf, excluded.naf),
-         naf_libelle    = coalesce(s.naf_libelle, excluded.naf_libelle),
-         siret          = coalesce(s.siret, excluded.siret),
-         enseigne       = coalesce(s.enseigne, excluded.enseigne),
-         proprietaire   = excluded.proprietaire,
-         infos_od       = excluded.infos_od,
-         updated_by     = 'import-opendata';
-  get diagnostics n = row_count;
+  loop
+    -- 1) déjà importé depuis cette source → mise à jour classique (plus bas)
+    select id into sid from public.sites where source = r.source and source_id = r.source_id;
+    if sid is null then
+      -- 2) déjà fusionné lors d'un import précédent avec un site d'une autre origine ?
+      select id into sid from public.sites
+       where infos_od->'fusion'->>'source_id' = r.source_id and infos_od->'fusion'->>'source' = r.source limit 1;
+      -- 3) sinon : même site déjà présent (ancienne base, import Excel, saisie) ?
+      --    même SIREN à moins de 500 m, ou n'importe quel site à moins de ~130 m, pas encore fusionné
+      if sid is null and r.lat is not null then
+        select s.id into sid from public.sites s
+         where s.source not in ('bdnb', 'osm') and not s.supprime and s.lat is not null
+           and s.lat between r.lat - 0.005 and r.lat + 0.005 and s.lng between r.lng - 0.008 and r.lng + 0.008
+           and s.infos_od->'fusion' is null
+           and ( (coalesce(r.siren, left(r.siret, 9)) is not null and left(coalesce(s.siret, s.siren, ''), 9) = coalesce(r.siren, left(r.siret, 9)))
+                 or ((s.lat - r.lat) ^ 2 + ((s.lng - r.lng) * 0.66) ^ 2) < 0.0012 ^ 2 )
+         order by ((s.lat - r.lat) ^ 2 + ((s.lng - r.lng) * 0.66) ^ 2)
+         limit 1;
+      end if;
+      if sid is not null then
+        -- on enrichit le site existant avec les données open data (surface et année réelles remplacent les estimations)
+        update public.sites s set
+          categorie_auto = case when s.categorie_auto is null or s.categorie_auto = 'AUTRE' then r.categorie_auto else s.categorie_auto end,
+          surface_auto   = coalesce(r.surface_auto, s.surface_auto),
+          annee_auto     = coalesce(r.annee_auto, s.annee_auto),
+          proprietaire   = coalesce(s.proprietaire, r.proprietaire),
+          naf            = coalesce(s.naf, r.naf),
+          naf_libelle    = coalesce(s.naf_libelle, r.naf_libelle),
+          siret          = coalesce(s.siret, r.siret),
+          adresse        = coalesce(s.adresse, r.adresse),
+          infos_od       = (coalesce(s.infos_od, '{}'::jsonb) - 'estimation')
+                           || coalesce(r.infos_od, '{}'::jsonb)
+                           || jsonb_build_object('fusion', jsonb_build_object('source', r.source, 'source_id', r.source_id),
+                                                 'estimation', jsonb_build_object(
+                                                   'surface', r.surface_auto is null and coalesce((s.infos_od->'estimation'->>'surface')::boolean, false),
+                                                   'annee',   r.annee_auto   is null and coalesce((s.infos_od->'estimation'->>'annee')::boolean, false))),
+          updated_by     = 'import-opendata'
+        where s.id = sid;
+        n := n + 1;
+        continue;
+      end if;
+    end if;
+    insert into public.sites as s (nom, enseigne, proprietaire, siren, siret, naf, naf_libelle,
+                                   adresse, code_postal, ville, departement, pays, lat, lng,
+                                   categorie_auto, surface_auto, annee_auto, statut, source, source_id, infos_od, updated_by)
+    values (r.nom, r.enseigne, r.proprietaire, r.siren, r.siret, r.naf, r.naf_libelle,
+            r.adresse, r.code_postal, r.ville, r.departement, coalesce(r.pays, 'FR'), r.lat, r.lng,
+            r.categorie_auto, r.surface_auto, r.annee_auto, 'a_qualifier', r.source, r.source_id,
+            coalesce(r.infos_od, '{}'::jsonb), 'import-opendata')
+    on conflict (source, source_id) do update set
+           categorie_auto = excluded.categorie_auto,
+           surface_auto   = excluded.surface_auto,
+           annee_auto     = coalesce(excluded.annee_auto, s.annee_auto),
+           naf            = coalesce(s.naf, excluded.naf),
+           naf_libelle    = coalesce(s.naf_libelle, excluded.naf_libelle),
+           siret          = coalesce(s.siret, excluded.siret),
+           enseigne       = coalesce(s.enseigne, excluded.enseigne),
+           proprietaire   = excluded.proprietaire,
+           infos_od       = excluded.infos_od,
+           updated_by     = 'import-opendata';
+    n := n + 1;
+  end loop;
   return n;
 end $$;
 revoke all on function public.import_sites(jsonb) from public, anon, authenticated;

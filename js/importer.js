@@ -50,22 +50,40 @@ export function ouvrirImport() {
 
 // ------------------------------------------------------------------ open data JSON
 async function importJson(f, m) {
-  const rows = JSON.parse(await f.text());
-  if (!Array.isArray(rows) || !rows[0]?.source) throw new Error('format inattendu (attendu : sortie du script import-opendata)');
+  const brut = JSON.parse(await f.text());
+  // Deux formats : tableau de sites (script open data) ou { groupes, sites, contacts } (reprise de l'ancienne base)
+  const paquet = Array.isArray(brut) ? { sites: brut } : brut;
+  if (!Array.isArray(paquet.sites) || !paquet.sites[0]?.source) throw new Error('format inattendu (attendu : sortie du script import-opendata ou fichier de reprise)');
+  // groupes : réutilise un groupe existant du même nom
+  const grExist = new Map(store.liste('groupes').map(g => [g.nom.toLowerCase(), g]));
+  const remapGroupe = new Map(), groupes = [];
+  for (const g of paquet.groupes || []) {
+    const e = grExist.get(g.nom.toLowerCase());
+    if (e) remapGroupe.set(g.id, e.id); else { groupes.push({ ...g, supprime: false }); remapGroupe.set(g.id, g.id); }
+  }
   const existants = new Map(store.liste('sites', true).map(s => [s.source + '|' + s.source_id, s]));
+  const remapSite = new Map();
   let nouveaux = 0;
-  const lot = rows.map(r => {
+  const lot = paquet.sites.map(r => {
     const e = existants.get(r.source + '|' + r.source_id);
-    if (!e) nouveaux++;
-    return e ? { ...e, categorie_auto: r.categorie_auto, surface_auto: r.surface_auto, annee_auto: r.annee_auto ?? e.annee_auto, infos_od: r.infos_od, naf: e.naf || r.naf, naf_libelle: e.naf_libelle || r.naf_libelle }
-      : { ...r, statut: 'a_qualifier', supprime: false };
+    const gid = r.groupe_id ? remapGroupe.get(r.groupe_id) || null : null;
+    if (!e) { nouveaux++; remapSite.set(r.id, r.id); return { ...r, groupe_id: gid, statut: r.statut || 'a_qualifier', supprime: false }; }
+    remapSite.set(r.id, e.id);
+    return { ...e, categorie_auto: r.categorie_auto, surface_auto: r.surface_auto, annee_auto: r.annee_auto ?? e.annee_auto,
+      infos_od: { ...(e.infos_od || {}), ...(r.infos_od || {}) }, naf: e.naf || r.naf, naf_libelle: e.naf_libelle || r.naf_libelle,
+      groupe_id: e.groupe_id || gid };
   });
-  $('#im-suite', m).innerHTML = `<p>${fmtN(rows.length)} sites dans le fichier : <b>${fmtN(nouveaux)} nouveaux</b>, ${fmtN(rows.length - nouveaux)} mis à jour (les qualifications existantes sont conservées).</p>
-    <div class="progression"><div id="im-prog"></div></div><button class="btn btn-primaire" id="im-go">Importer</button>`;
+  const ctExist = new Set(store.liste('contacts').map(c => c.site_id + '|' + (c.nom || '').toLowerCase()));
+  const contacts = (paquet.contacts || []).map(c => ({ ...c, site_id: remapSite.get(c.site_id) || c.site_id, groupe_id: c.groupe_id ? remapGroupe.get(c.groupe_id) || null : null, supprime: false }))
+    .filter(c => !ctExist.has(c.site_id + '|' + (c.nom || '').toLowerCase()));
+  $('#im-suite', m).innerHTML = `<p>${fmtN(lot.length)} sites dans le fichier : <b>${fmtN(nouveaux)} nouveaux</b>, ${fmtN(lot.length - nouveaux)} déjà présents (mis à jour, qualifications conservées)${groupes.length ? ` · ${fmtN(groupes.length)} groupes` : ''}${contacts.length ? ` · ${fmtN(contacts.length)} contacts` : ''}.</p>
+    <div class="progression"><div id="im-prog"></div></div><p class="vide" id="im-etat"></p><button class="btn btn-primaire" id="im-go">Importer</button>`;
   $('#im-go', m).onclick = async () => {
     $('#im-go', m).disabled = true;
-    await store.enregistrerLot('sites', lot, (n, t) => $('#im-prog', m).style.width = (n / t * 100) + '%');
-    toast(`${fmtN(lot.length)} sites importés`, 'ok'); fermerModale();
+    if (groupes.length) await store.enregistrerLot('groupes', groupes);
+    await store.enregistrerLot('sites', lot, (n, t) => { $('#im-prog', m).style.width = (n / t * 100) + '%'; $('#im-etat', m).textContent = `Enregistrement sur l'appareil : ${fmtN(n)} / ${fmtN(t)}`; });
+    if (contacts.length) await store.enregistrerLot('contacts', contacts);
+    toast(`${fmtN(lot.length)} sites importés — envoi vers la base en cours, laissez la page ouverte jusqu'à « Synchronisé »`, 'ok'); fermerModale();
   };
 }
 
