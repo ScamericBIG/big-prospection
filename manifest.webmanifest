@@ -1,0 +1,16 @@
+{
+  "name": "BIG Prospection — Bordas Industrial Group",
+  "short_name": "BIG Prospection",
+  "description": "Prospection commerciale des sites industriels et logistiques",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FFFFFF",
+  "theme_color": "#505EB6",
+  "lang": "fr",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

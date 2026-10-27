@@ -1,162 +1,193 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>BIG — Espace Équipes</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Barlow+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet"/>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:'Barlow',sans-serif;background:#0d0d0d;color:#fff;overflow:hidden}
-
-/* Fond animé */
-.bg{position:fixed;inset:0;background:
-  radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,45,156,.18) 0%, transparent 60%),
-  radial-gradient(ellipse 60% 80% at 80% 30%, rgba(0,45,156,.12) 0%, transparent 60%),
-  #0d0d0d;
-}
-.bg-lines{position:fixed;inset:0;opacity:.04;
-  background-image:repeating-linear-gradient(0deg,#fff 0px,#fff 1px,transparent 1px,transparent 60px),
-                   repeating-linear-gradient(90deg,#fff 0px,#fff 1px,transparent 1px,transparent 60px);
-}
-
-/* AUTH */
-#auth{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center}
-.auth-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);padding:40px 44px;width:380px;max-width:95vw;backdrop-filter:blur(20px)}
-.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px}
-.auth-logo-box{background:#002D9C;padding:6px 12px}
-.auth-logo-txt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:28px;color:#fff;letter-spacing:2px}
-.auth-subtitle{font-size:11px;color:rgba(255,255,255,.4);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-left:2px}
-.auth-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;display:block}
-.auth-input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;padding:11px 14px;font-size:13px;font-family:'Barlow',sans-serif;outline:none;margin-bottom:12px;transition:border .2s}
-.auth-input:focus{border-color:rgba(0,45,156,.8);background:rgba(0,45,156,.08)}
-.auth-input::placeholder{color:rgba(255,255,255,.2)}
-.auth-btn{width:100%;padding:13px;background:#002D9C;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;letter-spacing:1.5px;text-transform:uppercase;border:none;cursor:pointer;transition:background .2s;margin-top:4px}
-.auth-btn:hover{background:#001e7a}
-.auth-err{color:#e74c3c;font-size:11px;text-align:center;margin-top:10px;display:none;font-weight:600}
-
-/* HOME */
-#home{display:none;position:fixed;inset:0;z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:40px}
-.home-logo{text-align:center}
-.home-logo-box{display:inline-flex;align-items:center;gap:14px;margin-bottom:12px}
-.home-logo-square{background:#002D9C;padding:8px 16px}
-.home-logo-txt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:40px;color:#fff;letter-spacing:3px}
-.home-tagline{font-size:12px;color:rgba(255,255,255,.35);font-weight:600;text-transform:uppercase;letter-spacing:2px}
-.home-user{font-size:11px;color:rgba(255,255,255,.3);margin-top:6px}
-
-.cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
-.card{width:240px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);padding:32px 28px;cursor:pointer;transition:all .25s;text-align:left;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;text-decoration:none}
-.card::before{content:'';position:absolute;inset:0;background:rgba(0,45,156,0);transition:background .25s}
-.card:hover::before{background:rgba(0,45,156,.12)}
-.card:hover{border-color:rgba(0,45,156,.6);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,45,156,.2)}
-.card-icon{font-size:32px;line-height:1}
-.card-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:#fff;text-transform:uppercase;letter-spacing:.5px}
-.card-desc{font-size:11px;color:rgba(255,255,255,.4);line-height:1.6}
-.card-arrow{margin-top:auto;font-size:11px;font-weight:700;color:rgba(0,45,156,.8);font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px}
-.card:hover .card-arrow{color:#4d7cff}
-
-.home-logout{font-size:10px;color:rgba(255,255,255,.2);background:transparent;border:none;cursor:pointer;font-family:'Barlow',sans-serif;text-transform:uppercase;letter-spacing:.5px;padding:4px 8px;transition:color .2s}
-.home-logout:hover{color:rgba(255,255,255,.5)}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>BIG Prospection</title>
+  <meta name="description" content="Outil de prospection commerciale — Bordas Industrial Group">
+  <meta name="theme-color" content="#505EB6">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <link rel="apple-touch-icon" href="img/icon-192.png">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="vendor/leaflet/MarkerCluster.css">
+  <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-<div class="bg"></div>
-<div class="bg-lines"></div>
 
-<!-- AUTH -->
-<div id="auth">
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-box"><div class="auth-logo-txt">BIG</div></div>
-      <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:#fff;text-transform:uppercase;letter-spacing:.5px">Bordas Industrial Group</div>
-        <div class="auth-subtitle">Espace Équipes</div>
+<!-- =================================================================== CONNEXION -->
+<section id="ecran-connexion" class="ecran-connexion" hidden>
+  <div class="connexion-carte">
+    <img src="img/logo-big.png" alt="BIG — Bordas Industrial Group" class="connexion-logo">
+    <h1>Prospection commerciale</h1>
+    <p class="connexion-sous-titre">Réparation de dallages industriels</p>
+    <form id="form-connexion" autocomplete="on" novalidate>
+      <label>Email professionnel
+        <input type="email" id="cx-email" name="email" placeholder="prenom.nom@big-france.com" autocomplete="username" required>
+      </label>
+      <label>Mot de passe
+        <div class="champ-mdp">
+          <input type="password" id="cx-mdp" name="password" autocomplete="current-password" required>
+          <button type="button" class="btn-icone" id="cx-voir" title="Afficher le mot de passe" aria-label="Afficher le mot de passe">👁</button>
+        </div>
+      </label>
+      <p class="erreur" id="cx-erreur" role="alert"></p>
+      <button type="submit" class="btn btn-primaire btn-large" id="cx-valider">Se connecter</button>
+      <button type="button" class="lien" id="cx-oubli">Mot de passe oublié ?</button>
+    </form>
+    <p class="note-demo" id="cx-demo" hidden>Mode démo : données fictives. Connectez-vous avec l'email d'un membre de l'équipe et le mot de passe <b>demo</b>.</p>
+  </div>
+  <p class="connexion-pied">Accès réservé aux chargés d'affaires Bordas Industrial Group</p>
+</section>
+
+<!-- =================================================================== APPLICATION -->
+<div id="appli" class="appli" hidden>
+  <header class="entete">
+    <button class="btn-icone seul-mobile" id="btn-menu-filtres" aria-label="Filtres">☰</button>
+    <img src="img/logo-big.png" alt="BIG" class="entete-logo">
+    <nav class="onglets" role="tablist">
+      <button role="tab" data-vue="carte" class="actif">Carte</button>
+      <button role="tab" data-vue="liste">Liste</button>
+      <button role="tab" data-vue="groupes">Groupes</button>
+      <button role="tab" data-vue="perfs">Performances</button>
+    </nav>
+    <div class="entete-droite">
+      <span class="etat-sync" id="etat-sync" title="État de la synchronisation"></span>
+      <button class="btn btn-primaire btn-petit" id="btn-ajout-site">+ Site</button>
+      <div class="menu-utilisateur">
+        <button class="avatar" id="btn-utilisateur" aria-haspopup="true"></button>
+        <div class="menu-deroulant" id="menu-utilisateur" hidden>
+          <div class="menu-entete" id="menu-identite"></div>
+          <button data-action="synchro">🔄 Synchroniser maintenant</button>
+          <button data-action="horsligne">📥 Préparer le hors connexion</button>
+          <button data-action="import">📂 Importer des sites (Excel / CSV / open data)</button>
+          <button data-action="mdp">🔑 Changer mon mot de passe</button>
+          <button data-action="deconnexion">↩ Se déconnecter</button>
+        </div>
       </div>
     </div>
-    <label class="auth-label">Email</label>
-    <input class="auth-input" type="email" id="email" placeholder="votre@big-france.com" autocomplete="email"/>
-    <label class="auth-label">Mot de passe</label>
-    <input class="auth-input" type="password" id="pwd" placeholder="••••••••" autocomplete="current-password"/>
-    <button class="auth-btn" onclick="login()">Accéder</button>
-    <div class="auth-err" id="err">Email ou mot de passe incorrect</div>
-  </div>
-</div>
+  </header>
 
-<!-- HOME -->
-<div id="home">
-  <div class="home-logo">
-    <div class="home-logo-box">
-      <div class="home-logo-square"><div class="home-logo-txt">BIG</div></div>
+  <!-- Bandeau secteur -->
+  <div class="bandeau-secteur" id="bandeau-secteur">
+    <div class="secteur-info">
+      <span class="secteur-pastille" id="secteur-pastille"></span>
+      <div>
+        <div class="secteur-titre" id="secteur-titre"></div>
+        <div class="secteur-zones" id="secteur-zones"></div>
+      </div>
     </div>
-    <div class="home-tagline">Bordas Industrial Group</div>
-    <div class="home-user" id="home-user"></div>
+    <div class="secteur-choix" id="secteur-choix" role="radiogroup" aria-label="Changer de secteur"></div>
+    <div class="secteur-stats" id="secteur-stats"></div>
   </div>
-  <div class="cards">
-    <a class="card" href="prospection.html">
-      <div class="card-icon">🗺</div>
-      <div class="card-title">Prospection</div>
-      <div class="card-desc">Carte interactive des sites logistiques, scoring BIG, groupes, itinéraires de tournée</div>
-      <div class="card-arrow">Ouvrir →</div>
-    </a>
-    <a class="card" href="planning.html">
-      <div class="card-icon">📅</div>
-      <div class="card-title">Planning</div>
-      <div class="card-desc">Planning des équipes, chantiers, statistiques, kilométrage, suivi des performances</div>
-      <div class="card-arrow">Ouvrir →</div>
-    </a>
-  </div>
-  <button class="home-logout" onclick="logout()">Se déconnecter</button>
+
+  <main class="contenu">
+    <!-- ------------------------------------------------ FILTRES (communs carte + liste) -->
+    <aside class="filtres" id="filtres">
+      <div class="filtres-entete">
+        <b>Filtres</b>
+        <button class="lien" id="f-reset">Réinitialiser</button>
+        <button class="btn-icone seul-mobile" id="f-fermer" aria-label="Fermer">✕</button>
+      </div>
+      <div class="filtres-corps">
+        <input type="search" id="f-texte" placeholder="Rechercher : nom, ville, SIREN…">
+        <div class="ligne-2">
+          <input type="text" id="f-cp" placeholder="Code postal / dépt." inputmode="numeric">
+          <input type="text" id="f-ville" placeholder="Ville">
+        </div>
+
+        <details open><summary>Type de site</summary><div class="puces" id="f-categories"></div></details>
+
+        <details open><summary>Surface du site</summary>
+          <div class="ligne-2">
+            <select id="f-surf-min" aria-label="Surface minimale">
+              <option value="">Min.</option><option value="5000">5 000 m²</option><option value="10000">10 000 m²</option><option value="20000">20 000 m²</option><option value="50000">50 000 m²</option><option value="100000">100 000 m²</option>
+            </select>
+            <select id="f-surf-max" aria-label="Surface maximale">
+              <option value="">Max.</option><option value="10000">10 000 m²</option><option value="20000">20 000 m²</option><option value="50000">50 000 m²</option><option value="100000">100 000 m²</option>
+            </select>
+          </div>
+        </details>
+
+        <details open><summary>Ancienneté</summary>
+          <div class="puces" id="f-decennale">
+            <button class="puce" data-v="hors">Hors décennale (≥ 10 ans)</button>
+            <button class="puce" data-v="sous">Sous décennale (&lt; 10 ans)</button>
+            <button class="puce" data-v="inconnue">Année inconnue</button>
+          </div>
+          <div class="ligne-2">
+            <input type="number" id="f-annee-min" placeholder="Construit après" min="1900" max="2100">
+            <input type="number" id="f-annee-max" placeholder="Construit avant" min="1900" max="2100">
+          </div>
+        </details>
+
+        <details><summary>Suivi commercial</summary>
+          <div class="puces" id="f-statuts"></div>
+          <div class="puces" id="f-priorites">
+            <button class="puce" data-v="A">Priorité A</button><button class="puce" data-v="B">Priorité B</button><button class="puce" data-v="C">Priorité C</button>
+          </div>
+          <div class="puces">
+            <button class="puce" id="f-retard">⏰ Rappels en retard</button>
+            <button class="puce" id="f-semaine">📅 À rappeler cette semaine</button>
+          </div>
+          <select id="f-assigne"><option value="">Tous les chargés d'affaires</option></select>
+          <select id="f-groupe"><option value="">Tous les groupes</option></select>
+        </details>
+
+        <details id="bloc-itineraire"><summary>Itinéraire &amp; tournée</summary>
+          <div class="itineraire">
+            <div class="champ-adresse">
+              <input type="search" id="it-adresse" placeholder="Adresse, ville ou code postal" autocomplete="off">
+              <div class="suggestions" id="it-suggestions" hidden></div>
+            </div>
+            <div class="ligne-2">
+              <button class="btn btn-petit" id="it-position">📍 Ma position</button>
+              <button class="btn btn-petit" id="it-effacer">Effacer</button>
+            </div>
+            <label class="curseur">Rayon : <b id="it-rayon-val">30 km</b>
+              <input type="range" id="it-rayon" min="5" max="200" step="5" value="30">
+            </label>
+            <div class="tournee" id="tournee"></div>
+          </div>
+        </details>
+      </div>
+      <div class="filtres-pied" id="f-resultat"></div>
+    </aside>
+
+    <!-- ------------------------------------------------ VUES -->
+    <section class="vue vue-carte actif" id="vue-carte">
+      <div id="carte"></div>
+      <div class="legende" id="legende"></div>
+      <div class="fonds-carte" id="fonds-carte"></div>
+    </section>
+
+    <section class="vue vue-liste" id="vue-liste">
+      <div class="liste-outils">
+        <span id="liste-compte"></span>
+        <div>
+          <button class="btn btn-petit" id="liste-csv">Exporter CSV</button>
+          <button class="btn btn-petit" id="liste-xlsx">Exporter Excel</button>
+        </div>
+      </div>
+      <div class="table-defile"><table class="table" id="liste-table"></table></div>
+      <div class="pagination" id="liste-pagination"></div>
+    </section>
+
+    <section class="vue vue-groupes" id="vue-groupes"></section>
+    <section class="vue vue-perfs" id="vue-perfs"></section>
+
+    <!-- ------------------------------------------------ FICHE SITE (panneau latéral) -->
+    <aside class="fiche" id="fiche" hidden aria-label="Fiche du site"></aside>
+  </main>
 </div>
 
-<script>
-const USERS = {
-  "enieps@big-france.com":    {name:"Emeric",    sector:"nord"},
-  "emeric@big-france.com":    {name:"Emeric",    sector:"nord"},
-  "mpineau@big-france.com":   {name:"Mathis",    sector:"ouest"},
-  "mguerreiro@big-france.com":{name:"Marie",     sector:"sudest"},
-  "cdragne@big-france.com":   {name:"Christophe",sector:"all"},
-  "admin@big-france.com":     {name:"Admin",     sector:"all"},
-  "test@big-france.com":      {name:"Test",      sector:"nord"},
-};
+<div class="modale-fond" id="modale" hidden><div class="modale" role="dialog" aria-modal="true"></div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="chargement" id="chargement"><img src="img/logo-mark.png" alt=""><span id="chargement-txt">Chargement…</span></div>
 
-function login(){
-  const email = document.getElementById('email').value.trim().toLowerCase();
-  const pwd   = document.getElementById('pwd').value;
-  const user  = USERS[email];
-  if(user && pwd.length >= 4){
-    localStorage.setItem('big_user', JSON.stringify({email,...user}));
-    showHome(user);
-  }else{
-    const e = document.getElementById('err');
-    e.style.display = 'block';
-    setTimeout(()=>e.style.display='none', 3000);
-  }
-}
-
-function showHome(user){
-  document.getElementById('auth').style.display = 'none';
-  document.getElementById('home').style.display = 'flex';
-  document.getElementById('home-user').textContent = `Connecté en tant que ${user.name}`;
-}
-
-function logout(){
-  localStorage.removeItem('big_user');
-  document.getElementById('home').style.display = 'none';
-  document.getElementById('auth').style.display = 'flex';
-  document.getElementById('email').value = '';
-  document.getElementById('pwd').value = '';
-}
-
-document.getElementById('pwd').addEventListener('keydown', e=>{if(e.key==='Enter')login();});
-
-// Session persistante
-const saved = localStorage.getItem('big_user');
-if(saved){
-  try{
-    const user = JSON.parse(saved);
-    if(USERS[user.email]) showHome(user);
-  }catch(e){ localStorage.removeItem('big_user'); }
-}
-</script>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/leaflet/leaflet.markercluster.js"></script>
+<script src="vendor/supabase.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
