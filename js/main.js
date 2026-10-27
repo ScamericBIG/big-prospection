@@ -226,7 +226,7 @@ function modaleMotDePasse(recuperation) {
 async function preparerHorsLigne() {
   if (!navigator.onLine) return toast('Connectez-vous à internet pour préparer le mode hors connexion', 'erreur');
   const m = ouvrirModale(`<h3>Préparer le hors connexion</h3>
-    <p>Les données de tous les sites sont déjà conservées sur cet appareil. Cette action télécharge en plus le fond de carte de votre secteur actuel
+    <p>Les données de tous les sites sont déjà conservées sur cet appareil. Cette action télécharge en plus le fond « Plan IGN » (France) de votre secteur actuel
     (<b>${esc(store.get('secteurs', etat.secteur)?.libelle || '')}</b>) jusqu’au niveau « département », pour pouvoir consulter la carte sans réseau.
     Les zones que vous zoomez en ligne sont aussi mémorisées automatiquement.</p>
     <div class="progression"><div id="hl-prog"></div></div><p class="vide" id="hl-txt"></p>

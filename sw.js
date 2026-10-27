@@ -1,5 +1,5 @@
 // Service worker : application disponible hors connexion + mémorisation des tuiles de carte
-const VERSION = 'big-prospection-v1.0.0';
+const VERSION = 'big-prospection-v1.0.2';
 const COQUILLE = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/main.js', 'js/config.js', 'js/store.js', 'js/etat.js', 'js/metier.js', 'js/categories.js', 'js/ui.js',

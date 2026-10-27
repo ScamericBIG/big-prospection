@@ -7,9 +7,10 @@ import { $, debounce } from './ui.js';
 let carte, groupeSites, coucheAutour, coucheTournee, coucheSelection, fonds = {}, fondActif;
 let surClic = null;
 
+// Fonds de carte gratuits sans clé (CARTO exige désormais une clé API : abandonné)
 const FONDS = {
-  plan: { nom: 'Plan', url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', o: { subdomains: 'abcd', maxZoom: 20, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>' } },
-  osm: { nom: 'Détaillé', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', o: { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' } },
+  plan: { nom: 'Plan', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', o: { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' } },
+  ignplan: { nom: 'Plan IGN', url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', o: { maxZoom: 19, attribution: '© IGN – Géoplateforme (France)' } },
   sat: { nom: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', o: { maxZoom: 19, attribution: 'Imagerie © Esri, Maxar, Earthstar Geographics' } },
   ign: { nom: 'Photo IGN', url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', o: { maxZoom: 19, attribution: '© IGN – Géoplateforme (France uniquement)' } },
 };
@@ -165,7 +166,8 @@ export async function prechargerTuiles(progression) {
   const b = L.latLngBounds(EMPRISES_SECTEURS[etat.secteur] || EMPRISES_SECTEURS.national);
   const pts = sitesDuSecteur().filter(s => s.lat);
   const bb = pts.length > 3 ? L.latLngBounds(pts.map(s => [s.lat, s.lng])) : b;
-  const tmpl = fondActif._url, sub = fondActif.options.subdomains || 'abc';
+  // Téléchargement en masse : uniquement le Plan IGN (données ouvertes) — les serveurs OpenStreetMap l'interdisent
+  const tmpl = FONDS.ignplan.url, sub = 'abc';
   const urls = [];
   const zMax = etat.secteur === 'national' ? 9 : 10;
   for (let z = 5; z <= zMax; z++) {

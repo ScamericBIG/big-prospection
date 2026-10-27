@@ -139,6 +139,13 @@ class Store extends EventTarget {
 
   // Charge le cache puis identifie le profil de l'utilisateur connecté
   async demarrerSession(email) {
+    // Changement de mode (démo → Supabase, ou autre projet Supabase) : on vide le cache local
+    const mode = MODE_DEMO ? 'demo' : CONFIG.SUPABASE_URL;
+    if ((await this.meta('mode')) !== mode) {
+      await this.reinitialiserCache();
+      try { localStorage.removeItem('big_tournee'); } catch { }
+      await this.meta('mode', mode);
+    }
     await this.chargerCache();
     if (MODE_DEMO) await this.initDemo();
     if (this.enLigne && !MODE_DEMO) {
