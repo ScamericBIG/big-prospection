@@ -10,8 +10,8 @@
 //  stockées uniquement dans le navigateur, mot de passe : demo).
 // ============================================================================
 export const CONFIG = {
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  SUPABASE_URL: 'https://sqnmatmbcknnugxstyre.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_4GGkpDUKFpi4i5m76rL7EQ_Zs-S8vZx',
 
   DOMAINE_EMAIL: 'big-france.com',
   NOM_APPLI: 'BIG Prospection',
