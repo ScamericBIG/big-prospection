@@ -29,7 +29,7 @@ function rendre() {
   const montantDevis = devis.reduce((t, a) => t + (Number(a.montant) || 0), 0);
   const nouveauxClients = new Set(acts.filter(a => a.type === 'statut' && /→ Client$/.test(a.contenu || '')).map(a => a.site_id)).size;
   const sitesTravailles = new Set(faits.map(a => a.site_id)).size;
-  const qualifies = sitesCA.filter(s => s.statut !== 'a_qualifier').length;
+  const qualifies = agreger(sitesCA).qualifies;
 
   el.innerHTML = `
     <div class="perfs-filtres">
@@ -41,7 +41,7 @@ function rendre() {
       <div class="kpi"><span>Appels passés</span><b>${fmtN(nb('appel'))}</b><small>${annee}</small></div>
       <div class="kpi"><span>RDV & visites réalisés</span><b>${fmtN(nb('rdv') + nb('visite'))}</b><small>${acts.filter(a => ['rdv', 'visite'].includes(a.type) && a.statut === 'planifie').length} planifié(s)</small></div>
       <div class="kpi"><span>Devis envoyés</span><b>${fmtN(devis.length)}</b><small>${fmtEuro(montantDevis)}</small></div>
-      <div class="kpi"><span>Nouveaux clients</span><b>${fmtN(nouveauxClients)}</b><small>${sitesCA.filter(s => s.statut === 'client').length} clients au total</small></div>
+      <div class="kpi"><span>Nouveaux clients</span><b>${fmtN(nouveauxClients)}</b><small>${agreger(sitesCA).clients} clients au total</small></div>
       <div class="kpi"><span>Sites travaillés</span><b>${fmtN(sitesTravailles)}</b><small>${fmtN(qualifies)} qualifiés / ${fmtN(sitesCA.length)}</small></div>
     </div>
     <div class="grille-perfs">
@@ -85,8 +85,24 @@ function barres(lignes, couleur = '#505EB6') {
   return lignes.map(l => `<div class="barre-h"><span>${l.t}</span><div class="piste"><div class="rempli" style="width:${(l.v / max) * 100}%;background:${l.c || couleur}" data-bulle="${esc(l.t.replace(/<[^>]+>/g, ''))} : ${fmtN(l.v)}"></div></div><span class="val">${l.lib ?? fmtN(l.v)}</span></div>`).join('');
 }
 
+// Agrégats calculés en une seule passe sur les sites (rapide même avec plusieurs dizaines de milliers de sites)
+let cacheAgg = { liste: null, agg: null };
+function agreger(sites) {
+  if (cacheAgg.liste === sites) return cacheAgg.agg;
+  const a = { statut: {}, prio: { A: [0, 0], B: [0, 0], C: [0, 0] }, cat: {}, clients: 0, qualifies: 0 };
+  for (const s of sites) {
+    const i = infos(s), st = s.statut || 'a_qualifier';
+    a.statut[st] = (a.statut[st] || 0) + 1;
+    a.prio[i.prio][0]++; if (st !== 'a_qualifier') { a.prio[i.prio][1]++; a.qualifies++; }
+    const c = a.cat[i.cat] || (a.cat[i.cat] = [0, 0]); c[0]++;
+    if (st === 'client') { c[1]++; a.clients++; }
+  }
+  cacheAgg = { liste: sites, agg: a };
+  return a;
+}
+
 function entonnoir(sites) {
-  const n = k => sites.filter(s => s.statut === k).length;
+  const ag = agreger(sites), n = k => ag.statut[k] || 0;
   // cumul : un site au stade « devis » est aussi passé par prospect / contact / RDV
   const cumul = ENTONNOIR.map((k, i) => ({ k, v: ENTONNOIR.slice(i).reduce((t, x) => t + n(x), 0) }));
   const base = cumul[0].v || 1;
@@ -95,9 +111,10 @@ function entonnoir(sites) {
 }
 
 function priorites(sites) {
+  const ag = agreger(sites);
   const t = ['A', 'B', 'C'].map(p => {
-    const l = sites.filter(s => infos(s).prio === p), c = l.filter(s => s.statut !== 'a_qualifier').length;
-    return { p, n: l.length, c, pct: l.length ? Math.round(c / l.length * 100) : 0 };
+    const [nb, c] = ag.prio[p];
+    return { p, n: nb, c, pct: nb ? Math.round(c / nb * 100) : 0 };
   });
   return `<table class="table"><thead><tr><th>Priorité</th><th class="num">Sites</th><th class="num">Qualifiés</th><th>Couverture</th></tr></thead><tbody>
     ${t.map(x => `<tr><td><span class="badge prio-${x.p}">${x.p}</span></td><td class="num">${fmtN(x.n)}</td><td class="num">${fmtN(x.c)}</td><td style="width:40%"><div class="barre-h" style="grid-template-columns:1fr 44px;margin:0"><div class="piste"><div class="rempli" style="width:${x.pct}%" data-bulle="Priorité ${x.p} : ${x.pct} % qualifiés"></div></div><span class="val">${x.pct} %</span></div></td></tr>`).join('')}
@@ -119,9 +136,10 @@ function classementCA(sites, idsSecteur) {
 }
 
 function parCategorie(sites) {
+  const ag = agreger(sites);
   return barres(Object.entries(CATEGORIES).map(([k, c]) => {
-    const l = sites.filter(s => infos(s).cat === k);
-    return { t: c.libelle, v: l.length, c: c.couleur, lib: `${fmtN(l.length)} · ${l.filter(s => s.statut === 'client').length} cl.` };
+    const [nb, cl] = ag.cat[k] || [0, 0];
+    return { t: c.libelle, v: nb, c: c.couleur, lib: `${fmtN(nb)} · ${cl} cl.` };
   }).filter(x => x.v));
 }
 

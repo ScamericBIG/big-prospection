@@ -46,7 +46,7 @@ Outil de prospection commerciale des sites industriels et logistiques (France + 
 
    > Si une adresse diffère, modifiez-la dans **Table Editor → profils** avant de créer le compte. Toute adresse hors `@big-france.com` est refusée par la base.
 5. **Authentication → URL Configuration** : *Site URL* = l'adresse GitHub Pages de l'appli (ex. `https://scamericbig.github.io/big-prospection/`) — nécessaire pour le lien « mot de passe oublié ».
-6. **Project Settings → API** : copier *Project URL* et la clé *anon / publishable* dans `js/config.js`.
+6. Bouton **Connect** (ou **Settings → API Keys**) : copier *Project URL* et la **Publishable key** (`sb_publishable_…`) dans `js/config.js`.
 
 ### 2.2 GitHub Pages
 
@@ -81,9 +81,9 @@ Les bâtiments résidentiels, écoles, hôpitaux, bureaux, etc. sont écartés. 
 
 1. Dépôt GitHub → **Settings → Secrets and variables → Actions** → ajouter :
    - `SUPABASE_URL` : Project URL ;
-   - `SUPABASE_SERVICE_ROLE_KEY` : clé *service_role* (Project Settings → API). ⚠ Clé secrète : uniquement dans les secrets GitHub, jamais dans le code.
+   - `SUPABASE_SERVICE_ROLE_KEY` : **Secret key** (`sb_secret_…`, Settings → API Keys). ⚠ Clé secrète : uniquement dans les secrets GitHub, jamais dans le code.
 2. **Actions → Import open data (sites) → Run workflow** : indiquer les départements (`59,62,80` ou `all`) et cocher Belgique si besoin.
-3. Durée indicative : 5 à 20 min par département (l'enrichissement SIRENE est limité à 7 requêtes/s). Un import trimestriel automatique de toute la France est programmé.
+3. Durée indicative : 5 à 20 min par département (l’enrichissement SIRENE est limité à 7 requêtes/s). Avec « all », le travail est découpé automatiquement en lots de 6 départements traités en parallèle (3 à la fois) : comptez quelques heures pour toute la France. Un import trimestriel automatique est programmé.
 
 Les ré-imports **ne touchent jamais** au nom, à l'adresse ni à la qualification saisis par l'équipe ; seules les données open data (`*_auto`) sont rafraîchies. Les corrections de l'équipe (surface, année, type) restent prioritaires.
 
@@ -129,7 +129,7 @@ css/app.css           charte graphique BIG
 js/config.js          ← URL et clé Supabase
 js/main.js            démarrage, connexion, bandeau secteur, menus
 js/store.js           cache local IndexedDB + synchronisation Supabase + file d'attente hors connexion
-js/carte.js           carte Leaflet, clusters, légende, fonds de carte
+js/carte.js           carte Leaflet : sites dessinés sur un canvas, regroupement calculé dans js/cluster-worker.js
 js/fiche.js           fiche site, qualification, contacts, historique
 js/filtres.js · js/liste.js · js/groupes.js · js/perfs.js · js/tournee.js · js/importer.js
 js/metier.js          secteurs, statuts, score, décennale
@@ -138,7 +138,7 @@ sw.js                 service worker (hors connexion)
 supabase/schema.sql   base de données
 scripts/              import open data, générateur des données de démo
 .github/workflows/    import automatisé
-vendor/               bibliothèques (Leaflet, MarkerCluster, Supabase, SheetJS) embarquées pour le hors connexion
+vendor/               bibliothèques (Leaflet, Supercluster, Supabase, SheetJS) embarquées pour le hors connexion
 ```
 
 Sources de données : BDNB © CSTB (Licence Ouverte), Géorisques © MTE/BRGM, Base SIRENE © INSEE, Base Adresse Nationale, © contributeurs OpenStreetMap (ODbL), fonds de carte © CARTO, © Esri, © IGN.

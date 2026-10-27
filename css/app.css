@@ -166,6 +166,14 @@ label > input, label > select, label > textarea, label > .champ-mdp { margin-top
 .cluster.c2 { background: rgba(59, 71, 150, .92); box-shadow: 0 0 0 5px rgba(59, 71, 150, .28), 0 2px 6px rgba(0, 0, 0, .25); }
 .cluster.c3 { background: rgba(42, 51, 110, .94); box-shadow: 0 0 0 6px rgba(42, 51, 110, .3), 0 2px 6px rgba(0, 0, 0, .25); font-size: 13px; }
 .leaflet-tooltip.info-site { font: 12px/1.35 var(--police); padding: 6px 8px; border-radius: 6px; }
+.popup-liste ul { list-style: none; margin: 6px 0 0; padding: 0; max-height: 260px; overflow-y: auto; }
+.popup-liste li { padding: 3px 0; border-bottom: 1px solid var(--gris-pale); font-size: 12.5px; }
+.popup-liste li a { text-decoration: none; color: var(--texte); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.popup-liste li a:hover { color: var(--bleu-fonce); }
+.popup-liste .rond { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.popup-liste small { color: var(--texte-3); }
+.maj-dispo { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); z-index: 3500; background: var(--bleu-tres-fonce); color: #fff; padding: 10px 14px; border-radius: 10px; box-shadow: var(--ombre-forte); display: flex; gap: 12px; align-items: center; font-size: 13.5px; }
+.maj-dispo button { background: #fff; color: var(--bleu-tres-fonce); border: 0; border-radius: 6px; padding: 6px 10px; font-weight: 700; cursor: pointer; }
 .marqueur-tournee { background: var(--rouge); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
 .marqueur-depart { background: var(--bleu-tres-fonce); }
 

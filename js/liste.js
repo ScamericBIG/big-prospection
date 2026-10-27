@@ -25,15 +25,23 @@ const COLONNES = [
 export function initListe() {
   const re = debounce(() => { page = 0; if (visible) rendre(); }, 80);
   ecouter('filtres', re); ecouter('secteur', re); ecouter('autour', re);
-  store.on('change', d => { if (visible && (!d || d.table === 'sites')) rendre(); });
+  const rendreDiffere = debounce(() => visible && rendre(), 250);
+  store.on('change', d => { if (visible && (!d || d.table === 'sites')) rendreDiffere(); });
   ecouter('vue', v => { visible = v === 'liste'; if (visible) rendre(); });
   $('#liste-csv').onclick = () => exporter('csv');
   $('#liste-xlsx').onclick = () => exporter('xlsx');
 }
 
+// Tri « décoré » : la clé de tri est calculée une seule fois par site ; résultat mémorisé tant que rien ne change
+let memoTri = { l: null, col: null, sens: 0, res: null };
 function trier(l) {
+  if (memoTri.l === l && memoTri.col === tri.col && memoTri.sens === tri.sens) return memoTri.res;
   const c = COLONNES.find(x => x.k === tri.col);
-  return [...l].sort((a, b) => { const x = c.v(a), y = c.v(b); return (x < y ? -1 : x > y ? 1 : 0) * tri.sens; });
+  const d = l.map(s => [c.v(s), s]);
+  d.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0) * tri.sens);
+  const res = d.map(x => x[1]);
+  memoTri = { l, col: tri.col, sens: tri.sens, res };
+  return res;
 }
 
 function rendre() {

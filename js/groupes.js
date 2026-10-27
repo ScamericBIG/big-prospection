@@ -14,17 +14,25 @@ export function initGroupes() {
   store.on('change', d => { if (visible && ['groupes', 'contacts', 'sites'].includes(d?.table) && !document.activeElement?.closest('.groupe-detail')) rendre(); });
 }
 
-function statsGroupe(g, sites) {
-  const s = sites.filter(x => x.groupe_id === g.id);
-  return { n: s.length, surf: s.reduce((t, x) => t + (infos(x).surface || 0), 0), clients: s.filter(x => x.statut === 'client').length };
+// Statistiques de tous les groupes en une seule passe sur les sites
+function statsGroupes(sites) {
+  const m = new Map();
+  for (const x of sites) {
+    if (!x.groupe_id) continue;
+    const st = m.get(x.groupe_id) || { n: 0, surf: 0, clients: 0 };
+    st.n++; st.surf += infos(x).surface || 0; if (x.statut === 'client') st.clients++;
+    m.set(x.groupe_id, st);
+  }
+  return m;
 }
 
 function rendre() {
   const el = $('#vue-groupes');
   const sites = store.liste('sites');
   const q = sansAccent(recherche);
+  const stats = statsGroupes(sites), vide = { n: 0, surf: 0, clients: 0 };
   const groupes = store.liste('groupes').filter(g => !q || sansAccent(g.nom).includes(q))
-    .map(g => ({ g, st: statsGroupe(g, sites) })).sort((a, b) => b.st.n - a.st.n || a.g.nom.localeCompare(b.g.nom));
+    .map(g => ({ g, st: stats.get(g.id) || vide })).sort((a, b) => b.st.n - a.st.n || a.g.nom.localeCompare(b.g.nom));
   if (!groupeActif && groupes.length) groupeActif = groupes[0].g.id;
   el.innerHTML = `
     <div class="groupes-liste">

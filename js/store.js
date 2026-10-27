@@ -83,10 +83,14 @@ class Store extends EventTarget {
     const tx = this.db.transaction('meta', 'readwrite'); tx.objectStore('meta').put(v, k); return fin(tx);
   }
 
+  // Écriture par paquets : évite de bloquer l'interface plusieurs secondes lors des grosses synchronisations
   async ecrireIdb(table, rows) {
-    const tx = this.db.transaction(table, 'readwrite'); const os = tx.objectStore(table);
-    for (const r of rows) os.put(r);
-    await fin(tx);
+    for (let i = 0; i < rows.length; i += 1500) {
+      const tx = this.db.transaction(table, 'readwrite'); const os = tx.objectStore(table);
+      for (const r of rows.slice(i, i + 1500)) os.put(r);
+      await fin(tx);
+      if (rows.length > 1500) await new Promise(r => setTimeout(r, 0));
+    }
   }
 
   // ---------------------------------------------------------- authentification

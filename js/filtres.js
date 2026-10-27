@@ -49,7 +49,8 @@ export function initFiltres() {
   $('#f-fermer').addEventListener('click', () => $('#filtres').classList.remove('ouvert'));
 
   majListes();
-  store.on('change', d => { if (['profils', 'groupes'].includes(d?.table)) majListes(); if (!d || d.table === 'sites') majResultat(); });
+  const majResultatDiffere = debounce(majResultat, 200);
+  store.on('change', d => { if (['profils', 'groupes'].includes(d?.table)) majListes(); if (!d || d.table === 'sites') majResultatDiffere(); });
   ecouter('secteur', majResultat);
   ecouter('autour', majResultat);
 }

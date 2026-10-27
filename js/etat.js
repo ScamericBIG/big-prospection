@@ -45,9 +45,27 @@ export function infos(s) {
   return c;
 }
 
+const memoSecteur = new Map();
 export function sitesDuSecteur(code = etat.secteur) {
+  const m = memoSecteur.get(code);
+  if (m && m.v === version) return m.res;
   const tous = store.liste('sites');
-  return code === 'national' ? tous : tous.filter(s => (s.secteur || store.secteurDe(s)) === code);
+  const res = code === 'national' ? tous : tous.filter(s => (s.secteur || store.secteurDe(s)) === code);
+  memoSecteur.set(code, { v: version, res });
+  return res;
+}
+
+// Pré-calcul des scores / catégories / textes de recherche pendant les temps morts du navigateur :
+// les premiers filtres et changements de secteur sont ensuite instantanés.
+export function prechauffer() {
+  const sites = store.liste('sites'); let k = 0;
+  const tranche = dl => {
+    const fin = Math.min(sites.length, k + 2000);
+    for (; k < fin; k++) infos(sites[k]);
+    if (k < sites.length) planifier(tranche);
+  };
+  const planifier = f => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 500 }) : setTimeout(f, 16));
+  planifier(tranche);
 }
 
 let memo = { cle: null, res: [] };

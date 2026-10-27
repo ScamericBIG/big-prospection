@@ -1,7 +1,7 @@
 // Point d'entrée : connexion, bandeau secteur, onglets, menu utilisateur, synchronisation
 import { CONFIG, MODE_DEMO } from './config.js';
 import { store } from './store.js';
-import { etat, emettre, ecouter, sitesDuSecteur, infos, invalider } from './etat.js';
+import { etat, emettre, ecouter, sitesDuSecteur, infos, invalider, prechauffer } from './etat.js';
 import { fmtN, fmtM2court, esc, rappelEnRetard, fmtDateHeure } from './metier.js';
 import { $, $$, toast, ouvrirModale, fermerModale, chargement } from './ui.js';
 import { initFiltres, majResultat } from './filtres.js';
@@ -15,7 +15,19 @@ import { ouvrirImport } from './importer.js';
 
 // ------------------------------------------------------------------ service worker (hors connexion)
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW', e));
+  const avaitVersion = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // vérifie les mises à jour au retour sur l'appli (sans attendre le prochain rechargement)
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => { }); });
+  }).catch(e => console.warn('SW', e));
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!avaitVersion || document.querySelector('.maj-dispo')) return;
+    const b = document.createElement('div');
+    b.className = 'maj-dispo';
+    b.innerHTML = '<span>Nouvelle version de l’application installée</span><button>Recharger</button>';
+    b.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(b);
+  });
 }
 
 async function demarrer() {
@@ -87,12 +99,13 @@ async function entrer(email) {
   majResultat();
   chargement(false);
   majEtatSync();
+  prechauffer();
   // première synchro : peut être longue (plusieurs dizaines de milliers de sites)
   if (!MODE_DEMO && store.enLigne) {
     const premiere = !store.derniereSync;
     if (premiere) chargement('Première synchronisation : téléchargement des sites…');
     await store.synchroniser();
-    if (premiere) { chargement(false); invalider(); emettre('filtres'); cadrerSecteur(); rendreSecteur(); }
+    if (premiere) { chargement(false); invalider(); emettre('filtres'); cadrerSecteur(); rendreSecteur(); prechauffer(); }
   }
   setInterval(() => store.synchroniser(), 3 * 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') store.synchroniser(); });
