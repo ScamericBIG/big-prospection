@@ -3,7 +3,12 @@
 Reprise de l'ancienne base (export Supabase de l'ébauche : sites_rows.csv + groupes_rows.csv)
 → reprise-ebauche.json, à importer dans l'appli (menu ▸ Importer des sites).
 
-Usage : python3 reprise-ebauche.py sites_rows.csv groupes_rows.csv reprise-ebauche.json
+Usage : python3 reprise-ebauche.py sites_rows.csv groupes_rows.csv reprise-ebauche.json [communes.geojson]
+
+Exclus : outre-mer, établissements La Poste (SIREN 356000000 : bureaux de poste ; les plateformes
+reviendront via l'import open data avec leur vraie surface).
+Sites sans coordonnées : position retrouvée (1) via un autre site de l'ancienne base à la même adresse,
+(2) sinon au centre de la commune (communes.geojson de github.com/gregoiredavid/france-geojson), (3) sinon laissés tels quels.
 """
 import csv, json, re, sys, unicodedata, uuid
 
@@ -24,6 +29,7 @@ def dept_de_cp(cp):
     return cp[:2]
 
 sites_csv, groupes_csv, sortie = sys.argv[1:4]
+communes_geojson = sys.argv[4] if len(sys.argv) > 4 else None
 sites = list(csv.DictReader(open(sites_csv, encoding='utf-8')))
 gr_rows = list(csv.DictReader(open(groupes_csv, encoding='utf-8')))
 
@@ -62,6 +68,71 @@ def groupe_du_site(r):
     if v in GROUPES_MAJ: return groupe(GROUPES_MAJ[v])
     return None
 
+# ---------------------------------------------------------------- exclusions
+def outre_mer(r):
+    cp = (r['cp'] or '').strip()
+    return cp[:2] in ('97', '98') or (r['dept'] or '') in ('97', '98') or len(r['dept'] or '') == 3 or re.search(r'\b97\d{3}\b', r['adresse'] or '')
+LA_POSTE = '356000000'
+avant = len(sites)
+exclus = {'outre_mer': sum(1 for r in sites if outre_mer(r)), 'la_poste': sum(1 for r in sites if r['siret'][:9] == LA_POSTE and not outre_mer(r))}
+sites = [r for r in sites if not outre_mer(r) and r['siret'][:9] != LA_POSTE]
+
+# ---------------------------------------------------------------- positions manquantes
+RENOMMEES = {'thaonlesvosges': 'capavenirvosges', 'herblaysurseine': 'herblay'}
+def norm_ville(v):
+    v = re.sub(r'\b(CEDEX\s*\d*|\d+\s*(E|EME|ER)\b)', ' ', (v or '').upper()).strip()
+    v = re.sub(r"^(LE|LA|LES)\s+|^L[’']\s*", '', v)          # le fichier des communes n'a pas les articles (« Blanc » pour Le Blanc)
+    v = norm(v); v = RENOMMEES.get(v, v)
+    return re.sub(r'^ste(?=[a-z])', 'sainte', re.sub(r'^st(?=[a-z])', 'saint', v))
+def norm_adr(a):
+    return norm(re.sub(r'\s+\d{5}\s+.*$', '', a or ''))
+geo = {'adresse': 0, 'commune': 0, 'aucune': 0}
+manquants = [r for r in sites if not r['lat']]
+if manquants:
+    par_adr = {}
+    for r in sites:
+        if r['lat'] and norm_adr(r['adresse']) and len(norm_adr(r['adresse'])) > 8:
+            par_adr.setdefault((norm_adr(r['adresse']), norm_ville(r['ville'])), (r['lat'], r['lng']))
+    communes = {}
+    if communes_geojson:
+        for f in json.load(open(communes_geojson, encoding='utf-8'))['features']:
+            code, g = f['properties']['code'], f['geometry']
+            if not g: continue
+            polys = g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]
+            best = None
+            for poly in polys:
+                ring = poly[0]; a = cx = cy = 0
+                for i in range(len(ring) - 1):
+                    (x0, y0), (x1, y1) = ring[i][:2], ring[i + 1][:2]
+                    k = x0 * y1 - x1 * y0; a += k; cx += (x0 + x1) * k; cy += (y0 + y1) * k
+                if a and (best is None or abs(a) > best[0]): best = (abs(a), cx / (3 * a), cy / (3 * a))
+            if best:
+                dep = code[:3] if code.startswith('97') else code[:2]
+                communes.setdefault((dep, norm_ville(f['properties']['nom'])), (round(best[2], 6), round(best[1], 6)))
+        par_nom = {}
+        for (dep, nom), pos in communes.items(): par_nom.setdefault(nom, []).append(pos)
+    for r in manquants:
+        cle = (norm_adr(r['adresse']), norm_ville(r['ville']))
+        mv = re.search(r'\b(\d{5})\s+([^\d].*)$', r['ville'] or '')
+        if mv and not r['cp']:
+            prefixe = (r['ville'][:mv.start()]).strip(' -')
+            r['cp'], r['ville'] = mv.group(1), mv.group(2)
+            if not r['adresse'] and prefixe: r['adresse'] = prefixe
+        dep = dept_de_cp((r['cp'] or '').strip()) or (r['dept'] if re.fullmatch(r'\d\d|2A|2B', r['dept'] or '') else None)
+        if dep == '20': dep = None
+        pos, precision = None, None
+        if cle in par_adr: pos, precision = par_adr[cle], 'adresse'
+        elif communes:
+            v = norm_ville(r['ville'])
+            if dep and (dep, v) in communes: pos, precision = communes[(dep, v)], 'commune'
+            elif not dep and len(par_nom.get(v, [])) == 1 and r['dept'] not in ('na', 'DE', 'KY'): pos, precision = par_nom[v][0], 'commune'
+            elif (r['dept'] or '') in ('20', '2A', '2B'):
+                c = [communes.get((d, v)) for d in ('2A', '2B') if communes.get((d, v))]
+                if len(c) == 1: pos, precision = c[0], 'commune'
+        if pos:
+            r['lat'], r['lng'] = str(pos[0]), str(pos[1]); r['_precision'] = precision; geo[precision] += 1
+        else: geo['aucune'] += 1
+
 # ---------------------------------------------------------------- sites
 STATUT = {'client': 'client', 'contact': 'en_contact'}
 out_sites, out_contacts, stats = [], [], {'sans_position': 0, 'hors_metropole': 0, 'groupes': 0, 'contacts': 0}
@@ -98,7 +169,7 @@ for r in sites:
         'date_prochain_rappel': r['rappel'] or None, 'date_dernier_appel': (r['contact_date'] or '')[:10] or None,
         'source': 'ebauche', 'source_id': r['id'],
         # surfaces/années saisies à la main pour Avril et Pomona ; ailleurs ce sont des estimations par tranche
-        'infos_od': {'estimation': {'surface': not curated, 'annee': not curated},
+        'infos_od': {'estimation': {'surface': not curated, 'annee': not curated}, **({'position_approx': r['_precision']} if r.get('_precision') else {}),
                      'ebauche': {'source': r['source'], 'groupe': r['groupe'] or None, 'score': r['score'], 'prio': r['prio'], 'secteur': r['sector'] or None}},
         'created_at': (r['created_at'] or '').replace(' ', 'T', 1).replace('+00', '+00:00') or None,
     })
@@ -113,7 +184,11 @@ for r in sites:
         })
         stats['contacts'] += 1
 
+utilises = {x['groupe_id'] for x in out_sites if x['groupe_id']}
+groupes = {k: g for k, g in groupes.items() if g['id'] in utilises}
 json.dump({'format': 'big-prospection-reprise', 'groupes': list(groupes.values()), 'sites': out_sites, 'contacts': out_contacts},
           open(sortie, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
 print(f"{len(out_sites)} sites, {len(groupes)} groupes ({stats['groupes']} sites rattachés), {len(out_contacts)} contacts")
+print(f"Exclus : {exclus['outre_mer']} outre-mer, {exclus['la_poste']} établissements La Poste")
+print(f"Positions retrouvées : {geo['adresse']} par adresse identique, {geo['commune']} au centre de la commune ; {geo['aucune']} restent sans coordonnées")
 print(f"{stats['sans_position']} sites sans coordonnées, {stats['hors_metropole']} en outre-mer")

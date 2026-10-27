@@ -5,7 +5,7 @@ import {
   CATEGORIES, STATUTS, TYPES_ACTIVITE, ROLES_CONTACT, decennale, surfaceEstimee, anneeEstimee, fmtM2, fmtDate, fmtDateHeure, fmtEuro, esc, aujourdhui, ANNEE, uuid,
 } from './metier.js';
 import { $, $$, toast, ouvrirModale, fermerModale, confirmer, lireForm, versDatetimeLocal, debounce } from './ui.js';
-import { marquerSelection, centrerSur } from './carte.js';
+import { marquerSelection, centrerSur, choisirPosition } from './carte.js';
 
 let ongletFiche = 'fiche';
 
@@ -100,12 +100,14 @@ function rendreFiche(corps, s) {
       ${s.siren || s.siret ? `<dt>SIREN / SIRET</dt><dd>${esc(s.siret || s.siren)}</dd>` : ''}
       ${groupe ? `<dt>Groupe</dt><dd><a href="#" id="fi-voir-groupe">${esc(groupe.nom)}</a></dd>` : ''}
       ${od.icpe ? `<dt>ICPE</dt><dd>${esc(od.icpe.nom || '')}<br><small>${esc(od.icpe.regime || '')}${od.icpe.rubriques?.length ? ' · rubriques ' + esc(od.icpe.rubriques.join(', ')) : ''}${od.icpe.seveso ? ' · Seveso ' + esc(od.icpe.seveso) : ''}</small></dd>` : ''}
+      ${!s.lat ? `<dt>Position</dt><dd><span class="badge alerte">Inconnue — non visible sur la carte</span></dd>` : od.position_approx ? `<dt>Position</dt><dd><span class="badge alerte">Approximative (centre de la commune)</span></dd>` : ''}
       <dt>Source</dt><dd><small>${esc({ bdnb: 'BDNB (open data bâtiments)', osm: 'OpenStreetMap', import: 'Import de fichier', manuel: 'Saisie manuelle', demo: 'Données de démonstration', ebauche: 'Ancienne base (ébauche)' }[s.source] || s.source)}${s.surface_m2 != null || s.annee_construction != null || s.categorie ? ' · corrigé par l’équipe' : ''}</small></dd>
     </dl>
     <div class="liens-rapides">
       <a class="btn btn-petit" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat && s.lng ? s.lat + ',' + s.lng : q}">🧭 Itinéraire</a>
       ${s.lat ? `<a class="btn btn-petit" target="_blank" rel="noopener" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${s.lat},${s.lng}">👁 Street View</a>` : ''}
-      <button class="btn btn-petit" id="fi-zoom">🛰 Voir le site</button>
+      ${s.lat ? '<button class="btn btn-petit" id="fi-zoom">🛰 Voir le site</button>' : ''}
+      <button class="btn btn-petit" id="fi-position">📍 ${s.lat ? 'Déplacer le point' : 'Placer sur la carte'}</button>
       ${s.siren ? `<a class="btn btn-petit" target="_blank" rel="noopener" href="https://annuaire-entreprises.data.gouv.fr/entreprise/${esc(s.siren)}">🏢 Annuaire</a>` : ''}
       <a class="btn btn-petit" target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent((s.nom || '') + ' ' + (s.ville || ''))}">🔎 Google</a>
     </div>
@@ -145,7 +147,20 @@ function rendreFiche(corps, s) {
       </details>
     </form>`;
 
-  $('#fi-zoom').onclick = () => { centrerSur(s, 17); emettre('aller-vue', 'carte'); };
+  $('#fi-zoom')?.addEventListener('click', () => { centrerSur(s, 17); emettre('aller-vue', 'carte'); });
+  $('#fi-position').onclick = () => {
+    emettre('aller-vue', 'carte');
+    if (s.lat) centrerSur(s, 16);
+    toast('Cliquez sur la carte à l’emplacement exact du site (vue « Satellite » conseillée)');
+    if (window.innerWidth < 860) $('#fiche').hidden = true;
+    choisirPosition(async ll => {
+      const actuel = store.get('sites', s.id);
+      const od2 = { ...(actuel.infos_od || {}) }; delete od2.position_approx;
+      await store.enregistrer('sites', { ...actuel, lat: +ll.lat.toFixed(6), lng: +ll.lng.toFixed(6), infos_od: od2 });
+      toast('Position enregistrée', 'ok');
+      ouvrirFiche(s.id);
+    });
+  };
   $('#fi-voir-groupe')?.addEventListener('click', e => { e.preventDefault(); emettre('voir-groupe', s.groupe_id); });
   $$('[data-rapide]', corps).forEach(b => b.onclick = () => actionRapide(b.dataset.rapide, s));
 
