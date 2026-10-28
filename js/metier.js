@@ -5,7 +5,7 @@ export { CATEGORIES };
 // Valeurs par défaut (écrasées par les tables Supabase `secteurs` / `secteur_departements`)
 export const SECTEURS_DEFAUT = [
   { code: 'nord', libelle: 'Nord', zones: 'Hauts-de-France, Grand Est, Belgique', couleur: '#505EB6', ordre: 1 },
-  { code: 'idf', libelle: 'IDF', zones: 'Île-de-France', couleur: '#7A4FB6', ordre: 2 },
+  { code: 'idf', libelle: 'IDF', zones: 'Île-de-France', couleur: '#D4549B', ordre: 2 },
   { code: 'est', libelle: 'Est', zones: 'Auvergne-Rhône-Alpes, PACA', couleur: '#C9772B', ordre: 3 },
   { code: 'ouest', libelle: 'Ouest', zones: 'Reste de la France côté Ouest', couleur: '#2E8B6A', ordre: 4 },
   { code: 'national', libelle: 'National', zones: 'Tous secteurs', couleur: '#3B4796', ordre: 5 },
@@ -36,7 +36,7 @@ export const ENTONNOIR = ['prospect', 'en_contact', 'rdv', 'devis', 'client'];
 
 export const TYPES_ACTIVITE = {
   appel: '📞 Appel', email: '✉️ Email', rdv: '📅 Rendez-vous', visite: '🏭 Visite terrain',
-  devis: '💶 Devis', note: '📝 Note', statut: '🔄 Statut',
+  devis: '💶 Devis', chantier: '🏗 Chantier réalisé', note: '📝 Note', statut: '🔄 Statut',
 };
 export const ROLES_CONTACT = { decideur: 'Décideur', contact: 'Contact', standard: 'Standard / accueil', prescripteur: 'Prescripteur' };
 

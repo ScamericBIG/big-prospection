@@ -7,6 +7,7 @@ import {
 import { $, $$, toast, ouvrirModale, fermerModale, confirmer, lireForm, versDatetimeLocal, debounce } from './ui.js';
 import { marquerSelection, centrerSur, choisirPosition } from './carte.js';
 import { agencesProches, lienItineraire, lienInfos, fmtKm } from './loueurs.js';
+import { syntheseGroupe } from './strategie.js';
 
 export const NIVEAUX_DECISION = { local: 'local', regional: 'régional', national: 'national' };
 
@@ -171,6 +172,8 @@ function rendreFiche(corps, s) {
     ${blocContacts(s)}
     <button class="btn btn-primaire btn-petit" id="fi-contact-plus">+ Ajouter un contact</button>
 
+    ${s.groupe_id ? syntheseGroupe(s.groupe_id, { exclureSite: s.id }) : '<p class="vide" style="font-size:12.5px">🤝 Rattachez ce site à un groupe (section Caractéristiques) pour voir ce que l’équipe sait de ce groupe.</p>'}
+
     ${blocAgences(s)}
 
     <form id="fi-form" autocomplete="off">
@@ -222,6 +225,7 @@ function rendreFiche(corps, s) {
   $('#fi-contact-plus').onclick = () => editerContact({ site_id: s.id, groupe_id: s.groupe_id || null, role: 'contact', ca_big: store.profil.email }, rendre);
   $$('[data-edit-contact]', corps).forEach(b => b.onclick = () => editerContact(store.get('contacts', b.dataset.editContact), rendre));
   $('#fi-format-email').onclick = () => modifierFormatEmail(s, rendre);
+  $$('[data-voir-groupe]', corps).forEach(b => b.onclick = () => emettre('voir-groupe', b.dataset.voirGroupe));
 
   const form = $('#fi-form');
   const enregistrer = debounce(async () => {
@@ -329,6 +333,15 @@ export function modifierFormatEmail(s, apres, groupeSeul = null) {
   };
 }
 
+// Liste déroulante des contacts du site (pour rattacher un appel, un RDV, un chantier… à un interlocuteur)
+function selectContact(s, id, name) {
+  const l = store.liste('contacts').filter(c => c.site_id === s.id);
+  if (!l.length) return '';
+  return `<label class="${id ? 'plein' : ''}">${id ? 'Avec' : ''}<select ${id ? `id="${id}"` : ''} ${name ? `name="${name}"` : ''} aria-label="Contact">
+    <option value="">${id ? '— Contact (facultatif) —' : 'Avec… (facultatif)'}</option>
+    ${l.map(c => `<option value="${c.id}">${esc([c.prenom, c.nom].filter(Boolean).join(' '))}${c.fonction ? ' — ' + esc(c.fonction) : ''}</option>`).join('')}</select></label>`;
+}
+
 // ------------------------------------------------------------------ actions rapides
 function actionRapide(type, s) {
   const dans = j => new Date(Date.now() + j * 864e5).toISOString().slice(0, 10);
@@ -339,6 +352,7 @@ function actionRapide(type, s) {
         <label class="plein">Type<select id="ar-type"><option value="rdv">Rendez-vous</option><option value="visite">Visite terrain / état des lieux</option></select></label>` : ''}
       ${type === 'appel' ? `<label>Résultat<select id="ar-resultat"><option>Interlocuteur joint</option><option>Messagerie / absent</option><option>Barrage standard</option><option>Pas intéressé</option><option>Rappel demandé</option></select></label>
         <label>Prochain rappel<select id="ar-rappel"><option value="">Aucun</option><option value="${dans(2)}">Dans 2 jours</option><option value="${dans(7)}" selected>Dans 1 semaine</option><option value="${dans(14)}">Dans 2 semaines</option><option value="${dans(30)}">Dans 1 mois</option><option value="${dans(90)}">Dans 3 mois</option><option value="${dans(180)}">Dans 6 mois</option></select></label>` : ''}
+      ${type !== 'note' ? selectContact(s, 'ar-contact') : ''}
       <label class="plein">${type === 'note' ? 'Note' : 'Commentaire'}<textarea id="ar-texte" rows="4"></textarea></label>
     </div>
     <div class="boutons"><button class="btn" data-fermer-modale>Annuler</button><button class="btn btn-primaire" id="ar-ok">Enregistrer</button></div>`);
@@ -347,7 +361,7 @@ function actionRapide(type, s) {
     const maj = { ...site() };
     if (type === 'appel') {
       const res = $('#ar-resultat', m).value, rappel = $('#ar-rappel', m).value;
-      await store.enregistrer('activites', { site_id: s.id, type: 'appel', date: new Date().toISOString(), statut: 'fait', contenu: res + (texte ? ' — ' + texte : ''), auteur: store.profil.email });
+      await store.enregistrer('activites', { site_id: s.id, type: 'appel', date: new Date().toISOString(), statut: 'fait', contenu: res + (texte ? ' — ' + texte : ''), auteur: store.profil.email, contact_id: $('#ar-contact', m)?.value || null });
       maj.date_dernier_appel = aujourdhui();
       if (rappel) maj.date_prochain_rappel = rappel;
       if (maj.statut === 'a_qualifier' || maj.statut === 'prospect') {
@@ -356,7 +370,7 @@ function actionRapide(type, s) {
     } else if (type === 'rdv') {
       const d = $('#ar-date', m).value; if (!d) { toast('Indiquez la date du RDV', 'erreur'); return; }
       const iso = new Date(d).toISOString();
-      await store.enregistrer('activites', { site_id: s.id, type: $('#ar-type', m).value, date: iso, statut: 'planifie', contenu: texte || null, auteur: store.profil.email });
+      await store.enregistrer('activites', { site_id: s.id, type: $('#ar-type', m).value, date: iso, statut: 'planifie', contenu: texte || null, auteur: store.profil.email, contact_id: $('#ar-contact', m)?.value || null });
       maj.date_rdv = iso;
       if (STATUTS[maj.statut].ordre < STATUTS.rdv.ordre) maj.statut = 'rdv';
     } else {
@@ -450,13 +464,14 @@ function rendreHistorique(corps, s) {
       <select name="type">${Object.entries(TYPES_ACTIVITE).filter(([k]) => k !== 'statut').map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
       <input type="datetime-local" name="date" value="${versDatetimeLocal(new Date().toISOString())}">
       <select name="statut"><option value="fait">Fait</option><option value="planifie">Planifié</option></select>
-      <input type="number" name="montant" placeholder="Montant devis (€)" min="0" step="100">
+      <input type="number" name="montant" placeholder="Montant devis / chantier (€)" min="0" step="100">
+      ${selectContact(s, null, 'contact_id')}
       <textarea name="contenu" placeholder="Compte rendu, objet du devis…"></textarea>
       <button class="btn btn-primaire" type="submit">Ajouter à l'historique</button>
     </form>
     <ul class="chrono">${acts.map(a => `
       <li class="${a.statut}">
-        <b>${TYPES_ACTIVITE[a.type] || a.type}</b>${a.statut === 'planifie' ? ' <span class="badge info">planifié</span>' : ''}${a.statut === 'annule' ? ' <span class="badge">annulé</span>' : ''}
+        <b>${TYPES_ACTIVITE[a.type] || a.type}</b>${a.contact_id && store.get('contacts', a.contact_id) ? ` <span class="vide">avec ${esc([store.get('contacts', a.contact_id).prenom, store.get('contacts', a.contact_id).nom].filter(Boolean).join(' '))}</span>` : ''}${a.statut === 'planifie' ? ' <span class="badge info">planifié</span>' : ''}${a.statut === 'annule' ? ' <span class="badge">annulé</span>' : ''}
         ${a.montant ? ` · ${fmtEuro(Number(a.montant))}` : ''}
         <div class="meta">${fmtDateHeure(a.date)} — ${esc(nomCA(a.auteur))}
           ${a.statut === 'planifie' ? ` · <button class="lien" data-fait="${a.id}">marquer fait</button> · <button class="lien" data-annule="${a.id}">annuler</button>` : ''}
@@ -472,6 +487,7 @@ function rendreHistorique(corps, s) {
     if (v.type === 'appel' && v.statut === 'fait' && (!maj.date_dernier_appel || maj.date_dernier_appel < v.date.slice(0, 10))) maj.date_dernier_appel = v.date.slice(0, 10);
     if ((v.type === 'rdv' || v.type === 'visite') && v.statut === 'planifie') { maj.date_rdv = v.date; if (STATUTS[maj.statut].ordre < STATUTS.rdv.ordre) maj.statut = 'rdv'; }
     if (v.type === 'devis' && STATUTS[maj.statut].ordre < STATUTS.devis.ordre) maj.statut = 'devis';
+    if (v.type === 'chantier' && v.statut === 'fait' && STATUTS[maj.statut].ordre < STATUTS.client.ordre) maj.statut = 'client';
     await store.enregistrer('sites', maj);
     rendre(); toast('Ajouté à l’historique', 'ok');
   };

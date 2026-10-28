@@ -198,6 +198,41 @@ label > input, label > select, label > textarea, label > .champ-mdp { margin-top
 .contact-ligne a { text-decoration: none; }
 .contact-ligne .liens { display: flex; }
 @media (max-width: 860px) { .panneau-agences { width: min(260px, 70vw); max-height: 38vh; } }
+.ctrl-segmentation { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.legende-secteurs { width: 290px; background: #fff; border-radius: 10px; box-shadow: var(--ombre); padding: 9px 11px; font-size: 12.5px; }
+.legende-secteurs .ls-titre { font-weight: 700; color: var(--bleu-tres-fonce); margin-bottom: 6px; }
+.legende-secteurs .ls-titre small, .legende-secteurs small { font-weight: 400; color: var(--texte-3); }
+.ls-ligne { display: grid; grid-template-columns: 14px 1fr auto 38px; gap: 2px 8px; align-items: center; margin: 5px 0; }
+.ls-carre { width: 14px; height: 14px; border-radius: 3px; border: 2px dashed rgba(42,51,110,.6); }
+.ls-n { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.ls-pct { color: var(--texte-3); text-align: right; font-variant-numeric: tabular-nums; }
+.ls-barre { grid-column: 2 / -1; height: 5px; background: var(--gris-pale); border-radius: 3px; overflow: hidden; }
+.ls-barre i { display: block; height: 100%; border-radius: 3px; }
+.ls-total { margin-top: 6px; border-top: 1px solid var(--gris-pale); padding-top: 6px; color: var(--texte-2); }
+.etiquette-secteur { transform: translate(-50%, -50%); display: inline-block; white-space: nowrap; font: 700 13px var(--police); color: #fff; background: var(--c); padding: 3px 9px; border-radius: 999px; box-shadow: 0 1px 4px rgba(0,0,0,.25); opacity: .92; }
+.onglets .compteur { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--rouge); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.rappels-outils { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--gris-clair); }
+.rappels-outils .separateur { width: 1px; background: var(--gris-clair); margin: 0 4px; }
+.pastille { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pastille.retard { background: #FAD9B5; color: #7A3E00; }
+.pastille.semaine { background: #FFF0A8; color: #6B5800; }
+.vue-rappels.actif { display: flex; flex-direction: column; }
+.table-rappels td { white-space: normal; vertical-align: top; }
+.table-rappels td.date { white-space: nowrap; font-weight: 700; }
+.table-rappels td.commentaire { min-width: 220px; max-width: 360px; color: var(--texte-2); font-size: 12.5px; }
+.table-rappels tr.en-retard td { background: #FDE3C6; }
+.table-rappels tr.en-retard:hover td { background: #FBD3A6; }
+.table-rappels tr.cette-semaine td { background: #FFF6C7; }
+.table-rappels tr.cette-semaine:hover td { background: #FFEFA0; }
+.table-rappels td a { color: var(--bleu-tres-fonce); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.strategie { background: #F6F7FC; border: 1px solid var(--bleu-clair); border-radius: 10px; padding: 10px 12px; margin: 8px 0 12px; font-size: 13px; }
+.strategie h4 { font-size: 13px; color: var(--bleu-tres-fonce); margin: 0 0 6px; display: flex; justify-content: space-between; gap: 8px; }
+.strategie ul { list-style: none; margin: 0; padding: 0; }
+.strategie li { padding: 5px 0; border-top: 1px dashed var(--gris-clair); line-height: 1.4; }
+.strategie li:first-child { border-top: 0; }
+.strategie .qui { font-weight: 700; color: var(--bleu-fonce); }
+.strategie .quand { color: var(--texte-3); font-size: 12px; }
+.strategie .sous-titre { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris); font-weight: 700; margin: 8px 0 2px; }
 .marqueur-tournee { background: var(--rouge); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
 .marqueur-depart { background: var(--bleu-tres-fonce); }
 

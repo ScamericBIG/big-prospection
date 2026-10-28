@@ -47,6 +47,7 @@
     <nav class="onglets" role="tablist">
       <button role="tab" data-vue="carte" class="actif">Carte</button>
       <button role="tab" data-vue="liste">Liste</button>
+      <button role="tab" data-vue="rappels">Rappels <span class="compteur" hidden></span></button>
       <button role="tab" data-vue="groupes">Groupes</button>
       <button role="tab" data-vue="perfs">Performances</button>
     </nav>
@@ -173,6 +174,7 @@
       <div class="pagination" id="liste-pagination"></div>
     </section>
 
+    <section class="vue vue-rappels" id="vue-rappels"></section>
     <section class="vue vue-groupes" id="vue-groupes"></section>
     <section class="vue vue-perfs" id="vue-perfs"></section>
 
@@ -187,6 +189,7 @@
 
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="vendor/supabase.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

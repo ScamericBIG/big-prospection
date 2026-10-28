@@ -5,6 +5,7 @@ import { CATEGORIES, STATUTS, ROLES_CONTACT, fmtN, fmtM2, fmtM2court, esc, sansA
 import { $, $$, toast, ouvrirModale, fermerModale, confirmer, debounce } from './ui.js';
 import { nouveauGroupe, editerContact, modifierFormatEmail, NIVEAUX_DECISION } from './fiche.js';
 import { exempleFormat } from './metier.js';
+import { syntheseGroupe } from './strategie.js';
 
 let groupeActif = null, recherche = '', visible = false;
 
@@ -75,6 +76,8 @@ function rendreDetail() {
       <p class="format-email">✉️ Format des emails : ${g.email_format ? `<code>${esc(g.email_format)}</code> <small>— ex. ${esc(exempleFormat(g.email_format) || '')}</small>` : '<small>inconnu</small>'} <button class="lien" id="gr-format">${g.email_format ? 'modifier' : 'renseigner'}</button></p>
     </div>
     <label>Notes sur le groupe<textarea id="gr-notes" rows="3" placeholder="Politique achats, contrats cadres, interlocuteurs nationaux…">${esc(g.notes || '')}</textarea></label>
+
+    ${syntheseGroupe(g.id, { limite: 30, lienGroupe: false })}
 
     <div class="section-titre">Organigramme</div>
     <div class="organigramme">${organigramme(contacts) || '<p class="vide">Aucun contact. Ajoutez le décideur national puis ses relais en sites.</p>'}</div>

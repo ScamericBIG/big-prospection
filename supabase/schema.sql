@@ -19,7 +19,7 @@ create table if not exists public.secteurs (
 
 insert into public.secteurs (code, libelle, zones, couleur, ordre) values
   ('nord',     'Nord',     'Hauts-de-France, Grand Est, Belgique', '#505EB6', 1),
-  ('idf',      'IDF',      'Île-de-France',                        '#7A4FB6', 2),
+  ('idf',      'IDF',      'Île-de-France',                        '#D4549B', 2),
   ('est',      'Est',      'Auvergne-Rhône-Alpes, PACA',           '#C9772B', 3),
   ('ouest',    'Ouest',    'Reste de la France côté Ouest',        '#2E8B6A', 4),
   ('national', 'National', 'Tous secteurs',                        '#3B4796', 5)
@@ -160,7 +160,7 @@ create index if not exists contacts_groupe_idx on public.contacts (groupe_id);
 create table if not exists public.activites (
   id          uuid primary key default gen_random_uuid(),
   site_id     uuid references public.sites(id) on delete cascade,
-  type        text not null check (type in ('appel','email','rdv','visite','devis','note','statut')),
+  type        text not null check (type in ('appel','email','rdv','visite','devis','chantier','note','statut')),
   date        timestamptz not null default now(),
   statut      text not null default 'fait' check (statut in ('planifie','fait','annule')),
   montant     numeric,
@@ -415,3 +415,14 @@ update public.groupes g set email_format = v.f
                ('lactalis', '{prenom}.{nom}@lactalis.fr'), ('fm logistic', '{p}{nom}@fmlogistic.com'),
                ('dachser', '{prenom}.{nom}@dachser.com')) as v(n, f)
  where lower(g.nom) = v.n and g.email_format is null;
+
+-- ---------------------------------------------------------------------
+-- 8. v1.4 : chantiers réalisés, contact lié aux échanges, couleurs des secteurs
+-- ---------------------------------------------------------------------
+alter table public.activites add column if not exists contact_id uuid references public.contacts(id) on delete set null;
+alter table public.activites drop constraint if exists activites_type_check;
+alter table public.activites add constraint activites_type_check
+  check (type in ('appel','email','rdv','visite','devis','chantier','note','statut'));
+-- couleurs bien distinctes pour la segmentation de la carte (si elles n'ont pas été personnalisées)
+update public.secteurs set couleur = '#D4549B' where code = 'idf'   and couleur = '#7A4FB6';
+update public.secteurs set couleur = '#C9772B' where code = 'est'   and couleur = '#C9772B';

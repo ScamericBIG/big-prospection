@@ -68,21 +68,21 @@ export function prechauffer() {
   planifier(tranche);
 }
 
-let memo = { cle: null, res: [] };
+const memos = new Map();
 let version = 0;
 export const invalider = () => { version++; };
 store.on('change', d => { if (!d || ['sites', 'secteur_departements', 'groupes'].includes(d.table)) invalider(); });
 
-export function sitesFiltres({ ignorerMasquees = false } = {}) {
+export function sitesFiltres({ ignorerMasquees = false, secteur = etat.secteur } = {}) {
   const f = etat.filtres;
-  const cle = version + '|' + etat.secteur + '|' + JSON.stringify(f, (k, v) => v instanceof Set ? [...v] : v) + '|' + JSON.stringify(etat.autour) + '|' + ignorerMasquees;
-  if (memo.cle === cle) return memo.res;
+  const cle = version + '|' + secteur + '|' + JSON.stringify(f, (k, v) => v instanceof Set ? [...v] : v) + '|' + JSON.stringify(etat.autour) + '|' + ignorerMasquees;
+  if (memos.has(cle)) return memos.get(cle);
   const txt = sansAccent(f.texte).trim().split(/\s+/).filter(Boolean);
   const ville = sansAccent(f.ville).trim();
   const cp = f.cp.trim();
   const auj = aujourdhui();
   const dans7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
-  const res = sitesDuSecteur().filter(s => {
+  const res = sitesDuSecteur(secteur).filter(s => {
     const i = infos(s);
     if (txt.length && !txt.every(t => i.recherche.includes(t))) return false;
     if (cp && !(s.code_postal || '').startsWith(cp) && s.departement !== cp.toUpperCase()) return false;
@@ -104,7 +104,7 @@ export function sitesFiltres({ ignorerMasquees = false } = {}) {
     if (etat.autour && !(s.lat && distanceKm(etat.autour, s) <= etat.autour.rayon)) return false;
     return true;
   });
-  memo = { cle, res };
+  memos.set(cle, res); if (memos.size > 6) memos.delete(memos.keys().next().value);
   return res;
 }
 

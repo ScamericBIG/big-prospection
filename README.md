@@ -107,6 +107,12 @@ Options : `--min 10000` (surface minimale), `--enrichir false` (sans SIRENE, plu
 - **Groupes** : case « BIG est référencé chez ce groupe » (+ précisions) ; badge sur les fiches des sites et filtre « Groupes où BIG est référencé ».
 - **Fiche** : bloc d'informations repliable ; boutons ◀ / **Site suivant ▶** (ou flèches ← → du clavier) pour passer au site le plus proche parmi les sites affichés.
 
+### Rappels, stratégie de groupe et segmentation (v1.4)
+
+- **Onglet Rappels** : sites à rappeler du secteur affiché (mes rappels / + non assignés / toute l'équipe), triés par date ; ligne **orange** = en retard, **jaune** = dans les 7 jours ; téléphone du standard et du contact principal cliquables, dernier commentaire, bouton « +7 j ». Le compteur rouge de l'onglet = rappels en retard ou du jour.
+- **Stratégie groupe** (fiche d'un site rattaché à un groupe, et écran Groupes) : référencement BIG, répartition des sites du groupe entre chargés d'affaires, interlocuteurs clés (décisionnaires national > régional > local, contact « avancé » si RDV / devis / client) et derniers RDV, visites, devis et **chantiers** sur les autres sites du groupe, avec l'interlocuteur concerné (champ « Avec » des appels, RDV et de l'historique).
+- **Segmentation secteurs** (bouton sur la carte) : zones de chaque chargé d'affaires en pointillés et couleur, étiquettes, et légende du nombre de sites filtrés par secteur sur toute la France (ex. filtre « Client » → répartition des clients). Les contours suivent la table `secteur_departements`.
+
 ### Agences Kiloutou
 
 Le bouton **🔧 Kiloutou** (en haut à gauche de la carte) affiche les agences du secteur et une liste triée par distance (au site ouvert, sinon au centre de la carte). Chaque fiche site indique aussi les 3 agences les plus proches, avec itinéraire depuis le site.
