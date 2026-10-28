@@ -3,6 +3,7 @@ import { store } from './store.js';
 import { etat, FILTRES_VIDES, emettre, ecouter, sitesFiltres, infos, nomCA } from './etat.js';
 import { CATEGORIES, STATUTS, fmtN, fmtM2court, esc } from './metier.js';
 import { $, $$, debounce } from './ui.js';
+import { effacerItineraire } from './tournee.js';
 
 const changer = () => { emettre('filtres'); majResultat(); };
 
@@ -34,6 +35,7 @@ export function initFiltres() {
   $('#f-assigne').addEventListener('change', e => { etat.filtres.assigne = e.target.value; changer(); });
   $('#f-groupe').addEventListener('change', e => { etat.filtres.groupe = e.target.value; changer(); });
   $('#f-retard').addEventListener('click', e => { etat.filtres.retard = !etat.filtres.retard; e.currentTarget.classList.toggle('actif', etat.filtres.retard); changer(); });
+  $('#f-reference').addEventListener('click', e => { etat.filtres.reference = !etat.filtres.reference; e.currentTarget.classList.toggle('actif', etat.filtres.reference); changer(); });
   $('#f-semaine').addEventListener('click', e => { etat.filtres.semaine = !etat.filtres.semaine; e.currentTarget.classList.toggle('actif', etat.filtres.semaine); changer(); });
 
   $('#f-reset').addEventListener('click', () => {
@@ -42,6 +44,7 @@ export function initFiltres() {
     $$('#filtres input[type=search], #filtres input[type=text], #filtres input[type=number]').forEach(i => { if (i.id !== 'it-adresse') i.value = ''; });
     $$('#filtres select').forEach(s => s.value = '');
     $$('#filtres .puce.actif').forEach(p => p.classList.remove('actif'));
+    if (etat.autour || etat.depart?.auto) effacerItineraire();
     changer();
   });
 

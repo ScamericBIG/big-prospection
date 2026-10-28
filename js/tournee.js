@@ -38,7 +38,7 @@ export function initTournee() {
     navigator.geolocation.getCurrentPosition(p => definirCentre({ libelle: 'Ma position', lat: p.coords.latitude, lng: p.coords.longitude }),
       () => toast('Position refusée ou indisponible', 'erreur'), { enableHighAccuracy: true, timeout: 10000 });
   };
-  $('#it-effacer').onclick = () => { etat.autour = null; champ.value = ''; emettre('autour'); };
+  $('#it-effacer').onclick = () => effacerItineraire();
   $('#it-rayon').addEventListener('input', e => {
     $('#it-rayon-val').textContent = e.target.value + ' km';
     if (etat.autour) { etat.autour.rayon = +e.target.value; emettreAutour(); }
@@ -59,14 +59,15 @@ function rendre() {
   const el = $('#tournee');
   const sites = etat.tournee.map(id => store.get('sites', id)).filter(Boolean);
   if (!sites.length) {
-    el.innerHTML = `<p class="vide">Ajoutez des sites à votre tournée depuis leur fiche (« + Tournée »).${etat.depart ? `<br>Départ : ${esc(etat.depart.libelle)}` : ''}</p>`;
+    el.innerHTML = `<p class="vide">Ajoutez des sites à votre tournée depuis leur fiche (« + Tournée »).${etat.depart ? `<br>Départ : ${esc(etat.depart.libelle)} <button class="lien" id="to-sans-depart">retirer</button>` : ''}</p>`;
+    $('#to-sans-depart')?.addEventListener('click', () => { etat.depart = null; maj(); });
     return;
   }
   let km = 0, prec = etat.depart;
   for (const s of sites) { if (prec && s.lat) km += distanceKm(prec, s); if (s.lat) prec = s; }
   el.innerHTML = `
     <div><b>Tournée : ${sites.length} site${sites.length > 1 ? 's' : ''}</b> · ≈ ${Math.round(km * 1.3)} km par la route</div>
-    ${etat.depart ? `<div class="vide">Départ : ${esc(etat.depart.libelle)}</div>` : ''}
+    ${etat.depart ? `<div class="vide">Départ : ${esc(etat.depart.libelle)} <button class="lien" id="to-sans-depart">retirer</button></div>` : ''}
     <ol>${sites.map((s, k) => `<li><a href="#" data-o="${s.id}">${esc(s.nom)}</a> <small class="vide">${esc(s.ville || '')} · ${fmtM2(infos(s).surface)}</small>
       <button class="btn-icone" data-x="${s.id}" title="Retirer">✕</button>${k ? `<button class="btn-icone" data-up="${k}" title="Monter">↑</button>` : ''}</li>`).join('')}</ol>
     <div class="actions">
@@ -75,6 +76,7 @@ function rendre() {
       <a class="btn btn-petit btn-primaire" id="to-gmaps" target="_blank" rel="noopener">Google Maps</a>
       <button class="btn btn-petit" id="to-vider">Vider</button>
     </div>`;
+  $('#to-sans-depart')?.addEventListener('click', () => { etat.depart = null; maj(); });
   $$('[data-o]', el).forEach(a => a.onclick = e => { e.preventDefault(); emettre('ouvrir-site', a.dataset.o); });
   $$('[data-x]', el).forEach(b => b.onclick = () => { etat.tournee = etat.tournee.filter(i => i !== b.dataset.x); maj(); });
   $$('[data-up]', el).forEach(b => b.onclick = () => { const k = +b.dataset.up; [etat.tournee[k - 1], etat.tournee[k]] = [etat.tournee[k], etat.tournee[k - 1]]; maj(); });
@@ -92,6 +94,15 @@ function rendre() {
   }
 }
 function maj() { sauverTournee(); emettre('tournee'); }
+
+// « Effacer » et « Réinitialiser » : retire la zone de recherche ET le point de départ qu'elle avait posé
+export function effacerItineraire() {
+  etat.autour = null;
+  const champ = $('#it-adresse'); if (champ) champ.value = '';
+  if (etat.depart?.auto) etat.depart = null;
+  sauverTournee();
+  emettre('autour'); emettre('tournee');
+}
 
 function optimiser() {
   const sites = etat.tournee.map(id => store.get('sites', id)).filter(s => s?.lat);

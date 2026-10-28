@@ -3,7 +3,8 @@ import { store } from './store.js';
 import { etat, infos, ecouter, emettre, nomCA, sitesDuSecteur } from './etat.js';
 import { CATEGORIES, STATUTS, ROLES_CONTACT, fmtN, fmtM2, fmtM2court, esc, sansAccent } from './metier.js';
 import { $, $$, toast, ouvrirModale, fermerModale, confirmer, debounce } from './ui.js';
-import { nouveauGroupe, editerContact } from './fiche.js';
+import { nouveauGroupe, editerContact, modifierFormatEmail, NIVEAUX_DECISION } from './fiche.js';
+import { exempleFormat } from './metier.js';
 
 let groupeActif = null, recherche = '', visible = false;
 
@@ -37,7 +38,7 @@ function rendre() {
   el.innerHTML = `
     <div class="groupes-liste">
       <div class="outils"><input type="search" id="gr-recherche" placeholder="Rechercher un groupe" value="${esc(recherche)}"><button class="btn btn-primaire btn-petit" id="gr-nouveau">+ Groupe</button></div>
-      <ul>${groupes.map(({ g, st }) => `<li data-id="${g.id}" class="${g.id === groupeActif ? 'actif' : ''}"><b>${esc(g.nom)}</b><small>${st.n} site${st.n > 1 ? 's' : ''} · ${fmtM2court(st.surf)}${st.clients ? ` · ${st.clients} client${st.clients > 1 ? 's' : ''}` : ''}</small></li>`).join('') || '<li class="vide">Aucun groupe. Créez-en un pour regrouper les sites d’une même enseigne.</li>'}</ul>
+      <ul>${groupes.map(({ g, st }) => `<li data-id="${g.id}" class="${g.id === groupeActif ? 'actif' : ''}"><b>${esc(g.nom)}</b>${g.reference ? ' <span class="badge ok" title="BIG est référencé">✓ Référencé</span>' : ''}<small>${st.n} site${st.n > 1 ? 's' : ''} · ${fmtM2court(st.surf)}${st.clients ? ` · ${st.clients} client${st.clients > 1 ? 's' : ''}` : ''}</small></li>`).join('') || '<li class="vide">Aucun groupe. Créez-en un pour regrouper les sites d’une même enseigne.</li>'}</ul>
     </div>
     <div class="groupe-detail" id="gr-detail"></div>`;
   const champ = $('#gr-recherche');
@@ -68,6 +69,11 @@ function rendreDetail() {
       <div class="kpi"><span>Clients</span><b>${parStatut.client || 0}</b></div>
       <div class="kpi"><span>Contacts</span><b>${contacts.length}</b></div>
     </div>
+    <div class="groupe-reglages">
+      <label class="case ${g.reference ? 'coche' : ''}"><input type="checkbox" id="gr-reference" ${g.reference ? 'checked' : ''}> BIG est <b>référencé</b> chez ce groupe</label>
+      <input type="text" id="gr-reference-note" value="${esc(g.reference_note || '')}" placeholder="Précisions : depuis quand, contrat cadre, acheteur…" ${g.reference ? '' : 'hidden'}>
+      <p class="format-email">✉️ Format des emails : ${g.email_format ? `<code>${esc(g.email_format)}</code> <small>— ex. ${esc(exempleFormat(g.email_format) || '')}</small>` : '<small>inconnu</small>'} <button class="lien" id="gr-format">${g.email_format ? 'modifier' : 'renseigner'}</button></p>
+    </div>
     <label>Notes sur le groupe<textarea id="gr-notes" rows="3" placeholder="Politique achats, contrats cadres, interlocuteurs nationaux…">${esc(g.notes || '')}</textarea></label>
 
     <div class="section-titre">Organigramme</div>
@@ -87,6 +93,12 @@ function rendreDetail() {
     else nom.textContent = g.nom;
   };
   nom.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); nom.blur(); } };
+  $('#gr-reference').onchange = async e => {
+    await store.enregistrer('groupes', { ...store.get('groupes', g.id), reference: e.target.checked });
+    toast(e.target.checked ? 'Groupe marqué « référencé »' : 'Référencement retiré', 'ok'); rendre();
+  };
+  $('#gr-reference-note').onchange = e => store.enregistrer('groupes', { ...store.get('groupes', g.id), reference_note: e.target.value.trim() || null });
+  $('#gr-format').onclick = () => modifierFormatEmail(null, rendre, store.get('groupes', g.id));
   $('#gr-notes').onchange = e => store.enregistrer('groupes', { ...store.get('groupes', g.id), notes: e.target.value.trim() || null });
   $('#gr-contact').onclick = () => editerContact({ groupe_id: g.id, role: 'decideur', ca_big: store.profil.email }, rendre);
   $$('.noeud', d).forEach(n => n.onclick = () => editerContact(store.get('contacts', n.dataset.id), rendre));
@@ -111,8 +123,8 @@ function organigramme(contacts) {
   const noeud = c => {
     const s = c.site_id && store.get('sites', c.site_id);
     const e = enfants(c);
-    return `<li><div class="noeud ${c.role}" data-id="${c.id}"><b>${esc([c.prenom, c.nom].filter(Boolean).join(' '))}</b><small>${esc(c.fonction || '')}</small>
-      <small>${esc(ROLES_CONTACT[c.role] || '')}${s ? ' · ' + esc(s.ville || s.nom) : ''}</small>${c.ca_big ? `<small>↔ ${esc(nomCA(c.ca_big))}</small>` : ''}</div>
+    return `<li><div class="noeud ${c.decisionnaire ? 'decideur' : c.role}" data-id="${c.id}"><b>${esc([c.prenom, c.nom].filter(Boolean).join(' '))}</b><small>${esc(c.fonction || '')}</small>
+      <small>${esc(c.decisionnaire ? 'Décisionnaire' + (c.niveau_decision ? ' ' + NIVEAUX_DECISION[c.niveau_decision] : '') : (ROLES_CONTACT[c.role] || ''))}${s ? ' · ' + esc(s.ville || s.nom) : ''}</small>${c.ca_big ? `<small>↔ ${esc(nomCA(c.ca_big))}</small>` : ''}</div>
       ${e.length ? `<ul>${e.map(noeud).join('')}</ul>` : ''}</li>`;
   };
   const racines = contacts.filter(c => !c.parent_id || !ids.has(c.parent_id));

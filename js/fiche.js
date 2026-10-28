@@ -1,16 +1,27 @@
 // Fiche d'un site : informations, qualification commerciale, contacts, historique
 import { store } from './store.js';
-import { etat, infos, emettre, ecouter, nomCA, sauverTournee } from './etat.js';
+import { etat, infos, emettre, ecouter, nomCA, sauverTournee, sitesFiltres } from './etat.js';
 import {
-  CATEGORIES, STATUTS, TYPES_ACTIVITE, ROLES_CONTACT, decennale, surfaceEstimee, anneeEstimee, fmtM2, fmtDate, fmtDateHeure, fmtEuro, esc, aujourdhui, ANNEE, uuid,
+  CATEGORIES, STATUTS, TYPES_ACTIVITE, ROLES_CONTACT, decennale, surfaceEstimee, anneeEstimee, emailDepuisFormat, deduireFormat, exempleFormat, distanceKm, fmtM2, fmtDate, fmtDateHeure, fmtEuro, esc, aujourdhui, ANNEE, uuid,
 } from './metier.js';
 import { $, $$, toast, ouvrirModale, fermerModale, confirmer, lireForm, versDatetimeLocal, debounce } from './ui.js';
 import { marquerSelection, centrerSur, choisirPosition } from './carte.js';
+import { agencesProches, lienItineraire, lienInfos, fmtKm } from './loueurs.js';
+
+export const NIVEAUX_DECISION = { local: 'local', regional: 'régional', national: 'national' };
 
 let ongletFiche = 'fiche';
 
+// Prospection de proche en proche : historique des sites parcourus avec « Site suivant »
+let parcours = [];
+
 export function initFiche() {
-  ecouter('ouvrir-site', id => ouvrirFiche(id));
+  ecouter('ouvrir-site', id => { parcours = [id]; ouvrirFiche(id); });
+  document.addEventListener('keydown', e => {
+    if ($('#fiche').hidden || !$('#modale').hidden || e.target.closest('input,textarea,select,[contenteditable]')) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); allerSuivant(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); allerPrecedent(); }
+  });
   store.on('change', d => {
     if (!etat.siteOuvert || !d?.distant) return;
     if (['sites', 'contacts', 'activites'].includes(d.table) && !document.activeElement?.closest('#fiche')) rendre();
@@ -30,6 +41,34 @@ export function fermerFiche() {
 
 const site = () => store.get('sites', etat.siteOuvert);
 
+// Site le plus proche parmi les sites affichés (filtres + secteur), hors sites déjà parcourus
+function plusProche(s) {
+  if (!s?.lat) return null;
+  const vus = new Set(parcours);
+  let best = null, bd = Infinity;
+  for (const x of sitesFiltres()) {
+    if (x.lat == null || vus.has(x.id) || x.id === s.id) continue;
+    const dLat = x.lat - s.lat; if (dLat * dLat > bd) continue;          // élagage rapide
+    const d = dLat * dLat + ((x.lng - s.lng) * Math.cos(s.lat * Math.PI / 180)) ** 2;
+    if (d < bd) { bd = d; best = x; }
+  }
+  return best ? { site: best, km: distanceKm(s, best) } : null;
+}
+function allerSuivant() {
+  const s = site(), n = plusProche(s);
+  if (!n) { toast(s?.lat ? 'Plus aucun site à proximité avec les filtres actuels' : 'Ce site n’a pas de position sur la carte', 'erreur'); return; }
+  if (!parcours.length || parcours[parcours.length - 1] !== s.id) parcours.push(s.id);
+  parcours.push(n.site.id);
+  ouvrirFiche(n.site.id);
+  centrerSur(n.site, 14);
+}
+function allerPrecedent() {
+  if (parcours.length < 2) return;
+  parcours.pop();
+  const id = parcours[parcours.length - 1], s = store.get('sites', id);
+  ouvrirFiche(id); if (s) centrerSur(s, 14);
+}
+
 function rendre() {
   const s = site(); if (!s) return fermerFiche();
   const i = infos(s), dec = decennale(s), cat = CATEGORIES[i.cat], st = STATUTS[s.statut] || STATUTS.a_qualifier;
@@ -46,6 +85,7 @@ function rendre() {
         <span class="badge prio-${i.prio}" title="Score de potentiel : surface, ancienneté, activité">Priorité ${i.prio} · ${i.score}/100</span>
         <span class="badge"><span class="rond" style="background:${st.couleur}"></span>${esc(st.libelle)}</span>
         <span class="badge ${dec.classe}">${esc(dec.court || dec.libelle)}</span>
+        ${(() => { const g = s.groupe_id && store.get('groupes', s.groupe_id); return g?.reference ? `<span class="badge ok" title="BIG est référencé chez ${esc(g.nom)}">✓ Référencé ${esc(g.nom)}</span>` : ''; })()}
       </div>
     </div>
     <div class="fiche-onglets" role="tablist">
@@ -57,9 +97,15 @@ function rendre() {
     <div class="fiche-pied">
       <button class="btn btn-petit" id="fi-tournee">${etat.tournee.includes(s.id) ? '✓ Dans la tournée' : '+ Tournée'}</button>
       <button class="btn btn-petit btn-danger" id="fi-suppr">Supprimer</button>
-      <span id="fi-etat" class="vide" style="margin-left:auto;align-self:center"></span>
+      <span id="fi-etat" class="vide"></span>
+      <span class="navigation-sites">
+        <button class="btn btn-petit" id="fi-prec" title="Site précédent (flèche ←)" ${parcours.length < 2 ? 'disabled' : ''}>◀</button>
+        <button class="btn btn-petit btn-primaire" id="fi-suiv" title="Site le plus proche (flèche →)">${(() => { const n = plusProche(s); return n ? `Site suivant ▶ <small>${n.km < 0.05 ? 'même lieu' : fmtKm(n.km)}</small>` : 'Site suivant ▶'; })()}</button>
+      </span>
     </div>`;
   f.querySelector('.fermer').onclick = fermerFiche;
+  $('#fi-suiv').onclick = allerSuivant;
+  $('#fi-prec').onclick = allerPrecedent;
   $$('.fiche-onglets button', f).forEach(b => b.onclick = () => { ongletFiche = b.dataset.o; rendre(); });
   $('#fi-tournee').onclick = () => {
     const k = etat.tournee.indexOf(s.id);
@@ -91,6 +137,8 @@ function rendreFiche(corps, s) {
       <div class="chiffre"><span>Construit en${anneeEstimee(s) ? ' (estimé)' : ''}</span><b>${anneeEstimee(s) && i.annee ? '≈ ' : ''}${i.annee || '—'}</b>${age != null ? `<span>${age} an${age > 1 ? 's' : ''}</span>` : ''}</div>
       <div class="chiffre"><span>Score</span><b>${i.score}/100</b><span>Priorité ${i.prio}</span></div>
     </div>
+    <details class="infos-repliables" ${infosOuvertes() ? 'open' : ''}>
+    <summary>Informations du site <small>(adresse, activité, décennale, SIRET, groupe, source…)</small></summary>
     <dl class="infos">
       <dt>Adresse postale</dt><dd>${esc(s.adresse || '—')}<br>${esc([s.code_postal, s.ville].filter(Boolean).join(' '))}${s.pays === 'BE' ? ', Belgique' : ''}</dd>
       <dt>Type d'entreprise</dt><dd>${esc(CATEGORIES[i.cat].libelle)}${s.naf ? `<br><small>NAF ${esc(s.naf)}${s.naf_libelle ? ' — ' + esc(s.naf_libelle) : ''}</small>` : ''}</dd>
@@ -103,6 +151,7 @@ function rendreFiche(corps, s) {
       ${!s.lat ? `<dt>Position</dt><dd><span class="badge alerte">Inconnue — non visible sur la carte</span></dd>` : od.position_approx ? `<dt>Position</dt><dd><span class="badge alerte">Approximative (centre de la commune)</span></dd>` : ''}
       <dt>Source</dt><dd><small>${esc({ bdnb: 'BDNB (open data bâtiments)', osm: 'OpenStreetMap', import: 'Import de fichier', manuel: 'Saisie manuelle', demo: 'Données de démonstration', ebauche: 'Ancienne base (ébauche)' }[s.source] || s.source)}${s.surface_m2 != null || s.annee_construction != null || s.categorie ? ' · corrigé par l’équipe' : ''}</small></dd>
     </dl>
+    </details>
     <div class="liens-rapides">
       <a class="btn btn-petit" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${s.lat && s.lng ? s.lat + ',' + s.lng : q}">🧭 Itinéraire</a>
       ${s.lat ? `<a class="btn btn-petit" target="_blank" rel="noopener" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${s.lat},${s.lng}">👁 Street View</a>` : ''}
@@ -117,6 +166,12 @@ function rendreFiche(corps, s) {
       <button class="btn" data-rapide="rdv">📅 Planifier un RDV</button>
       <button class="btn" data-rapide="note">📝 Note</button>
     </div>
+
+    <div class="section-titre">Contacts sur site</div>
+    ${blocContacts(s)}
+    <button class="btn btn-primaire btn-petit" id="fi-contact-plus">+ Ajouter un contact</button>
+
+    ${blocAgences(s)}
 
     <form id="fi-form" autocomplete="off">
       <div class="section-titre">Qualification</div>
@@ -147,6 +202,7 @@ function rendreFiche(corps, s) {
       </details>
     </form>`;
 
+  corps.querySelector('.infos-repliables').addEventListener('toggle', e => { try { localStorage.setItem('big_infos_site', e.target.open ? '1' : '0'); } catch { } });
   $('#fi-zoom')?.addEventListener('click', () => { centrerSur(s, 17); emettre('aller-vue', 'carte'); });
   $('#fi-position').onclick = () => {
     emettre('aller-vue', 'carte');
@@ -163,6 +219,9 @@ function rendreFiche(corps, s) {
   };
   $('#fi-voir-groupe')?.addEventListener('click', e => { e.preventDefault(); emettre('voir-groupe', s.groupe_id); });
   $$('[data-rapide]', corps).forEach(b => b.onclick = () => actionRapide(b.dataset.rapide, s));
+  $('#fi-contact-plus').onclick = () => editerContact({ site_id: s.id, groupe_id: s.groupe_id || null, role: 'contact', ca_big: store.profil.email }, rendre);
+  $$('[data-edit-contact]', corps).forEach(b => b.onclick = () => editerContact(store.get('contacts', b.dataset.editContact), rendre));
+  $('#fi-format-email').onclick = () => modifierFormatEmail(s, rendre);
 
   const form = $('#fi-form');
   const enregistrer = debounce(async () => {
@@ -205,6 +264,69 @@ export function nouveauGroupe(nomPropose = '') {
       $('#modale').hidden = true; res(g);
     };
   });
+}
+
+const infosOuvertes = () => { try { return localStorage.getItem('big_infos_site') === '1'; } catch { return false; } };
+
+// Format d'email applicable à un site : saisi sur le site > saisi sur le groupe > déduit des contacts déjà connus
+export function formatEmail(siteId, groupeId) {
+  const s = siteId && store.get('sites', siteId), gid = groupeId || s?.groupe_id, g = gid && store.get('groupes', gid);
+  if (s?.email_format) return { format: s.email_format, origine: 'site' };
+  if (g?.email_format) return { format: g.email_format, origine: 'groupe ' + g.nom };
+  const connus = store.liste('contacts').filter(c => c.email && (c.site_id === siteId || (gid && c.groupe_id === gid)));
+  for (const c of connus) { const f = deduireFormat(c); if (f) return { format: f, origine: 'déduit de ' + [c.prenom, c.nom].filter(Boolean).join(' ') }; }
+  return null;
+}
+function libelleDecision(c) { return c.decisionnaire ? `Décisionnaire${c.niveau_decision ? ' ' + NIVEAUX_DECISION[c.niveau_decision] : ''}` : ''; }
+
+// Contacts du site, affichés directement sur la fiche
+function blocContacts(s) {
+  const l = store.liste('contacts').filter(c => c.site_id === s.id)
+    .sort((a, b) => (a.role === 'decideur' ? -1 : 0) - (b.role === 'decideur' ? -1 : 0));
+  const tel = t => `<a href="tel:${esc(t.replace(/[^\d+]/g, ''))}">📞 ${esc(t)}</a>`;
+  return `<div class="contacts-fiche">
+    ${s.standard_tel ? `<div class="contact-ligne"><div><b>Standard</b></div><div>${tel(s.standard_tel)}</div></div>` : ''}
+    ${l.map(c => `<div class="contact-ligne">
+        <div><b>${esc([c.prenom, c.nom].filter(Boolean).join(' '))}</b> ${c.decisionnaire ? `<span class="badge prio-A">${esc(libelleDecision(c))}</span>` : `<span class="badge">${esc(ROLES_CONTACT[c.role] || c.role)}</span>`}${c.fonction ? `<br><small>${esc(c.fonction)}</small>` : ''}</div>
+        <div>${c.telephone ? tel(c.telephone) : ''}${c.email ? `<br><a href="mailto:${esc(c.email)}">✉️ ${esc(c.email)}</a>` : ''}</div>
+        <button class="btn-icone" data-edit-contact="${c.id}" title="Modifier">✎</button></div>`).join('')}
+    ${!l.length && !s.standard_tel ? '<p class="vide">Aucun contact pour l’instant.</p>' : ''}
+    ${(() => { const f = formatEmail(s.id); return `<p class="format-email">✉️ Format des emails : ${f ? `<code>${esc(f.format)}</code> <small>(${esc(f.origine)}) — ex. ${esc(exempleFormat(f.format) || '')}</small>` : '<small>inconnu</small>'} <button class="lien" id="fi-format-email">${f ? 'modifier' : 'renseigner'}</button></p>`; })()}</div>`;
+}
+
+// Agences de location de matériel les plus proches du site (préparation de chantier)
+function blocAgences(s) {
+  const l = agencesProches(s, 3);
+  if (!l.length) return '';
+  return `<div class="section-titre">Location de matériel à proximité</div>
+    <div class="agences-fiche">${l.map(({ a, d }) => `<div class="contact-ligne">
+      <div><b>${esc(a.nom)}</b><br><small>${esc([a.adresse, a.code_postal, a.ville].filter(Boolean).join(' '))}</small></div>
+      <div><b>${fmtKm(d)}</b><br><small>à vol d'oiseau</small></div>
+      <div class="liens">${a.telephone ? `<a class="btn-icone" href="tel:${esc(a.telephone.replace(/\s/g, ''))}" title="Appeler">📞</a>` : ''}<a class="btn-icone" target="_blank" rel="noopener" href="${lienItineraire(a, s)}" title="Itinéraire depuis le site">🧭</a><a class="btn-icone" target="_blank" rel="noopener" href="${lienInfos(a)}" title="Horaires et téléphone">🔎</a></div>
+    </div>`).join('')}</div>`;
+}
+
+export function modifierFormatEmail(s, apres, groupeSeul = null) {
+  const g = groupeSeul || (s?.groupe_id && store.get('groupes', s.groupe_id));
+  const actuel = (groupeSeul ? g.email_format : (s.email_format || g?.email_format)) || '';
+  const m = ouvrirModale(`<h3>Format des adresses email</h3>
+    <p class="vide">Jetons : <code>{prenom}</code> <code>{nom}</code> <code>{p}</code> = initiale du prénom, <code>{n}</code> = initiale du nom.<br>
+    Exemples : <code>{p}{nom}@log.com</code> → cbrunel@log.com · <code>{prenom}.{nom}@geodis.com</code> → cedric.brunel@geodis.com</p>
+    <label>Format<input type="text" id="fe-format" value="${esc(actuel)}" placeholder="{prenom}.{nom}@entreprise.fr"></label>
+    <p id="fe-ex" class="vide"></p>
+    ${!groupeSeul && g ? `<label style="font-weight:400"><input type="checkbox" id="fe-groupe" ${s.email_format ? '' : 'checked'}> Appliquer à tout le groupe « ${esc(g.nom)} » (sinon uniquement à ce site)</label>` : ''}
+    <div class="boutons"><button class="btn" data-fermer-modale>Annuler</button><button class="btn btn-primaire" id="fe-ok">Enregistrer</button></div>`);
+  const maj = () => { const f = $('#fe-format', m).value.trim(); $('#fe-ex', m).textContent = f ? (exempleFormat(f) ? 'Exemple : ' + exempleFormat(f) : 'Format incomplet (il faut au moins {nom} et @domaine)') : ''; };
+  $('#fe-format', m).oninput = maj; maj();
+  $('#fe-ok', m).onclick = async () => {
+    const f = $('#fe-format', m).value.trim() || null;
+    if (f && !exempleFormat(f)) { toast('Format incomplet', 'erreur'); return; }
+    if (groupeSeul || (g && $('#fe-groupe', m)?.checked)) {
+      await store.enregistrer('groupes', { ...store.get('groupes', g.id), email_format: f });
+      if (s?.email_format) await store.enregistrer('sites', { ...store.get('sites', s.id), email_format: null });
+    } else await store.enregistrer('sites', { ...store.get('sites', s.id), email_format: f });
+    fermerModale(); toast('Format enregistré', 'ok'); apres?.();
+  };
 }
 
 // ------------------------------------------------------------------ actions rapides
@@ -255,7 +377,7 @@ function rendreContacts(corps, s) {
     ${contacts.map(c => `
       <div class="carte-contact">
         <div class="actions"><button class="btn-icone" data-edit="${c.id}" title="Modifier">✎</button></div>
-        <b>${esc([c.prenom, c.nom].filter(Boolean).join(' '))}</b> <span class="badge">${esc(ROLES_CONTACT[c.role] || c.role)}</span><br>
+        <b>${esc([c.prenom, c.nom].filter(Boolean).join(' '))}</b> ${c.decisionnaire ? `<span class="badge prio-A">${esc(libelleDecision(c))}</span>` : `<span class="badge">${esc(ROLES_CONTACT[c.role] || c.role)}</span>`}<br>
         ${c.fonction ? esc(c.fonction) + '<br>' : ''}
         ${c.telephone ? `<a href="tel:${esc(c.telephone.replace(/\s/g, ''))}">📞 ${esc(c.telephone)}</a><br>` : ''}
         ${c.email ? `<a href="mailto:${esc(c.email)}">✉️ ${esc(c.email)}</a><br>` : ''}
@@ -279,16 +401,38 @@ export function editerContact(c, apres) {
       <label>Nom *<input type="text" name="nom" value="${esc(c.nom || '')}" required></label>
       <label class="plein">Fonction<input type="text" name="fonction" value="${esc(c.fonction || '')}" placeholder="Responsable maintenance, directeur de site…"></label>
       <label>Téléphone<input type="tel" name="telephone" value="${esc(c.telephone || '')}"></label>
-      <label>Email<input type="email" name="email" value="${esc(c.email || '')}"></label>
-      <label>Rôle<select name="role">${Object.entries(ROLES_CONTACT).map(([k, v]) => `<option value="${k}" ${c.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      <label>Email<input type="email" name="email" value="${esc(c.email || '')}"><span class="suggestion-email" id="ct-sugg"></span></label>
+      <label>Type de contact<select name="role">${Object.entries(ROLES_CONTACT).filter(([k]) => k !== 'decideur' || c.role === 'decideur').map(([k, v]) => `<option value="${k}" ${c.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+      <div class="decision">
+        <label class="case"><input type="checkbox" name="decisionnaire" ${c.decisionnaire || c.role === 'decideur' ? 'checked' : ''}> Décisionnaire</label>
+        <select name="niveau_decision" aria-label="Niveau de décision" ${c.decisionnaire || c.role === 'decideur' ? '' : 'disabled'}>
+          <option value="">Niveau…</option>${Object.entries(NIVEAUX_DECISION).map(([k, v]) => `<option value="${k}" ${c.niveau_decision === k ? 'selected' : ''}>${v[0].toUpperCase() + v.slice(1)}</option>`).join('')}
+        </select>
+      </div>
       <label>En contact avec (CA BIG)<select name="ca_big"><option value="">—</option>${profils.map(p => `<option value="${esc(p.email)}" ${c.ca_big === p.email ? 'selected' : ''}>${esc(p.prenom + ' ' + p.nom)}</option>`).join('')}</select></label>
       ${groupeId ? `<label class="plein">Rattaché à (organigramme du groupe)<select name="parent_id"><option value="">— Sommet de l'organigramme —</option>${parents.map(p => `<option value="${p.id}" ${c.parent_id === p.id ? 'selected' : ''}>${esc([p.prenom, p.nom].filter(Boolean).join(' '))}${p.fonction ? ' — ' + esc(p.fonction) : ''}</option>`).join('')}</select></label>` : ''}
       <label class="plein">Notes<textarea name="notes">${esc(c.notes || '')}</textarea></label>
     </div>
     <div class="boutons">${nouveau ? '' : '<button class="btn btn-danger" id="ct-suppr" style="margin-right:auto">Supprimer</button>'}<button class="btn" data-fermer-modale>Annuler</button><button class="btn btn-primaire" id="ct-ok">Enregistrer</button></div>`);
+  // Suggestion d'email selon le format de l'entreprise
+  const fmt = formatEmail(c.site_id, groupeId), champMail = $('#ct-form [name=email]', m), sugg = $('#ct-sugg', m);
+  let mailSaisi = !!c.email;
+  champMail.addEventListener('input', () => { mailSaisi = !!champMail.value.trim(); majSugg(); });
+  const majSugg = () => {
+    const e = fmt && emailDepuisFormat(fmt.format, $('#ct-form [name=prenom]', m).value, $('#ct-form [name=nom]', m).value);
+    if (!e || champMail.value.trim().toLowerCase() === e) { sugg.innerHTML = fmt ? '' : '<small class="vide">Format d’email de l’entreprise inconnu</small>'; return; }
+    sugg.innerHTML = `Suggestion : <button type="button" class="lien">${esc(e)}</button> <small class="vide">(${esc(fmt.origine)})</small>`;
+    sugg.querySelector('button').onclick = () => { champMail.value = e; mailSaisi = true; majSugg(); };
+  };
+  ['prenom', 'nom'].forEach(n => $(`#ct-form [name=${n}]`, m).addEventListener('input', majSugg));
+  majSugg();
+  const caseDec = $('#ct-form [name=decisionnaire]', m), niv = $('#ct-form [name=niveau_decision]', m);
+  caseDec.onchange = () => { niv.disabled = !caseDec.checked; if (!caseDec.checked) niv.value = ''; };
   $('#ct-ok', m).onclick = async () => {
     const v = lireForm($('#ct-form', m));
     if (!v.nom) { toast('Le nom est obligatoire', 'erreur'); return; }
+    if (v.role === 'decideur') v.role = 'contact';
+    if (!v.decisionnaire) v.niveau_decision = null;
     await store.enregistrer('contacts', { ...c, ...v, groupe_id: groupeId, parent_id: v.parent_id || null, ca_big: v.ca_big || null, supprime: false });
     fermerModale(); apres?.();
   };

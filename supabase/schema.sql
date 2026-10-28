@@ -363,3 +363,55 @@ revoke all on function public.import_sites(jsonb) from public, anon, authenticat
 do $$ begin
   execute 'grant execute on function public.import_sites(jsonb) to service_role';
 exception when undefined_object then null; end $$;
+
+-- ---------------------------------------------------------------------
+-- 6. Agences des loueurs de matériel (Kiloutou…) — alimentée par scripts/import-agences.mjs
+-- ---------------------------------------------------------------------
+create table if not exists public.agences (
+  id          text primary key,                 -- siret ou identifiant OpenStreetMap
+  enseigne    text not null,                    -- 'kiloutou'
+  nom         text not null,
+  adresse     text,
+  code_postal text,
+  ville       text,
+  departement text,
+  pays        text not null default 'FR',
+  lat         double precision not null,
+  lng         double precision not null,
+  telephone   text,
+  site_web    text,
+  source      text,
+  maj         timestamptz not null default now()
+);
+create index if not exists agences_enseigne_idx on public.agences (enseigne);
+alter table public.agences enable row level security;
+drop policy if exists lecture on public.agences;
+create policy lecture on public.agences for select to authenticated using (public.est_membre());
+
+-- ---------------------------------------------------------------------
+-- 7. v1.3 : formats d'email, décisionnaires, référencement BIG chez les groupes
+-- ---------------------------------------------------------------------
+alter table public.groupes  add column if not exists email_format   text;      -- ex. {p}{nom}@log.com
+alter table public.groupes  add column if not exists reference      boolean not null default false;  -- BIG référencé chez ce groupe
+alter table public.groupes  add column if not exists reference_note text;
+alter table public.sites    add column if not exists email_format   text;
+alter table public.contacts add column if not exists decisionnaire  boolean not null default false;
+alter table public.contacts add column if not exists niveau_decision text;
+do $$ begin
+  alter table public.contacts add constraint contacts_niveau_chk check (niveau_decision in ('local','regional','national'));
+exception when duplicate_object then null; end $$;
+
+-- ancien rôle « Décideur » → case Décisionnaire
+update public.contacts set decisionnaire = true, role = 'contact' where role = 'decideur';
+
+-- Formats relevés sur des annuaires publics (clay.com, prospeo.io) — indicatifs, à confirmer avec un vrai contact
+update public.groupes g set email_format = v.f
+  from (values ('geodis / sncf', '{prenom}.{nom}@geodis.com'), ('xpo', '{prenom}.{nom}@xpo.com'),
+               ('kuehne+nagel', '{prenom}.{nom}@kuehne-nagel.com'), ('saint-gobain', '{prenom}.{nom}@saint-gobain.com'),
+               ('dhl / deutsche post', '{prenom}.{nom}@dhl.com'), ('gxo logistics', '{prenom}.{nom}@gxo.com'),
+               ('dsv', '{prenom}.{nom}@dsv.com'), ('db schenker', '{prenom}.{nom}@dbschenker.com'),
+               ('air liquide', '{prenom}.{nom}@airliquide.com'), ('carrefour', '{prenom}_{nom}@carrefour.com'),
+               ('lidl', '{prenom}.{nom}@lidl.com'), ('totalenergies', '{prenom}.{nom}@totalenergies.com'),
+               ('lactalis', '{prenom}.{nom}@lactalis.fr'), ('fm logistic', '{p}{nom}@fmlogistic.com'),
+               ('dachser', '{prenom}.{nom}@dachser.com')) as v(n, f)
+ where lower(g.nom) = v.n and g.email_format is null;

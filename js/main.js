@@ -12,6 +12,7 @@ import { initGroupes } from './groupes.js';
 import { initPerfs } from './perfs.js';
 import { initTournee } from './tournee.js';
 import { ouvrirImport } from './importer.js';
+import { initLoueurs } from './loueurs.js';
 
 // ------------------------------------------------------------------ service worker (hors connexion)
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
@@ -90,7 +91,7 @@ async function entrer(email) {
   if (!store.get('secteurs', etat.secteur)) etat.secteur = profil.secteur;
   if (!initialise) {
     initialise = true;
-    initFiltres(); initCarte(); initFiche(); initListe(); initGroupes(); initPerfs(); initTournee();
+    initFiltres(); initCarte(); initLoueurs(); initFiche(); initListe(); initGroupes(); initPerfs(); initTournee();
     brancherInterface();
   }
   rendreEntete();

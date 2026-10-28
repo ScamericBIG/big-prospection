@@ -7,7 +7,7 @@ import {
 export const FILTRES_VIDES = () => ({
   texte: '', cp: '', ville: '', categories: new Set(), surfMin: null, surfMax: null,
   decennale: new Set(), anneeMin: null, anneeMax: null, statuts: new Set(), priorites: new Set(),
-  retard: false, semaine: false, assigne: '', groupe: '', categoriesMasquees: new Set(),
+  retard: false, semaine: false, reference: false, assigne: '', groupe: '', categoriesMasquees: new Set(),
 });
 
 export const etat = {
@@ -71,7 +71,7 @@ export function prechauffer() {
 let memo = { cle: null, res: [] };
 let version = 0;
 export const invalider = () => { version++; };
-store.on('change', d => { if (!d || d.table === 'sites' || d.table === 'secteur_departements') invalider(); });
+store.on('change', d => { if (!d || ['sites', 'secteur_departements', 'groupes'].includes(d.table)) invalider(); });
 
 export function sitesFiltres({ ignorerMasquees = false } = {}) {
   const f = etat.filtres;
@@ -97,6 +97,7 @@ export function sitesFiltres({ ignorerMasquees = false } = {}) {
     if (f.statuts.size && !f.statuts.has(s.statut || 'a_qualifier')) return false;
     if (f.priorites.size && !f.priorites.has(i.prio)) return false;
     if (f.retard && !rappelEnRetard(s)) return false;
+    if (f.reference && !(s.groupe_id && store.get('groupes', s.groupe_id)?.reference)) return false;
     if (f.semaine && !(s.date_prochain_rappel && s.date_prochain_rappel >= auj && s.date_prochain_rappel <= dans7)) return false;
     if (f.assigne && (f.assigne === '_aucun' ? s.assigne_a : s.assigne_a !== f.assigne)) return false;
     if (f.groupe && s.groupe_id !== f.groupe) return false;

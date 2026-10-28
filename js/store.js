@@ -10,6 +10,7 @@ const TABLES = {
   profils:              { key: 'email', complet: true },
   secteurs:             { key: 'code', complet: true },
   secteur_departements: { key: 'departement', complet: true },
+  agences:              { key: 'id', complet: true, lecture: true },   // agences Kiloutou (lecture seule)
 };
 
 export const PROFILS_DEMO = [
@@ -23,7 +24,7 @@ export const PROFILS_DEMO = [
 // ---------------------------------------------------------------- IndexedDB minimaliste
 function ouvrirIdb() {
   return new Promise((ok, ko) => {
-    const r = indexedDB.open('big-prospection', 1);
+    const r = indexedDB.open('big-prospection', 2);
     r.onupgradeneeded = () => {
       const db = r.result;
       for (const [t, c] of Object.entries(TABLES)) if (!db.objectStoreNames.contains(t)) db.createObjectStore(t, { keyPath: c.key });
@@ -243,7 +244,8 @@ class Store extends EventTarget {
       this.emit('sync', { enCours: true });
       try {
         await this.pousser();
-        await this.tirer(Object.keys(TABLES));
+        await this.tirer(Object.keys(TABLES).filter(t => t !== 'agences'));
+        try { await this.tirer(['agences']); } catch (e) { console.warn('Agences indisponibles (table à créer : relancer schema.sql)', e.message); }
         this.derniereSync = new Date().toISOString();
         await this.meta('derniereSync', this.derniereSync);
       } catch (e) {

@@ -100,6 +100,22 @@ Options : `--min 10000` (surface minimale), `--enrichir false` (sans SIRENE, plu
 
 **Limites connues** : l'année de construction est absente pour une partie des bâtiments industriels dans la BDNB (affichée « Année inconnue », à compléter dans la fiche) ; l'occupant identifié automatiquement est l'établissement actif le plus probable à l'adresse — à vérifier lors de la qualification.
 
+### Contacts, formats d'email et référencement (v1.3)
+
+- **Format des emails** d'une entreprise (sur la fiche site ou sur le groupe) : jetons `{prenom}`, `{nom}`, `{p}` (initiale du prénom), `{n}`. Ex. `{p}{nom}@log.com` → Cédric BRUNEL = cbrunel@log.com, proposé automatiquement à la saisie d'un contact. Sans format saisi, il est déduit d'un contact déjà connu du site ou du groupe. 15 grands groupes sont pré-remplis à partir d'annuaires publics (à confirmer).
+- **Décisionnaire** (case à cocher) + niveau local / régional / national sur chaque contact.
+- **Groupes** : case « BIG est référencé chez ce groupe » (+ précisions) ; badge sur les fiches des sites et filtre « Groupes où BIG est référencé ».
+- **Fiche** : bloc d'informations repliable ; boutons ◀ / **Site suivant ▶** (ou flèches ← → du clavier) pour passer au site le plus proche parmi les sites affichés.
+
+### Agences Kiloutou
+
+Le bouton **🔧 Kiloutou** (en haut à gauche de la carte) affiche les agences du secteur et une liste triée par distance (au site ouvert, sinon au centre de la carte). Chaque fiche site indique aussi les 3 agences les plus proches, avec itinéraire depuis le site.
+
+La liste est construite par le script `scripts/import-agences.mjs` (base SIRENE + OpenStreetMap) et enregistrée dans la table `agences` :
+**Actions → Import agences Kiloutou → Run workflow** (il se relance aussi automatiquement chaque mois). Mêmes secrets que l'import open data.
+
+Logo : déposez si vous le souhaitez l'image du logo fournie par Kiloutou sous `img/kiloutou.png` ; le bouton l'affichera à la place du texte.
+
 ---
 
 ## 4. Hors connexion

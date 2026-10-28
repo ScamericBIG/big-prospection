@@ -288,7 +288,7 @@ function dessinerAutour() {
 export function dessinerTournee() {
   coucheTournee.clearLayers();
   const pts = [];
-  if (etat.depart) {
+  if (etat.depart && etat.tournee.length) {
     pts.push([etat.depart.lat, etat.depart.lng]);
     L.marker([etat.depart.lat, etat.depart.lng], { icon: L.divIcon({ className: '', html: '<div class="marqueur-tournee marqueur-depart">D</div>', iconSize: [22, 22] }) }).bindTooltip('Départ : ' + esc(etat.depart.libelle)).addTo(coucheTournee);
   }

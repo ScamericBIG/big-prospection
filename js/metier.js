@@ -38,7 +38,7 @@ export const TYPES_ACTIVITE = {
   appel: '📞 Appel', email: '✉️ Email', rdv: '📅 Rendez-vous', visite: '🏭 Visite terrain',
   devis: '💶 Devis', note: '📝 Note', statut: '🔄 Statut',
 };
-export const ROLES_CONTACT = { decideur: 'Décideur', contact: 'En contact', standard: 'Standard / accueil', prescripteur: 'Prescripteur' };
+export const ROLES_CONTACT = { decideur: 'Décideur', contact: 'Contact', standard: 'Standard / accueil', prescripteur: 'Prescripteur' };
 
 export const ANNEE = new Date().getFullYear();
 
@@ -106,3 +106,25 @@ export const deptDeCp = cp => {
   if (cp.startsWith('97') || cp.startsWith('98')) return cp.slice(0, 3);
   return cp.slice(0, 2);
 };
+
+// ---------------------------------------------------------------- formats d'email
+// Jetons : {prenom} {nom} {p} (initiale du prénom) {n} (initiale du nom). Ex. {p}{nom}@log.com → cbrunel@log.com
+const partieEmail = s => sansAccent(s).replace(/[’'`\s]+/g, '').replace(/[^a-z0-9.\-_]/g, '');
+export function emailDepuisFormat(format, prenom, nom) {
+  if (!format || !format.includes('@') || !nom) return null;
+  const P = partieEmail(prenom), N = partieEmail(nom);
+  if (/\{(prenom|p)\}/.test(format) && !P) return null;
+  return format.replace(/\{prenom\}/g, P).replace(/\{nom\}/g, N).replace(/\{p\}/g, P[0] || '').replace(/\{n\}/g, N[0] || '').toLowerCase();
+}
+const MODELES = ['{prenom}.{nom}', '{p}{nom}', '{p}.{nom}', '{prenom}{nom}', '{prenom}_{nom}', '{prenom}-{nom}', '{nom}.{prenom}', '{nom}{p}', '{nom}', '{prenom}', '{p}{n}'];
+// Retrouve le format à partir d'un contact dont l'email est connu (cbrunel@log.com + Cédric BRUNEL → {p}{nom}@log.com)
+export function deduireFormat(c) {
+  if (!c?.email || !c.nom || !c.email.includes('@')) return null;
+  const [local, dom] = c.email.toLowerCase().split('@');
+  for (const m of MODELES) {
+    const e = emailDepuisFormat(`${m}@${dom}`, c.prenom || '', c.nom);
+    if (e && e.split('@')[0] === local) return `${m}@${dom}`;
+  }
+  return null;
+}
+export const exempleFormat = f => emailDepuisFormat(f, 'Cédric', 'Brunel');
