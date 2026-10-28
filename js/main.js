@@ -15,6 +15,8 @@ import { ouvrirImport } from './importer.js';
 import { initLoueurs } from './loueurs.js';
 import { initRappels } from './rappels.js';
 import { initSegmentation } from './segmentation.js';
+import { initAppelsOffres } from './appelsoffres.js';
+import { initActualites } from './actualites.js';
 
 // ------------------------------------------------------------------ service worker (hors connexion)
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
@@ -93,7 +95,7 @@ async function entrer(email) {
   if (!store.get('secteurs', etat.secteur)) etat.secteur = profil.secteur;
   if (!initialise) {
     initialise = true;
-    initFiltres(); initCarte(); initLoueurs(); initSegmentation(); initFiche(); initRappels(); initListe(); initGroupes(); initPerfs(); initTournee();
+    initFiltres(); initCarte(); initLoueurs(); initSegmentation(); initFiche(); initRappels(); initAppelsOffres(); initActualites(); initListe(); initGroupes(); initPerfs(); initTournee();
     brancherInterface();
   }
   rendreEntete();

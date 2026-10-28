@@ -8,6 +8,7 @@ import { $, $$, toast, ouvrirModale, fermerModale, confirmer, lireForm, versDate
 import { marquerSelection, centrerSur, choisirPosition } from './carte.js';
 import { agencesProches, lienItineraire, lienInfos, fmtKm } from './loueurs.js';
 import { syntheseGroupe } from './strategie.js';
+import { actusDuSite, CATEGORIES_ACTU } from './actualites.js';
 
 export const NIVEAUX_DECISION = { local: 'local', regional: 'régional', national: 'national' };
 
@@ -174,6 +175,8 @@ function rendreFiche(corps, s) {
 
     ${s.groupe_id ? syntheseGroupe(s.groupe_id, { exclureSite: s.id }) : '<p class="vide" style="font-size:12.5px">🤝 Rattachez ce site à un groupe (section Caractéristiques) pour voir ce que l’équipe sait de ce groupe.</p>'}
 
+    ${blocActus(s)}
+
     ${blocAgences(s)}
 
     <form id="fi-form" autocomplete="off">
@@ -226,6 +229,7 @@ function rendreFiche(corps, s) {
   $$('[data-edit-contact]', corps).forEach(b => b.onclick = () => editerContact(store.get('contacts', b.dataset.editContact), rendre));
   $('#fi-format-email').onclick = () => modifierFormatEmail(s, rendre);
   $$('[data-voir-groupe]', corps).forEach(b => b.onclick = () => emettre('voir-groupe', b.dataset.voirGroupe));
+  $('[data-aller-actus]', corps)?.addEventListener('click', e => { e.preventDefault(); emettre('aller-vue', 'actus'); });
 
   const form = $('#fi-form');
   const enregistrer = debounce(async () => {
@@ -299,6 +303,17 @@ function blocContacts(s) {
 }
 
 // Agences de location de matériel les plus proches du site (préparation de chantier)
+// Dernières actualités sur ce site ou son groupe (santé financière, incendie, rachat…)
+function blocActus(s) {
+  const l = actusDuSite(s);
+  if (!l.length) return '';
+  return `<div class="strategie actus-fiche"><h4>📰 Actualités du site et du groupe <a href="#" data-aller-actus>tout voir</a></h4><ul>${l.map(a => {
+    const c = CATEGORIES_ACTU[a.categorie] || CATEGORIES_ACTU.autre;
+    const u = /^https?:\/\//.test(a.url || '') ? a.url : null;
+    return `<li>${c.ico} <b>${esc(c.libelle)}</b> · <span class="quand">${fmtDate(a.date_publication)}</span><br>${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(a.titre)}</a>` : esc(a.titre)}</li>`;
+  }).join('')}</ul></div>`;
+}
+
 function blocAgences(s) {
   const l = agencesProches(s, 3);
   if (!l.length) return '';

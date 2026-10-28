@@ -426,3 +426,72 @@ alter table public.activites add constraint activites_type_check
 -- couleurs bien distinctes pour la segmentation de la carte (si elles n'ont pas été personnalisées)
 update public.secteurs set couleur = '#D4549B' where code = 'idf'   and couleur = '#7A4FB6';
 update public.secteurs set couleur = '#C9772B' where code = 'est'   and couleur = '#C9772B';
+
+-- ---------------------------------------------------------------------
+-- 9. v1.5 : veille — appels d'offres (BOAMP) et actualités (presse, BODACC)
+--    Alimentées chaque matin par scripts/veille.mjs (GitHub Actions) ; l'équipe y ajoute son suivi.
+-- ---------------------------------------------------------------------
+create table if not exists public.appels_offres (
+  id               text primary key,                 -- 'boamp:<idweb>'
+  source           text not null default 'boamp',
+  titre            text not null,
+  acheteur         text,
+  description      text,
+  departements     text[] not null default '{}',
+  lieu             text,
+  type_marche      text,
+  procedure        text,
+  date_publication date,
+  date_limite      timestamptz,
+  url              text,
+  mots_cles        text[] not null default '{}',
+  categorie        text,
+  pertinence       integer not null default 0,
+  -- suivi par l'équipe
+  suivi            text not null default 'nouveau' check (suivi in ('nouveau','a_etudier','on_repond','repondu','sans_suite')),
+  responsable      text references public.profils(email) on delete set null,
+  note             text,
+  maj              timestamptz not null default now(),
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  updated_by       text
+);
+create index if not exists ao_limite_idx on public.appels_offres (date_limite);
+create index if not exists ao_upd_idx on public.appels_offres (updated_at);
+
+create table if not exists public.actualites (
+  id               text primary key,                 -- empreinte du lien
+  titre            text not null,
+  url              text not null,
+  media            text,
+  date_publication timestamptz,
+  categorie        text,                             -- incendie | defaillance | fermeture | ouverture | rachat | resultats | autre
+  resume           text,
+  departements     text[] not null default '{}',
+  groupes          uuid[] not null default '{}',
+  sites            uuid[] not null default '{}',
+  requete          text,
+  pertinence       integer not null default 0,
+  source           text not null default 'presse',   -- presse | bodacc
+  masque           boolean not null default false,   -- masquée par l'équipe (hors sujet)
+  maj              timestamptz not null default now(),
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  updated_by       text
+);
+create index if not exists actu_date_idx on public.actualites (date_publication);
+create index if not exists actu_upd_idx on public.actualites (updated_at);
+
+do $$ declare t text; begin
+  foreach t in array array['appels_offres','actualites'] loop
+    execute format('drop trigger if exists trg_touch on public.%I', t);
+    execute format('create trigger trg_touch before insert or update on public.%I for each row execute function public.touch_updated_at()', t);
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists lecture on public.%I', t);
+    execute format('drop policy if exists ecriture on public.%I', t);
+    execute format('drop policy if exists modification on public.%I', t);
+    execute format('create policy lecture on public.%I for select to authenticated using (public.est_membre())', t);
+    execute format('create policy ecriture on public.%I for insert to authenticated with check (public.est_membre())', t);
+    execute format('create policy modification on public.%I for update to authenticated using (public.est_membre()) with check (public.est_membre())', t);
+  end loop;
+end $$;

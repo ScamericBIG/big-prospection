@@ -21,6 +21,8 @@ Outil de prospection commerciale des sites industriels et logistiques (France + 
 | **Liste** | Tableau triable des sites filtrés, export CSV / Excel. |
 | **Groupes** | Enseignes / maisons-mères : sites rattachés, surface cumulée, **organigramme** des contacts (décideur, en contact, standard, prescripteur). |
 | **Performances** | Appels, RDV, devis (montants), nouveaux clients ; activité mensuelle ; entonnoir commercial ; couverture par priorité ; classement des chargés d'affaires ; répartition par type et par département ; alertes (RDV à venir, rappels en retard, dossiers dormants). |
+| **Appels d'offres** | Avis de marchés publics (BOAMP) en cours sur la réfection de sols, dallages, résine, fissures, réparation béton… classés par secteur avec le chargé d'affaires qui répond ; suivi partagé (à trier / à étudier / on répond / offre remise / sans suite), répondant, note. |
+| **Actualités** | Presse et BODACC classés par secteur : incendies, défaillances, fermetures, ouvertures de zones logistiques, rachats, résultats ; actualités des groupes et sites de la base (aussi visibles dans la fiche du site). |
 | **Import** | Fichiers Excel / CSV de l'équipe (colonnes reconnues automatiquement, adresses géolocalisées, dédoublonnage) et fichiers open data. |
 
 **Score de potentiel (0-100)** : surface (jusqu'à 50 pts, échelle logarithmique) + ancienneté (jusqu'à 40 pts, maximum à 30 ans) + activité (jusqu'à 10 pts, logistique/frigo en tête). Priorité A ≥ 65, B ≥ 45, C sinon. Exemple : 100 000 m² de 1995 en logistique → A (100/100) ; 5 000 m² de 2024 → C.
@@ -113,6 +115,15 @@ Options : `--min 10000` (surface minimale), `--enrichir false` (sans SIRENE, plu
 - **Stratégie groupe** (fiche d'un site rattaché à un groupe, et écran Groupes) : référencement BIG, répartition des sites du groupe entre chargés d'affaires, interlocuteurs clés (décisionnaires national > régional > local, contact « avancé » si RDV / devis / client) et derniers RDV, visites, devis et **chantiers** sur les autres sites du groupe, avec l'interlocuteur concerné (champ « Avec » des appels, RDV et de l'historique).
 - **Segmentation secteurs** (bouton sur la carte) : zones de chaque chargé d'affaires en pointillés et couleur, étiquettes, et légende du nombre de sites filtrés par secteur sur toute la France (ex. filtre « Client » → répartition des clients). Les contours suivent la table `secteur_departements`.
 
+### Appels d'offres et actualités (v1.5)
+
+Collecte automatique chaque matin (vers 6 h, heure de Paris) par `scripts/veille.mjs` : **Actions → Veille (appels d'offres et actualités) → Run workflow** pour la lancer à la main (mêmes secrets que l'import open data).
+
+- **Appels d'offres** : API du BOAMP (marchés publics français), recherche par mots-clés (dallage, sol industriel, résine, ragréage, fissures, réparation béton, joints, peinture de sol, chape, entrepôt…), indice de pertinence, exclusion des sols sportifs / voirie. Seuls les avis dont la date limite n'est pas dépassée s'affichent ; ils sont rangés par secteur d'après le département du marché (accords-cadres sans département : section « Lieu non précisé »). Le suivi, le répondant et la note sont partagés par toute l'équipe. Les marchés privés (appels d'offres de logisticiens, foncières…) ne sont pas publiés sur le BOAMP et n'apparaissent donc pas.
+- **Actualités** : Google Actualités (thèmes : incendie d'entrepôt, liquidation / redressement, fermeture de site, nouvelle plateforme logistique, rachat… + une recherche par groupe de la base) et BODACC (procédures collectives des entreprises des sites clients, en contact, RDV ou devis). Chaque actualité est rattachée aux secteurs des départements cités et des groupes / sites concernés ; une actualité d'un groupe présent dans 3 secteurs ou plus est classée « National ». « ✕ » masque une actualité hors sujet pour toute l'équipe.
+- Les AO clos depuis plus de 30 jours et les actualités de plus de 90 jours sont supprimés automatiquement.
+- Mots-clés et thèmes modifiables en tête de `scripts/veille.mjs` (`RECHERCHES_AO`, `POIDS`, `THEMES`).
+
 ### Agences Kiloutou
 
 Le bouton **🔧 Kiloutou** (en haut à gauche de la carte) affiche les agences du secteur et une liste triée par distance (au site ouvert, sinon au centre de la carte). Chaque fiche site indique aussi les 3 agences les plus proches, avec itinéraire depuis le site.
@@ -154,13 +165,15 @@ js/store.js           cache local IndexedDB + synchronisation Supabase + file d'
 js/carte.js           carte Leaflet : sites dessinés sur un canvas, regroupement calculé dans js/cluster-worker.js
 js/fiche.js           fiche site, qualification, contacts, historique
 js/filtres.js · js/liste.js · js/groupes.js · js/perfs.js · js/tournee.js · js/importer.js
+js/rappels.js · js/strategie.js · js/segmentation.js · js/loueurs.js
+js/appelsoffres.js · js/actualites.js · js/veille-commun.js   onglets de veille (js/veille-demo.js : données fictives du mode démo)
 js/metier.js          secteurs, statuts, score, décennale
 js/categories.js      catégories + classement NAF / ICPE (partagé avec le script d'import)
 sw.js                 service worker (hors connexion)
 supabase/schema.sql   base de données
-scripts/              import open data, générateur des données de démo
+scripts/              import open data, agences, veille (AO + actualités), générateur des données de démo
 .github/workflows/    import automatisé
 vendor/               bibliothèques (Leaflet, Supercluster, Supabase, SheetJS) embarquées pour le hors connexion
 ```
 
-Sources de données : BDNB © CSTB (Licence Ouverte), Géorisques © MTE/BRGM, Base SIRENE © INSEE, Base Adresse Nationale, © contributeurs OpenStreetMap (ODbL), fonds de carte © CARTO, © Esri, © IGN.
+Sources de données : BOAMP © DILA (Licence Ouverte), BODACC © DILA, Google Actualités (titres et liens vers les articles d'origine), BDNB © CSTB (Licence Ouverte), Géorisques © MTE/BRGM, Base SIRENE © INSEE, Base Adresse Nationale, © contributeurs OpenStreetMap (ODbL), fonds de carte © CARTO, © Esri, © IGN.

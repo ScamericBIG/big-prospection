@@ -1,9 +1,9 @@
 // Service worker : application disponible hors connexion + mémorisation des tuiles de carte
-const VERSION = 'big-prospection-v1.4.0';
+const VERSION = 'big-prospection-v1.5.0';
 const COQUILLE = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/main.js', 'js/config.js', 'js/store.js', 'js/etat.js', 'js/metier.js', 'js/categories.js', 'js/ui.js',
-  'js/filtres.js', 'js/carte.js', 'js/fiche.js', 'js/liste.js', 'js/groupes.js', 'js/perfs.js', 'js/tournee.js', 'js/importer.js', 'js/cluster-worker.js', 'js/loueurs.js', 'js/rappels.js', 'js/segmentation.js', 'js/strategie.js',
+  'js/filtres.js', 'js/carte.js', 'js/fiche.js', 'js/liste.js', 'js/groupes.js', 'js/perfs.js', 'js/tournee.js', 'js/importer.js', 'js/cluster-worker.js', 'js/loueurs.js', 'js/rappels.js', 'js/segmentation.js', 'js/strategie.js', 'js/appelsoffres.js', 'js/actualites.js', 'js/veille-commun.js', 'js/veille-demo.js',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/supercluster.min.js',
   'vendor/supabase.js', 'vendor/xlsx.full.min.js', 'vendor/topojson-client.min.js', 'data/zones-secteurs.topojson',
   'img/logo-big.png', 'img/logo-mark.png', 'img/favicon.png', 'img/icon-192.png', 'img/icon-512.png',

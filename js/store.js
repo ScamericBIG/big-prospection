@@ -11,7 +11,11 @@ const TABLES = {
   secteurs:             { key: 'code', complet: true },
   secteur_departements: { key: 'departement', complet: true },
   agences:              { key: 'id', complet: true, lecture: true },   // agences Kiloutou (lecture seule)
+  // veille (alimentée chaque matin par GitHub Actions) : l'équipe ne modifie que les colonnes de suivi
+  appels_offres:        { key: 'id', veille: true, colonnes: ['suivi', 'responsable', 'note'] },
+  actualites:           { key: 'id', veille: true, colonnes: ['masque'] },
 };
+const OPTIONNELLES = ['agences', 'appels_offres', 'actualites'];   // tables récentes : l'appli fonctionne même si schema.sql n'a pas été relancé
 
 export const PROFILS_DEMO = [
   { email: 'enieps@big-france.com', prenom: 'Emeric', nom: 'NIEPS', secteur: 'nord', role: 'ca', actif: true },
@@ -24,7 +28,7 @@ export const PROFILS_DEMO = [
 // ---------------------------------------------------------------- IndexedDB minimaliste
 function ouvrirIdb() {
   return new Promise((ok, ko) => {
-    const r = indexedDB.open('big-prospection', 2);
+    const r = indexedDB.open('big-prospection', 3);
     r.onupgradeneeded = () => {
       const db = r.result;
       for (const [t, c] of Object.entries(TABLES)) if (!db.objectStoreNames.contains(t)) db.createObjectStore(t, { keyPath: c.key });
@@ -77,6 +81,20 @@ class Store extends EventTarget {
     if (!this.data.secteur_departements.size) Object.entries(DEPARTEMENTS_DEFAUT).forEach(([d, s]) => this.data.secteur_departements.set(d, { departement: d, secteur: s }));
     this.enAttente = await req(this.db.transaction('outbox').objectStore('outbox').count());
     this.derniereSync = await this.meta('derniereSync');
+    await this.purgerVeille();
+  }
+
+  // La veille supprime côté serveur les AO clos depuis 30 j et les actualités de plus de 90 j :
+  // la synchro incrémentale ne voit pas ces suppressions, on fait le même ménage localement.
+  async purgerVeille() {
+    const limAO = new Date(Date.now() - 31 * 864e5).toISOString(), limActu = new Date(Date.now() - 91 * 864e5).toISOString();
+    for (const [t, champ, lim] of [['appels_offres', 'date_limite', limAO], ['actualites', 'date_publication', limActu]]) {
+      const vieux = [...this.data[t].values()].filter(r => r[champ] && r[champ] < lim).map(r => r.id);
+      if (!vieux.length) continue;
+      const tx = this.db.transaction(t, 'readwrite'); const os = tx.objectStore(t);
+      for (const id of vieux) { os.delete(id); this.data[t].delete(id); }
+      await fin(tx);
+    }
   }
 
   async meta(k, v) {
@@ -174,6 +192,18 @@ class Store extends EventTarget {
       }
       await this.meta('demoCharge', true);
     }
+    // veille de démonstration : régénérée chaque jour (dates relatives à aujourd'hui)
+    const jour = new Date().toISOString().slice(0, 10);
+    if ((await this.meta('demoVeille')) !== jour) {
+      const { genererVeilleDemo } = await import('./veille-demo.js');
+      const v = genererVeilleDemo(this);
+      for (const t of ['appels_offres', 'actualites']) {
+        const tx = this.db.transaction(t, 'readwrite'); tx.objectStore(t).clear(); await fin(tx);
+        this.data[t] = new Map();
+        await this.ecrireIdb(t, v[t]); v[t].forEach(x => this.data[t].set(x.id, x));
+      }
+      await this.meta('demoVeille', jour);
+    }
   }
 
   // ---------------------------------------------------------- lecture
@@ -244,8 +274,11 @@ class Store extends EventTarget {
       this.emit('sync', { enCours: true });
       try {
         await this.pousser();
-        await this.tirer(Object.keys(TABLES).filter(t => t !== 'agences'));
-        try { await this.tirer(['agences']); } catch (e) { console.warn('Agences indisponibles (table à créer : relancer schema.sql)', e.message); }
+        await this.tirer(Object.keys(TABLES).filter(t => !OPTIONNELLES.includes(t)));
+        for (const t of OPTIONNELLES) {
+          try { await this.tirer([t]); } catch (e) { console.warn(`Table « ${t} » indisponible (relancer supabase/schema.sql)`, e.message); }
+        }
+        await this.purgerVeille();
         this.derniereSync = new Date().toISOString();
         await this.meta('derniereSync', this.derniereSync);
       } catch (e) {
@@ -271,6 +304,18 @@ class Store extends EventTarget {
     }
     const ordre = ['groupes', 'sites', 'contacts', 'activites'];
     const faits = [], erreurs = [];
+    // tables de veille : mise à jour des seules colonnes de suivi (le reste appartient au robot de veille)
+    for (const t of Object.keys(parTable).filter(t => TABLES[t].colonnes)) {
+      for (const it of parTable[t].values()) {
+        const maj = { updated_by: it.row.updated_by || null };
+        for (const c of TABLES[t].colonnes) maj[c] = it.row[c] ?? null;
+        const { error } = await this.sb.from(t).update(maj).eq('id', it.row.id);
+        if (error) {
+          if (/fetch|network/i.test(error.message)) throw error;
+          erreurs.push({ table: t, id: it.row.id, message: error.message });
+        } else faits.push(it);
+      }
+    }
     for (const t of ordre) {
       const m = parTable[t]; if (!m) continue;
       const lots = [...m.values()];

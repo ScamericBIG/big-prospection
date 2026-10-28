@@ -5,9 +5,11 @@
   "type": "module",
   "description": "Outil de prospection commerciale — Bordas Industrial Group",
   "scripts": {
-    "import": "node scripts/import-opendata.mjs"
+    "import": "node scripts/import-opendata.mjs",
+    "veille": "node scripts/veille.mjs"
   },
   "dependencies": {
-    "proj4": "2.12.1"
+    "proj4": "2.12.1",
+    "@etalab/decoupage-administratif": "6.0.0"
   }
 }
