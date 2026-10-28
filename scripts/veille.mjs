@@ -25,7 +25,8 @@ const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const sansAccent = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const empreinte = s => crypto.createHash('sha1').update(s).digest('hex').slice(0, 20);
 const aujourdhui = new Date().toISOString().slice(0, 10);
-const hSupa = { apikey: KEY, 'content-type': 'application/json', ...(KEY.startsWith('eyJ') ? { authorization: 'Bearer ' + KEY } : {}) };
+// user-agent sans « Mozilla » : Supabase refuse la clé secrète quand la requête ressemble à un navigateur
+const hSupa = { apikey: KEY, 'content-type': 'application/json', 'user-agent': 'BIG-Prospection/1.0 (veille)', ...(KEY.startsWith('eyJ') ? { authorization: 'Bearer ' + KEY } : {}) };
 
 async function obtenir(url, { json = true, essais = 4, ...opts } = {}) {
   for (let i = 1; i <= essais; i++) {
@@ -258,8 +259,12 @@ log(`  ${listeActus.length} actualités (${JOURS_ACTU} derniers jours)`);
 
 if (OUT) { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(`${OUT}/appels_offres.json`, JSON.stringify(aos, null, 1)); fs.writeFileSync(`${OUT}/actualites.json`, JSON.stringify(listeActus, null, 1)); }
 if (AVEC_SUPABASE) {
-  await ecrire('appels_offres', aos);
-  await ecrire('actualites', listeActus);
+  let echec = false;
+  for (const [t, l] of [['appels_offres', aos], ['actualites', listeActus]]) {
+    try { await ecrire(t, l); log(`  ${t} : ${l.length} lignes enregistrées`); }
+    catch (e) { echec = true; log(`! écriture ${t}`, e.message); }
+  }
+  if (echec) { log('✗ Échec d’écriture dans Supabase (voir ci-dessus)'); process.exit(1); }
   // ménage : appels d'offres clos depuis plus de 30 jours, actualités de plus de 90 jours
   const ao30 = new Date(Date.now() - 30 * 864e5).toISOString(), ac90 = new Date(Date.now() - 90 * 864e5).toISOString();
   await obtenir(`${SUPABASE_URL}/rest/v1/appels_offres?date_limite=lt.${encodeURIComponent(ao30)}&suivi=in.(nouveau,sans_suite)`, { method: 'DELETE', headers: hSupa }).catch(e => log('! ménage AO', e.message));
