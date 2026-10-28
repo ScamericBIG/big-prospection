@@ -2,7 +2,7 @@
 import { store } from './store.js';
 import { etat, infos, emettre, ecouter, nomCA, sauverTournee, sitesFiltres } from './etat.js';
 import {
-  CATEGORIES, STATUTS, TYPES_ACTIVITE, ROLES_CONTACT, decennale, surfaceEstimee, anneeEstimee, emailDepuisFormat, deduireFormat, exempleFormat, distanceKm, fmtM2, fmtDate, fmtDateHeure, fmtEuro, esc, aujourdhui, ANNEE, uuid,
+  CATEGORIES, STATUTS, TYPES_ACTIVITE, ROLES_CONTACT, decennale, surfaceEstimee, anneeEstimee, emailDepuisFormat, deduireFormat, exempleFormat, distanceKm, etatEtab, fmtM2, fmtDate, fmtDateHeure, fmtEuro, esc, aujourdhui, ANNEE, uuid,
 } from './metier.js';
 import { $, $$, toast, ouvrirModale, fermerModale, confirmer, lireForm, versDatetimeLocal, debounce } from './ui.js';
 import { marquerSelection, centrerSur, choisirPosition } from './carte.js';
@@ -87,6 +87,7 @@ function rendre() {
         <span class="badge prio-${i.prio}" title="Score de potentiel : surface, ancienneté, activité">Priorité ${i.prio} · ${i.score}/100</span>
         <span class="badge"><span class="rond" style="background:${st.couleur}"></span>${esc(st.libelle)}</span>
         <span class="badge ${dec.classe}">${esc(dec.court || dec.libelle)}</span>
+        ${etatEtab(s) === 'ferme' ? `<span class="badge alerte" title="Établissement fermé d'après la base SIRENE">⛔ Établissement fermé${s.date_fermeture ? ' le ' + fmtDate(s.date_fermeture) : ''}</span>` : etatEtab(s) === 'actif' ? '<span class="badge ok" title="Établissement actif d’après la base SIRENE">✅ Actif</span>' : ''}
         ${(() => { const g = s.groupe_id && store.get('groupes', s.groupe_id); return g?.reference ? `<span class="badge ok" title="BIG est référencé chez ${esc(g.nom)}">✓ Référencé ${esc(g.nom)}</span>` : ''; })()}
       </div>
     </div>
@@ -139,6 +140,10 @@ function rendreFiche(corps, s) {
       <div class="chiffre"><span>Construit en${anneeEstimee(s) ? ' (estimé)' : ''}</span><b>${anneeEstimee(s) && i.annee ? '≈ ' : ''}${i.annee || '—'}</b>${age != null ? `<span>${age} an${age > 1 ? 's' : ''}</span>` : ''}</div>
       <div class="chiffre"><span>Score</span><b>${i.score}/100</b><span>Priorité ${i.prio}</span></div>
     </div>
+    ${od.nouvel_occupant ? (() => { const o = od.nouvel_occupant; return `<div class="occupant ${o.possible ? 'possible' : ''}">
+      ${o.possible ? '🔎 Entreprise trouvée à cette adresse' : '🔁 Nouvel occupant probable'} : <b>${esc(o.nom)}</b>
+      <small>${o.siret ? 'SIRET ' + esc(o.siret) + ' · ' : ''}${o.distance_m != null ? 'à ' + o.distance_m + ' m · ' : ''}base SIRENE${o.le ? ', ' + fmtDate(o.le) : ''}</small>
+      <div class="occupant-actions"><button class="btn btn-petit" id="fi-occupant">Renommer le site « ${esc(o.nom)} »</button>${o.siret ? ` <a class="btn btn-petit" target="_blank" rel="noopener" href="https://annuaire-entreprises.data.gouv.fr/etablissement/${esc(o.siret)}">🏢 Annuaire</a>` : ''}</div></div>`; })() : ''}
     <details class="infos-repliables" ${infosOuvertes() ? 'open' : ''}>
     <summary>Informations du site <small>(adresse, activité, décennale, SIRET, groupe, source…)</small></summary>
     <dl class="infos">
@@ -229,6 +234,14 @@ function rendreFiche(corps, s) {
   $$('[data-edit-contact]', corps).forEach(b => b.onclick = () => editerContact(store.get('contacts', b.dataset.editContact), rendre));
   $('#fi-format-email').onclick = () => modifierFormatEmail(s, rendre);
   $$('[data-voir-groupe]', corps).forEach(b => b.onclick = () => emettre('voir-groupe', b.dataset.voirGroupe));
+  $('#fi-occupant')?.addEventListener('click', async () => {
+    const od = s.infos_od || {}, o = od.nouvel_occupant;
+    if (!(await confirmer(`Renommer « ${s.nom} » en « ${o.nom} » ? Le suivi, les contacts et l’historique du site sont conservés.`, { ok: 'Renommer' }))) return;
+    const { nouvel_occupant, ...reste } = od;
+    await store.enregistrer('sites', { ...s, nom: o.nom, siret: o.siret || s.siret, siren: o.siret ? o.siret.slice(0, 9) : s.siren, naf: o.naf || s.naf,
+      etat_etablissement: 'actif', date_fermeture: null, infos_od: { ...reste, ancien_nom: s.nom } });
+    toast('Site renommé', 'ok');
+  });
   $('[data-aller-actus]', corps)?.addEventListener('click', e => { e.preventDefault(); emettre('aller-vue', 'actus'); });
 
   const form = $('#fi-form');

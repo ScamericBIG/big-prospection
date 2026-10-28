@@ -1,7 +1,7 @@
 // Vue liste : tableau triable des sites filtrés + export CSV / Excel
 import { store } from './store.js';
 import { sitesFiltres, infos, ecouter, emettre, nomCA } from './etat.js';
-import { CATEGORIES, STATUTS, decennale, surfaceEstimee, anneeEstimee, fmtN, fmtDate, esc, rappelEnRetard } from './metier.js';
+import { CATEGORIES, STATUTS, decennale, surfaceEstimee, anneeEstimee, ETATS_ETAB, etatEtab, fmtN, fmtDate, esc, rappelEnRetard } from './metier.js';
 import { $, $$, debounce, toast } from './ui.js';
 
 const PAGE = 100;
@@ -16,6 +16,7 @@ const COLONNES = [
   { k: 'annee', t: 'Année', v: s => infos(s).annee ?? 0, h: s => infos(s).annee ? (anneeEstimee(s) ? '≈ ' : '') + infos(s).annee : '—', cls: 'num' },
   { k: 'dec', t: 'Décennale', v: s => decennale(s).code, h: s => { const d = decennale(s); return d.code === 'inconnue' ? '—' : `<span class="badge ${d.classe}">${d.code === 'sous' ? 'Sous déc.' : 'Hors déc.'}</span>`; } },
   { k: 'score', t: 'Score', v: s => infos(s).score, h: s => `<span class="badge prio-${infos(s).prio}">${infos(s).prio} · ${infos(s).score}</span>` },
+  { k: 'etab', t: 'Établissement', v: s => ETATS_ETAB[etatEtab(s)].libelle.replace(/s$/, ''), h: s => { const e = etatEtab(s); return e === 'inconnu' ? '—' : `<span class="badge ${e === 'ferme' ? 'alerte' : 'ok'}">${e === 'ferme' ? '⛔ Fermé' : '✅ Actif'}</span>`; } },
   { k: 'statut', t: 'Statut', v: s => STATUTS[s.statut]?.ordre ?? 0, h: s => `<span class="badge"><span class="rond" style="background:${STATUTS[s.statut]?.couleur}"></span>${esc(STATUTS[s.statut]?.libelle || '')}</span>` },
   { k: 'appel', t: 'Dernier appel', v: s => s.date_dernier_appel || '', h: s => fmtDate(s.date_dernier_appel) },
   { k: 'rappel', t: 'Prochain rappel', v: s => s.date_prochain_rappel || '9999', h: s => s.date_prochain_rappel ? `<span class="${rappelEnRetard(s) ? 'badge alerte' : ''}">${fmtDate(s.date_prochain_rappel)}</span>` : '—' },
@@ -67,7 +68,7 @@ function lignesExport() {
       'Type': CATEGORIES[i.cat].libelle, 'Surface m²': i.surface ?? '', 'Surface estimée': surfaceEstimee(s) ? 'oui' : '', 'Année construction': i.annee ?? '', 'Année estimée': anneeEstimee(s) ? 'oui' : '', 'Décennale': decennale(s).libelle,
       'Score': i.score, 'Priorité': i.prio, 'Statut': STATUTS[s.statut]?.libelle || '', 'Standard': s.standard_tel || '',
       'Dernier appel': s.date_dernier_appel || '', 'Prochain rappel': s.date_prochain_rappel || '', 'RDV': s.date_rdv ? new Date(s.date_rdv).toLocaleString('fr-FR') : '',
-      "Chargé d'affaires": s.assigne_a ? nomCA(s.assigne_a) : '', 'Commentaire': s.commentaire || '', 'SIRET': s.siret || s.siren || '', 'NAF': s.naf || '',
+      "Chargé d'affaires": s.assigne_a ? nomCA(s.assigne_a) : '', 'Commentaire': s.commentaire || '', 'SIRET': s.siret || s.siren || '', 'NAF': s.naf || '', 'Établissement': ETATS_ETAB[etatEtab(s)].libelle.replace(/s$/, ''), 'Date de fermeture': s.date_fermeture || '',
       'Latitude': s.lat ?? '', 'Longitude': s.lng ?? '',
     };
   });

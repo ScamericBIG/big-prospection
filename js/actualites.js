@@ -6,13 +6,15 @@ import { $, $$, debounce, toast } from './ui.js';
 import { secteursDeDepts, secteursDesGroupes, repondants, prenomNom, SECTIONS_ORDRE, ilYa, libDept, correspond, lienSur } from './veille-commun.js';
 
 export const CATEGORIES_ACTU = {
-  incendie:    { libelle: 'Incendie',            ico: '🔥', classe: 'incendie' },
-  defaillance: { libelle: 'Défaillance',         ico: '⚠️', classe: 'defaillance' },
-  fermeture:   { libelle: 'Fermeture',           ico: '🚫', classe: 'fermeture' },
-  ouverture:   { libelle: 'Ouverture / projet',  ico: '🏗️', classe: 'ouverture' },
-  rachat:      { libelle: 'Rachat / fusion',     ico: '🤝', classe: 'rachat' },
-  resultats:   { libelle: 'Résultats / finances', ico: '📈', classe: 'resultats' },
-  autre:       { libelle: 'Autre',               ico: '📰', classe: 'autre' },
+  rachat:       { libelle: 'Rachat / fusion',        ico: '🤝', classe: 'rachat' },
+  defaillance:  { libelle: 'Défaillance',            ico: '⚠️', classe: 'defaillance' },
+  resultats:    { libelle: 'Santé financière',       ico: '📈', classe: 'resultats' },
+  fermeture:    { libelle: 'Fermeture',              ico: '🚫', classe: 'fermeture' },
+  travaux:      { libelle: 'Construction / travaux', ico: '🏗️', classe: 'travaux' },
+  ouverture:    { libelle: 'Ouverture / implantation', ico: '📍', classe: 'ouverture' },
+  demenagement: { libelle: 'Déménagement',           ico: '🚚', classe: 'demenagement' },
+  incendie:     { libelle: 'Incendie',               ico: '🔥', classe: 'incendie' },
+  autre:        { libelle: 'Autre',                  ico: '📰', classe: 'autre', cache: true },   // anciennes actualités hors thèmes
 };
 const PERIODES = { 7: '7 jours', 30: '30 jours', 90: '90 jours' };
 const PAR_SECTION = 40;
@@ -55,7 +57,7 @@ const concerne = (x, code) => code === 'national' || x.secteurs.has(code) || x.s
 function majBadge() {
   const b = document.querySelector('.onglets [data-vue=actus] .compteur'); if (!b) return;
   const vu = lireVu();
-  const n = vu ? actusAvecSecteurs().filter(x => !x.a.masque && (x.a.created_at || '') > vu && concerne(x, etat.secteur)).length : 0;
+  const n = vu ? actusAvecSecteurs().filter(x => !x.a.masque && x.a.categorie !== 'autre' && (x.a.created_at || '') > vu && concerne(x, etat.secteur)).length : 0;
   b.textContent = n > 99 ? '99+' : n || ''; b.hidden = !n;
   b.title = `${n} nouvelle(s) actualité(s) depuis votre dernière visite`;
 }
@@ -65,7 +67,7 @@ function rendre() {
   const code = etat.secteur;
   const limite = new Date(Date.now() - periode * 864e5).toISOString();
   const toutes = actusAvecSecteurs();
-  const base = toutes.filter(x => concerne(x, code) && date(x.a) >= limite && (voirMasques || !x.a.masque) && (!nosComptes || x.liee));
+  const base = toutes.filter(x => concerne(x, code) && date(x.a) >= limite && (voirMasques || (!x.a.masque && !CATEGORIES_ACTU[x.a.categorie || 'autre']?.cache)) && (!nosComptes || x.liee));
   const nbCat = {}; for (const x of base) { const c = x.a.categorie || 'autre'; nbCat[c] = (nbCat[c] || 0) + 1; }
   const liste = base.filter(x => (!cats.size || cats.has(x.a.categorie || 'autre')) && correspond(`${x.a.titre} ${x.a.resume || ''} ${x.a.media || ''}`, texte))
     .sort((p, q) => date(q.a).localeCompare(date(p.a)));
@@ -83,7 +85,7 @@ function rendre() {
     <div class="rappels-outils veille-outils">
       <div><b>${liste.length} actualité${liste.length > 1 ? 's' : ''}</b> — ${code === 'national' ? 'tous secteurs' : 'secteur ' + esc(store.get('secteurs', code)?.libelle || code)}, ${PERIODES[periode]}</div>
       <div class="puces">
-        ${Object.entries(CATEGORIES_ACTU).map(([k, c]) => `<button class="puce ${cats.has(k) ? 'actif' : ''}" data-cat="${k}">${c.ico} ${c.libelle} <small>${nbCat[k] || 0}</small></button>`).join('')}
+        ${Object.entries(CATEGORIES_ACTU).filter(([k, c]) => !c.cache || nbCat[k]).map(([k, c]) => `<button class="puce ${cats.has(k) ? 'actif' : ''}" data-cat="${k}">${c.ico} ${c.libelle} <small>${nbCat[k] || 0}</small></button>`).join('')}
       </div>
       <div class="puces">
         ${Object.entries(PERIODES).map(([k, v]) => `<button class="puce ${+k === periode ? 'actif' : ''}" data-per="${k}">${v}</button>`).join('')}
@@ -150,6 +152,6 @@ function carte({ a, secteurs }) {
 
 // Actualités liées à un site ou à son groupe (affichées dans la fiche)
 export function actusDuSite(s, limite = 3) {
-  const res = store.liste('actualites').filter(a => !a.masque && ((a.sites || []).includes(s.id) || (s.groupe_id && (a.groupes || []).includes(s.groupe_id))));
+  const res = store.liste('actualites').filter(a => !a.masque && a.categorie !== 'autre' && ((a.sites || []).includes(s.id) || (s.groupe_id && (a.groupes || []).includes(s.groupe_id))));
   return res.sort((p, q) => date(q).localeCompare(date(p))).slice(0, limite);
 }

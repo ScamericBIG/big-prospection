@@ -325,6 +325,7 @@ begin
           naf_libelle    = coalesce(s.naf_libelle, r.naf_libelle),
           siret          = coalesce(s.siret, r.siret),
           adresse        = coalesce(s.adresse, r.adresse),
+          nom            = case when public.nom_generique(s.nom) and not public.nom_generique(r.nom) then r.nom else s.nom end,
           infos_od       = (coalesce(s.infos_od, '{}'::jsonb) - 'estimation')
                            || coalesce(r.infos_od, '{}'::jsonb)
                            || jsonb_build_object('fusion', jsonb_build_object('source', r.source, 'source_id', r.source_id),
@@ -345,6 +346,11 @@ begin
             r.categorie_auto, r.surface_auto, r.annee_auto, 'a_qualifier', r.source, r.source_id,
             coalesce(r.infos_od, '{}'::jsonb), 'import-opendata')
     on conflict (source, source_id) do update set
+           nom            = case when public.nom_generique(s.nom) and not public.nom_generique(excluded.nom) then excluded.nom else s.nom end,
+           supprime       = case when s.supprime and s.updated_by = 'nettoyage-noms' and not public.nom_generique(excluded.nom) then false else s.supprime end,
+           adresse        = coalesce(s.adresse, excluded.adresse),
+           code_postal    = coalesce(s.code_postal, excluded.code_postal),
+           ville          = coalesce(s.ville, excluded.ville),
            categorie_auto = excluded.categorie_auto,
            surface_auto   = excluded.surface_auto,
            annee_auto     = coalesce(excluded.annee_auto, s.annee_auto),
@@ -495,3 +501,95 @@ do $$ declare t text; begin
     execute format('create policy modification on public.%I for update to authenticated using (public.est_membre()) with check (public.est_membre())', t);
   end loop;
 end $$;
+
+
+-- ---------------------------------------------------------------------
+-- 10. v1.6 : établissements actifs / fermés, noms concrets
+--     Vérification par scripts/verifier-etablissements.mjs (API Recherche d'entreprises / SIRENE).
+-- ---------------------------------------------------------------------
+alter table public.sites add column if not exists etat_etablissement text not null default 'inconnu';
+alter table public.sites add column if not exists date_fermeture date;
+do $$ begin
+  alter table public.sites add constraint sites_etat_etab_chk check (etat_etablissement in ('actif','ferme','inconnu'));
+exception when duplicate_object then null; end $$;
+
+-- nom « générique » (bâtiment sans occupant identifié) : remplaçable par un nom d'entreprise
+create or replace function public.nom_generique(n text) returns boolean
+language sql immutable as $$
+  select n is null or btrim(n) = '' or n ~* '^(bâtiment|batiment|site) (industriel|logistique)'
+$$;
+
+-- suivi des vérifications (non synchronisé dans l'appli : réservé au script)
+create table if not exists public.verifications_sites (
+  site_id    uuid primary key references public.sites(id) on delete cascade,
+  verifie_le timestamptz not null default now(),
+  resultat   jsonb
+);
+alter table public.verifications_sites enable row level security;
+
+-- écriture groupée des résultats ; ne modifie un site que si quelque chose change
+create or replace function public.maj_etablissements(rows jsonb) returns integer
+language plpgsql security definer set search_path = public as $$
+declare r record; n integer := 0; k integer;
+begin
+  for r in select * from jsonb_to_recordset(rows) as x(id uuid, etat text, date_fermeture date, nom text, siret text, siren text, naf text,
+                                                       naf_libelle text, nouvel_occupant jsonb, resultat jsonb)
+  loop
+    update public.sites s set
+      etat_etablissement = coalesce(r.etat, s.etat_etablissement),
+      date_fermeture     = case when coalesce(r.etat, s.etat_etablissement) = 'ferme' then coalesce(r.date_fermeture, s.date_fermeture) else null end,
+      nom                = case when r.nom is not null and (public.nom_generique(s.nom) or lower(s.nom) = lower(coalesce(s.proprietaire, ''))) then r.nom else s.nom end,
+      siret              = coalesce(s.siret, r.siret),
+      siren              = coalesce(s.siren, r.siren),
+      naf                = coalesce(s.naf, r.naf),
+      naf_libelle        = coalesce(s.naf_libelle, r.naf_libelle),
+      infos_od           = case when r.nouvel_occupant is null then coalesce(s.infos_od, '{}'::jsonb) - 'nouvel_occupant'
+                                else coalesce(s.infos_od, '{}'::jsonb) || jsonb_build_object('nouvel_occupant', r.nouvel_occupant) end,
+      updated_by         = 'verification'
+    where s.id = r.id
+      and ( s.etat_etablissement is distinct from coalesce(r.etat, s.etat_etablissement)
+         or (coalesce(r.etat, s.etat_etablissement) = 'ferme' and s.date_fermeture is distinct from coalesce(r.date_fermeture, s.date_fermeture))
+         or (r.nom is not null and (public.nom_generique(s.nom) or lower(s.nom) = lower(coalesce(s.proprietaire, ''))) and s.nom is distinct from r.nom)
+         or (s.siret is null and r.siret is not null) or (s.siren is null and r.siren is not null) or (s.naf is null and r.naf is not null)
+         or (s.infos_od->'nouvel_occupant') is distinct from r.nouvel_occupant );
+    get diagnostics k = row_count; n := n + k;
+    insert into public.verifications_sites (site_id, verifie_le, resultat) values (r.id, now(), r.resultat)
+      on conflict (site_id) do update set verifie_le = now(), resultat = excluded.resultat;
+  end loop;
+  return n;
+end $$;
+
+-- sites à vérifier : jamais vérifiés d'abord, puis les plus anciennement vérifiés
+create or replace function public.sites_a_verifier(nb integer, jours integer default 30) returns table (
+  id uuid, nom text, proprietaire text, siret text, siren text, lat double precision, lng double precision, pays text, etat_etablissement text)
+language sql security definer set search_path = public as $$
+  select s.id, s.nom, s.proprietaire, s.siret, s.siren, s.lat, s.lng, s.pays, s.etat_etablissement
+  from public.sites s left join public.verifications_sites v on v.site_id = s.id
+  where not s.supprime and coalesce(s.pays, 'FR') = 'FR' and (v.verifie_le is null or v.verifie_le < now() - make_interval(days => jours))
+  order by v.verifie_le nulls first, s.id
+  limit nb
+$$;
+
+-- Belgique : retire les bâtiments sans nom jamais travaillés (aucun suivi, contact ni historique)
+create or replace function public.nettoyer_sites_sans_nom(p_source text default 'osm') returns integer
+language plpgsql security definer set search_path = public as $$
+declare n integer;
+begin
+  update public.sites s set supprime = true, updated_by = 'nettoyage-noms'
+   where s.source = p_source and not s.supprime and public.nom_generique(s.nom)
+     and coalesce(s.statut, 'a_qualifier') = 'a_qualifier' and s.assigne_a is null
+     and s.commentaire is null and s.date_prochain_rappel is null
+     and not exists (select 1 from public.contacts c where c.site_id = s.id and not c.supprime)
+     and not exists (select 1 from public.activites a where a.site_id = s.id and not a.supprime);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+revoke all on function public.maj_etablissements(jsonb) from public, anon, authenticated;
+revoke all on function public.sites_a_verifier(integer, integer) from public, anon, authenticated;
+revoke all on function public.nettoyer_sites_sans_nom(text) from public, anon, authenticated;
+do $$ begin
+  execute 'grant execute on function public.maj_etablissements(jsonb) to service_role';
+  execute 'grant execute on function public.sites_a_verifier(integer, integer) to service_role';
+  execute 'grant execute on function public.nettoyer_sites_sans_nom(text) to service_role';
+exception when undefined_object then null; end $$;

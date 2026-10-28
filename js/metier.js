@@ -38,6 +38,14 @@ export const TYPES_ACTIVITE = {
   appel: '📞 Appel', email: '✉️ Email', rdv: '📅 Rendez-vous', visite: '🏭 Visite terrain',
   devis: '💶 Devis', chantier: '🏗 Chantier réalisé', note: '📝 Note', statut: '🔄 Statut',
 };
+// État de l'établissement (vérifié chaque semaine dans la base SIRENE)
+export const ETATS_ETAB = {
+  actif:   { libelle: 'Actifs',       ico: '✅' },
+  inconnu: { libelle: 'Non vérifiés', ico: '❔' },
+  ferme:   { libelle: 'Fermés',       ico: '⛔' },
+};
+export const etatEtab = s => s.etat_etablissement || 'inconnu';
+export const nomGenerique = n => !n || !String(n).trim() || /^(bâtiment|batiment|site) (industriel|logistique)/i.test(n);
 export const ROLES_CONTACT = { decideur: 'Décideur', contact: 'Contact', standard: 'Standard / accueil', prescripteur: 'Prescripteur' };
 
 export const ANNEE = new Date().getFullYear();

@@ -1,7 +1,7 @@
 // Panneau de filtres (commun carte / liste)
 import { store } from './store.js';
 import { etat, FILTRES_VIDES, emettre, ecouter, sitesFiltres, infos, nomCA } from './etat.js';
-import { CATEGORIES, STATUTS, fmtN, fmtM2court, esc } from './metier.js';
+import { CATEGORIES, STATUTS, ETATS_ETAB, etatEtab, fmtN, fmtM2court, esc } from './metier.js';
 import { $, $$, debounce } from './ui.js';
 import { effacerItineraire } from './tournee.js';
 
@@ -21,6 +21,10 @@ export function initFiltres() {
     b.classList.toggle('actif', ens().has(v));
     changer();
   });
+  $('#f-etats').innerHTML = Object.entries(ETATS_ETAB).map(([k, e]) => `<button class="puce" data-v="${k}">${e.ico} ${esc(e.libelle)} <small data-ne="${k}"></small></button>`).join('');
+  bascule($('#f-etats'), () => etat.filtres.etats);
+  syncEtats();
+  $('#f-nom-identifie').addEventListener('click', e => { etat.filtres.nomIdentifie = !etat.filtres.nomIdentifie; e.currentTarget.classList.toggle('actif', etat.filtres.nomIdentifie); changer(); });
   bascule($('#f-categories'), () => etat.filtres.categories);
   bascule($('#f-statuts'), () => etat.filtres.statuts);
   bascule($('#f-decennale'), () => etat.filtres.decennale);
@@ -44,6 +48,7 @@ export function initFiltres() {
     $$('#filtres input[type=search], #filtres input[type=text], #filtres input[type=number]').forEach(i => { if (i.id !== 'it-adresse') i.value = ''; });
     $$('#filtres select').forEach(s => s.value = '');
     $$('#filtres .puce.actif').forEach(p => p.classList.remove('actif'));
+    syncEtats();
     if (etat.autour || etat.depart?.auto) effacerItineraire();
     changer();
   });
@@ -57,6 +62,8 @@ export function initFiltres() {
   ecouter('secteur', majResultat);
   ecouter('autour', majResultat);
 }
+
+const syncEtats = () => $$('#f-etats .puce').forEach(b => b.classList.toggle('actif', etat.filtres.etats.has(b.dataset.v)));
 
 export function majListes() {
   const a = $('#f-assigne'), va = a.value;
@@ -75,4 +82,9 @@ export function majResultat() {
   for (const s of l) { const i = infos(s); surf += i.surface || 0; parCat[i.cat] = (parCat[i.cat] || 0) + 1; }
   $('#f-resultat').innerHTML = `<b>${fmtN(l.length)}</b> site${l.length > 1 ? 's' : ''} · ${fmtM2court(surf)}`;
   $$('#f-categories [data-n]').forEach(e => e.textContent = parCat[e.dataset.n] ? fmtN(parCat[e.dataset.n]) : '');
+  // nombre de sites par état, tous états confondus (les autres filtres restent appliqués)
+  const f = etat.filtres, sauv = f.etats; f.etats = new Set();
+  const parEtat = {}; for (const s of sitesFiltres({ ignorerMasquees: true })) { const k = etatEtab(s); parEtat[k] = (parEtat[k] || 0) + 1; }
+  f.etats = sauv;
+  $$('#f-etats [data-ne]').forEach(e => e.textContent = parEtat[e.dataset.ne] ? fmtN(parEtat[e.dataset.ne]) : '');
 }

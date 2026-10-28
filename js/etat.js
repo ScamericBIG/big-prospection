@@ -1,13 +1,15 @@
 // État partagé de l'interface : secteur affiché, filtres, zone « autour de », tournée
 import { store } from './store.js';
 import {
-  catDe, surfaceDe, anneeDe, decennale, score, priorite, rappelEnRetard, sansAccent, distanceKm, aujourdhui,
+  catDe, surfaceDe, anneeDe, decennale, score, priorite, rappelEnRetard, sansAccent, distanceKm, aujourdhui, etatEtab, nomGenerique,
 } from './metier.js';
 
 export const FILTRES_VIDES = () => ({
   texte: '', cp: '', ville: '', categories: new Set(), surfMin: null, surfMax: null,
   decennale: new Set(), anneeMin: null, anneeMax: null, statuts: new Set(), priorites: new Set(),
   retard: false, semaine: false, reference: false, assigne: '', groupe: '', categoriesMasquees: new Set(),
+  etats: new Set(['actif', 'inconnu']),   // établissements fermés masqués par défaut
+  nomIdentifie: false,
 });
 
 export const etat = {
@@ -101,6 +103,8 @@ export function sitesFiltres({ ignorerMasquees = false, secteur = etat.secteur }
     if (f.semaine && !(s.date_prochain_rappel && s.date_prochain_rappel >= auj && s.date_prochain_rappel <= dans7)) return false;
     if (f.assigne && (f.assigne === '_aucun' ? s.assigne_a : s.assigne_a !== f.assigne)) return false;
     if (f.groupe && s.groupe_id !== f.groupe) return false;
+    if (f.etats.size && !f.etats.has(etatEtab(s))) return false;
+    if (f.nomIdentifie && nomGenerique(s.nom)) return false;
     if (etat.autour && !(s.lat && distanceKm(etat.autour, s) <= etat.autour.rayon)) return false;
     return true;
   });

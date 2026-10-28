@@ -486,6 +486,8 @@ a.ao-titre:hover { text-decoration: underline; }
 .cat-ouverture .badge-cat:first-child { background: #D9F2E4; color: #17663A; }
 .cat-rachat .badge-cat:first-child { background: var(--bleu-clair); color: var(--bleu-tres-fonce); }
 .cat-resultats .badge-cat:first-child { background: #EFE3F7; color: #5B2F7A; }
+.cat-travaux .badge-cat:first-child { background: #FFF0D6; color: #7A4A00; }
+.cat-demenagement .badge-cat:first-child { background: #E0F2F7; color: #0B5A70; }
 .badge-cat.bodacc { background: #FBE0DE; color: #9B2C24; }
 .badge-nouveau { font-size: 11px; font-weight: 700; color: #fff; background: var(--bleu); border-radius: 4px; padding: 1px 6px; }
 .actu-titre { display: block; font-weight: 700; color: var(--texte); text-decoration: none; margin-top: 3px; line-height: 1.35; }
@@ -510,3 +512,9 @@ a.actu-titre:hover { color: var(--bleu-fonce); text-decoration: underline; }
   .veille-titre .repondant { margin-left: 0; width: 100%; }
   .veille-defile { padding: 4px 10px 24px; }
 }
+
+/* ------------------------------------------------ v1.6 : établissements actifs / fermés */
+.occupant { background: #EAF6EE; border: 1px solid #BFE3CB; border-radius: 10px; padding: 9px 12px; margin: 8px 0 12px; font-size: 13px; }
+.occupant.possible { background: var(--bleu-pale); border-color: var(--bleu-clair); }
+.occupant small { display: block; color: var(--texte-3); margin-top: 2px; }
+.occupant-actions { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }

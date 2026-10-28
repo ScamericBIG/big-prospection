@@ -244,39 +244,75 @@ function aireLatLng(pts) {
   const xy = pts.map(p => [p.lon * k * Math.cos(lat0 * k) * 6371000, p.lat * k * 6371000]);
   return centroidePolygone(xy).a;
 }
+function dansPolygone(pt, ring) {               // ring : [{lat, lon}, …]
+  let dedans = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i], b = ring[j];
+    if ((a.lat > pt.lat) !== (b.lat > pt.lat) && pt.lon < (b.lon - a.lon) * (pt.lat - a.lat) / (b.lat - a.lat) + a.lon) dedans = !dedans;
+  }
+  return dedans;
+}
+// Entreprises nommées dans OpenStreetMap (bureaux, sociétés, usines, artisans, commerces de gros…) : servent à nommer les bâtiments
+const PRIORITE_POI = t => t.company || t.office || t.industrial || t.man_made === 'works' ? 0 : t.craft || t.shop ? 1 : 2;
+const NOMS_A_EVITER = /^(parking|loading dock|quai|entrance|ingang|toegang|hall \w*|gebouw \w*|bâtiment \w*|loods \w*)$/i;
+let beComplet = true;
 async function traiterBelgique() {
   const lignes = [];
+  let sansNom = 0;
   for (const prov of PROVINCES_BE) {
     log(`Belgique ${prov} : OpenStreetMap…`);
-    const q = `[out:json][timeout:300];area["ISO3166-2"="${prov}"]->.a;(way["building"~"^(warehouse|industrial|manufacture|cold_storage|hangar)$"](area.a););out tags geom;`;
+    const q = `[out:json][timeout:600];area["ISO3166-2"="${prov}"]->.a;
+      (way["building"~"^(warehouse|industrial|manufacture|cold_storage|hangar)$"](area.a););out tags geom;
+      (nwr["name"]["company"](area.a);nwr["name"]["office"](area.a);nwr["name"]["industrial"](area.a);nwr["name"]["man_made"="works"](area.a);
+       nwr["name"]["craft"](area.a);nwr["name"]["shop"~"^(wholesale|trade|doityourself|hardware|building_materials|car|car_parts|furniture|garden_centre)$"](area.a);
+       way["name"]["building"](area.a););out tags center;`;
     let j;
     try { j = await getJson('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'content-type': 'application/x-www-form-urlencoded' } }); }
-    catch (e) { log('  ! Overpass', e.message); continue; }
-    let k = 0;
-    for (const w of j.elements || []) {
-      if (!w.geometry || w.geometry.length < 4) continue;
+    catch (e) { log('  ! Overpass', e.message); beComplet = false; continue; }
+    const bats = [], pois = new Grille();
+    for (const el of j.elements || []) {
+      if (el.geometry && el.tags?.building && !el.tags?.name && el.geometry.length >= 4) { bats.push(el); continue; }
+      if (el.geometry && el.tags?.building && el.tags?.name && el.geometry.length >= 4 && /^(warehouse|industrial|manufacture|cold_storage|hangar)$/.test(el.tags.building)) { bats.push(el); continue; }
+      const c = el.center || (el.lat ? { lat: el.lat, lon: el.lon } : null);
+      if (!c || !el.tags?.name || NOMS_A_EVITER.test(el.tags.name)) continue;
+      pois.add({ lat: c.lat, lng: c.lon, lon: c.lon, t: el.tags });
+    }
+    let k = 0, nommes = 0;
+    for (const w of bats) {
       const surface = Math.round(aireLatLng(w.geometry));
       if (surface < SURFACE_MIN) continue;
       const t = w.tags || {};
       const lat = w.geometry.reduce((s, p) => s + p.lat, 0) / w.geometry.length;
       const lng = w.geometry.reduce((s, p) => s + p.lon, 0) / w.geometry.length;
+      // entreprise située dans le bâtiment, sinon la plus proche à moins de ~40 m de son emprise
+      let poi = null;
+      if (!t.name && !t.operator && !t.brand) {
+        const rayon = Math.sqrt(surface) / 2 + 40;
+        const proches = pois.near(lat, lng, Math.min(rayon, 400)).map(p => ({ p, dedans: dansPolygone(p, w.geometry), d: distM({ lat, lng }, p) }));
+        proches.sort((a, b) => (b.dedans - a.dedans) || (PRIORITE_POI(a.p.t) - PRIORITE_POI(b.p.t)) || (a.d - b.d));
+        poi = proches.find(x => x.dedans || x.p.t.building === undefined)?.p || null;
+        if (poi) nommes++;
+      }
+      const nom = t.name || t.operator || t.brand || poi?.t.name || null;
+      if (!nom) { sansNom++; continue; }       // bâtiment sans entreprise identifiable : non importé
       const annee = parseInt((t.start_date || t['building:year'] || '').slice(0, 4)) || null;
       const cat = t.building === 'cold_storage' ? 'FRIGO' : t.building === 'warehouse' ? 'LOG' : t.building === 'hangar' ? 'TRANSPORT' : 'IND';
+      const a = poi?.t || {};
       lignes.push({
-        nom: t.name || t.operator || t.brand || `Bâtiment ${t.building === 'warehouse' ? 'logistique' : 'industriel'} ${t['addr:city'] || ''}`.trim(),
-        enseigne: t.operator || t.brand || null, proprietaire: t.owner || null,
-        adresse: [t['addr:housenumber'], t['addr:street']].filter(Boolean).join(' ') || null,
-        code_postal: t['addr:postcode'] || null, ville: t['addr:city'] || null, departement: 'BE', pays: 'BE',
+        nom, enseigne: t.operator || t.brand || a.operator || a.brand || null, proprietaire: t.owner || null,
+        adresse: [t['addr:housenumber'] || a['addr:housenumber'], t['addr:street'] || a['addr:street']].filter(Boolean).join(' ') || null,
+        code_postal: t['addr:postcode'] || a['addr:postcode'] || null, ville: t['addr:city'] || a['addr:city'] || null, departement: 'BE', pays: 'BE',
         lat: +lat.toFixed(6), lng: +lng.toFixed(6),
         categorie_auto: cat, surface_auto: surface, annee_auto: annee,
         source: 'osm', source_id: 'way/' + w.id,
-        infos_od: { osm_building: t.building, province: prov },
+        infos_od: { osm_building: t.building, province: prov, ...(poi ? { nom_source: 'osm-poi', site_web: a.website || a['contact:website'] || null, telephone: a.phone || a['contact:phone'] || null } : {}) },
       });
       k++;
     }
-    log(`  ${k} bâtiments ≥ ${SURFACE_MIN} m²`);
+    log(`  ${k} bâtiments ≥ ${SURFACE_MIN} m² avec un nom d'entreprise (${nommes} nommés d'après une entreprise voisine)`);
     await sleep(5000);                         // politesse envers le serveur Overpass
   }
+  log(`  Belgique : ${sansNom} bâtiments sans entreprise identifiable écartés`);
   return lignes;
 }
 
@@ -309,5 +345,15 @@ for (const dep of DEPARTEMENTS) {
   try { const l = await traiterDepartement(dep); await envoyer(l, dep); total += l.length; }
   catch (e) { log(`!! Département ${dep} en échec :`, e.message); }
 }
-if (AVEC_BE) { const l = await traiterBelgique(); await envoyer(l, 'BE'); total += l.length; }
+if (AVEC_BE) {
+  const l = await traiterBelgique(); await envoyer(l, 'BE'); total += l.length;
+  // retire les anciens « Bâtiment industriel / logistique » jamais travaillés (seulement si toutes les provinces ont répondu)
+  if (SUPABASE_URL && SUPABASE_KEY && beComplet) {
+    try {
+      const n = await getJson(`${SUPABASE_URL}/rest/v1/rpc/nettoyer_sites_sans_nom`, { method: 'POST', body: JSON.stringify({ p_source: 'osm' }),
+        headers: { apikey: SUPABASE_KEY, 'content-type': 'application/json', ...(SUPABASE_KEY.startsWith('eyJ') ? { authorization: 'Bearer ' + SUPABASE_KEY } : {}) } });
+      log(`  Belgique : ${n} anciens bâtiments sans nom retirés de la base`);
+    } catch (e) { log('  ! nettoyage (relancer supabase/schema.sql ?)', e.message); }
+  }
+}
 log(`Terminé : ${total} sites importés.`);

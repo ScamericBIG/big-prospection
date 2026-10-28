@@ -124,6 +124,13 @@ Collecte automatique chaque matin (vers 6 h, heure de Paris) par `scripts/veille
 - Les AO clos depuis plus de 30 jours et les actualités de plus de 90 jours sont supprimés automatiquement.
 - Mots-clés et thèmes modifiables en tête de `scripts/veille.mjs` (`RECHERCHES_AO`, `POIDS`, `THEMES`).
 
+### Établissements actifs / fermés et noms d'entreprises (v1.6)
+
+- **Vérification hebdomadaire** (`scripts/verifier-etablissements.mjs`, **Actions → Vérification des établissements → Run workflow**, puis chaque dimanche) : pour chaque site français, état dans la base SIRENE (API Recherche d'entreprises) → **actif / fermé** (date de fermeture). Un site sans nom d'entreprise (« Site industriel… », « Bâtiment… », nom d'une SCI propriétaire) reçoit le nom de l'entreprise active installée sur place. Pour un site fermé, la fiche propose le **nouvel occupant probable** (bouton « Renommer le site »). 12 000 sites par passage : toute la base est revue environ une fois par mois.
+- **Filtre « Établissement »** : Actifs / Non vérifiés / Fermés (les fermés sont masqués par défaut) et « Nom d'entreprise identifié ». Colonne et export « Établissement » dans la liste.
+- **Belgique** : chaque entrepôt ou bâtiment industriel est nommé d'après l'entreprise enregistrée dans OpenStreetMap à l'intérieur ou à proximité immédiate ; les bâtiments sans entreprise identifiable ne sont plus importés, et les anciens « Bâtiment industriel… » jamais travaillés (aucun statut, contact, historique ni rappel) sont retirés. L'état actif / fermé n'est pas disponible pour la Belgique.
+- **Actualités** : seuls les sujets bâtiment (construction, travaux, extension, ouverture), déménagement, rachat / fusion / reprise de site, santé financière, défaillance, fermeture et incendie sont conservés ; produits, magasins, sport, emploi… sont écartés, et les anciennes actualités hors thèmes sont masquées automatiquement.
+
 ### Agences Kiloutou
 
 Le bouton **🔧 Kiloutou** (en haut à gauche de la carte) affiche les agences du secteur et une liste triée par distance (au site ouvert, sinon au centre de la carte). Chaque fiche site indique aussi les 3 agences les plus proches, avec itinéraire depuis le site.
@@ -171,7 +178,7 @@ js/metier.js          secteurs, statuts, score, décennale
 js/categories.js      catégories + classement NAF / ICPE (partagé avec le script d'import)
 sw.js                 service worker (hors connexion)
 supabase/schema.sql   base de données
-scripts/              import open data, agences, veille (AO + actualités), générateur des données de démo
+scripts/              import open data, agences, veille (AO + actualités), vérification des établissements, générateur des données de démo
 .github/workflows/    import automatisé
 vendor/               bibliothèques (Leaflet, Supercluster, Supabase, SheetJS) embarquées pour le hors connexion
 ```

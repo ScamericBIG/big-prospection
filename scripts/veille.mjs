@@ -15,7 +15,8 @@ const require = createRequire(import.meta.url);
 
 const args = process.argv.slice(2);
 const OUT = args.includes('--out') ? args[args.indexOf('--out') + 1] : '';
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+// accepte aussi une adresse copiée avec « /rest/v1/ » à la fin
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '').replace(/\/+$/, '');
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const AVEC_SUPABASE = SUPABASE_URL && KEY && !args.includes('--sans-supabase');
 const JOURS_ACTU = 45;
@@ -125,23 +126,42 @@ async function appelsOffres() {
 }
 
 // ------------------------------------------------------------------ 2. actualités
+// <classement>
+// Thèmes recherchés : bâtiments (construction, rénovation, extension), déménagements, rachats / fusions,
+// santé financière, fermetures, incendies. Tout le reste (produits, marketing, sport, magasins…) est écarté.
 const THEMES = [
   'incendie entrepôt', 'incendie plateforme logistique', 'incendie usine', 'incendie site industriel',
-  'liquidation judiciaire logistique', 'redressement judiciaire transporteur', 'redressement judiciaire usine', 'liquidation judiciaire usine',
+  'liquidation judiciaire logistique', 'redressement judiciaire transporteur', 'redressement judiciaire usine', 'liquidation judiciaire usine', 'procédure de sauvegarde industriel',
   'fermeture usine', 'fermeture entrepôt', 'fermeture site logistique', 'plan social usine',
-  'ouverture plateforme logistique', 'nouvel entrepôt logistique', 'nouvelle zone logistique', 'extension entrepôt', 'permis de construire entrepôt', "inauguration plateforme logistique",
-  'rachat logisticien', 'acquisition groupe logistique', 'rachat transporteur', 'reprise usine',
-  'entrepôt Belgique incendie', 'nouvel entrepôt Belgique',
+  'ouverture plateforme logistique', 'nouvel entrepôt logistique', 'nouvelle zone logistique', 'extension entrepôt', 'permis de construire entrepôt', 'inauguration plateforme logistique',
+  'construction entrepôt', 'rénovation entrepôt', 'réhabilitation site industriel', 'travaux usine agrandissement', 'investissement usine',
+  'déménagement entrepôt', 'déménagement siège logistique', 'transfert activité usine', 'regroupement sites logistiques',
+  'rachat logisticien', 'rachat groupe logistique', 'acquisition logistique', 'fusion transport logistique', 'rachat transporteur',
+  'reprise site logistique', 'reprend entrepôt', 'reprise usine', 'cession entrepôt',
+  'résultats logisticien', 'difficultés financières logistique', 'difficultés financières industriel',
+  'entrepôt Belgique incendie', 'nouvel entrepôt Belgique', 'rachat logistique Belgique',
 ];
+const BATI = /entrepots?|plate-?formes?|logisti|usines?|sites? (industriel|logistique|de production)|ateliers?|hangars?|batiments?|zones? (d.activites?|industrielle|logistique)|parcs? (d.activites?|logistique)|centres? (de distribution|logistique)|data ?centers?|\bhub\b|messagerie|frigorifique|industriel|siege|locaux|surface|m2|m²/;
 const CATEGORIES_ACTU = [
-  ['incendie', /incendie|feu |brule|flammes|sinistre|fumee|pompiers/],
-  ['defaillance', /liquidation|redressement judiciaire|sauvegarde|faillite|cessation de paiement|tribunal de commerce|procedure collective/],
-  ['fermeture', /fermeture|ferme ses portes|plan social|\bpse\b|licenciement|suppression de postes|delocalis/],
-  ['rachat', /rachat|rachete|acquisition|acquiert|cession|fusion|reprise|reprend|prise de participation|lbo/],
-  ['ouverture', /ouverture|ouvre|inaugur|nouvel(le)? (entrepot|plateforme|site|usine)|s.implante|implantation|construction|extension|agrandi|permis de construire|zone logistique|investit/],
-  ['resultats', /chiffre d.affaires|resultats|benefice|perte|croissance|levee de fonds/],
+  ['incendie',     /incendie|\bfeu\b(?! vert)|ravage|brule|flammes|sinistre|fumee|pompiers|explosion/, true],
+  ['defaillance',  /liquidation|redressement judiciaire|procedure de sauvegarde|plan de sauvegarde|placee? en sauvegarde|faillite|cessation de paiements?|tribunal de commerce|procedure collective|depot de bilan|difficultes financieres|en difficulte|conciliation|mandat ad hoc|surendett/, false],
+  ['fermeture',    /fermeture|ferme (ses portes|son site|son usine|son entrepot|l.usine|l.entrepot|le site)|plan social|\bpse\b|licenciements?|suppressions? (de|d.)? ?postes|delocalis|cessation d.activite|arret de (la )?production/, false],
+  ['rachat',       /rachat|rachete|acquisition|acquiert|cession|\bcede\b|fusion|fusionne|repreneur|reprise (du|de l.|d.un|d.une|de la|des) |reprend (le|la|l.|les|un|une) |prise de participation|\blbo\b|\bopa\b|offre publique|rapprochement|adosse/, false],
+  ['demenagement', /demenag|transfert (d.activite|de (son|l.|la|ses)|du site|du siege)|relocalis|s.installe|nouveau siege|regroupe(ment)? (ses|de ses|des)/, true],
+  ['travaux',      /renov|rehabilit|reconstru|travaux|chantier|construction|construit|extension|agrandi|permis de construire|modernis|reamenag|mise aux normes|desamiant|sols? industriels?|dallage/, true],
+  ['ouverture',    /ouverture|ouvre (un|une|son|sa|ses|le|la)|inaugur|nouvel(le)? (entrepot|plateforme|site|usine|centre|hub|batiment)|implantation|s.implante|investit|investissement|zone logistique|parc logistique/, true],
+  ['resultats',    /chiffre d.affaires|\bca\b (en|de)|resultats?\b|benefices?|pertes?\b|deficit|croissance|levee de fonds|leve \d|rentabilite|ebitda|\bmarges?\b|endette|dettes?\b|notation|avertissement|tresorerie|recapitalis|augmentation de capital/, false],
 ];
-const categoriser = t => { const s = sansAccent(t); for (const [c, re] of CATEGORIES_ACTU) if (re.test(s)) return c; return 'autre'; };
+// sujets hors cible, même si un mot-clé apparaît (produits, commerce de détail, sport, people, emploi…)
+const HORS_SUJET = /nouveaux? produits?|nouvelle (gamme|collection)|\bcollection\b|\bgamme\b|soldes|promo|black friday|bon plan|code promo|\btest\b|\bavis\b|velo|trottinette|chaussure|sneaker|maillot|vetement|textile|jouet|recette|sponsor|\bmatch\b|ligue|championnat|footbal|rugby|marathon|course a pied|influenceu|publicite|campagne (publicitaire|de pub)|offre d.emploi|recrute|recrutement|salon de |rachat de credits?|rachat de trimestres|assurance.vie|appartement|maison individuelle|logement|immobilier residentiel|magasin|boutique|supermarche|hypermarche|galerie commerciale|\bmeteo\b|faits divers/;
+const HORS_SUJET_SAUF = /entrepot|plate-?forme logistique|usine|site logistique|siege|centre de distribution/;
+function categoriser(texte) {
+  const s = sansAccent(texte);
+  if (HORS_SUJET.test(s) && !HORS_SUJET_SAUF.test(s)) return null;
+  for (const [c, re, bati] of CATEGORIES_ACTU) if (re.test(s) && (!bati || BATI.test(s))) return c;
+  return null;                                   // hors thèmes : non retenu
+}
+// </classement>
 const decoder = s => String(s || '').replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 async function googleActus(requete, pays = 'FR') {
@@ -217,14 +237,16 @@ const aos = await appelsOffres();
 log(`  ${aos.length} appels d’offres pertinents en cours`);
 
 log('Actualités…');
-const actus = new Map(), vusTitres = new Set();
+const actus = new Map(), vusTitres = new Set(); let horsSujet = 0;
 const ajouter = (it, extra) => {
   const cleT = sansAccent(it.titre).replace(/[^a-z0-9]/g, '').slice(0, 90);
   if (vusTitres.has(cleT)) { const e = [...actus.values()].find(a => a._t === cleT); if (e && extra.groupes) e.groupes = [...new Set([...e.groupes, ...extra.groupes])]; return; }
+  const categorie = it.categorie || categoriser(it.titre + ' ' + (it.resume || ''));
+  if (!categorie) { horsSujet++; return; }
   vusTitres.add(cleT);
   const id = it.id || empreinte(it.url);
   actus.set(id, { id, _t: cleT, titre: it.titre.slice(0, 500), url: it.url, media: it.media, date_publication: it.date_publication, resume: it.resume || null,
-    categorie: it.categorie || categoriser(it.titre + ' ' + (it.resume || '')), departements: it.departements?.length ? it.departements : departementsDe(it.titre + ' ' + (it.resume || '')),
+    categorie, departements: it.departements?.length ? it.departements : departementsDe(it.titre + ' ' + (it.resume || '')),
     groupes: extra.groupes || [], sites: extra.sites || [], requete: extra.requete, source: it.source || 'presse', pertinence: extra.pertinence || 50, maj: new Date().toISOString() });
 };
 for (const q of THEMES) {
@@ -237,7 +259,7 @@ for (const g of groupes) {
   const nom = g.nom.split(' / ')[0].trim();
   if (nom.length < 3) continue;
   try {
-    for (const it of await googleActus(`"${nom}"`)) {
+    for (const it of await googleActus(`"${nom}" (entrepôt OR usine OR site OR plateforme OR rachat OR rachète OR acquisition OR fusion OR cession OR reprise OR déménagement OR construction OR extension OR travaux OR fermeture OR liquidation OR redressement OR sauvegarde OR résultats OR "chiffre d'affaires" OR incendie)`)) {
       if (!sansAccent(it.titre + ' ' + (it.resume || '')).includes(sansAccent(nom))) continue;
       ajouter(it, { groupes: [g.id], requete: 'groupe ' + nom, pertinence: g.reference ? 90 : 75 });
     }
@@ -255,7 +277,7 @@ if (sirens.size) {
 }
 const limite = new Date(Date.now() - JOURS_ACTU * 864e5).toISOString();
 const listeActus = [...actus.values()].filter(a => !a.date_publication || a.date_publication >= limite).map(({ _t, ...a }) => a);
-log(`  ${listeActus.length} actualités (${JOURS_ACTU} derniers jours)`);
+log(`  ${listeActus.length} actualités retenues (${JOURS_ACTU} derniers jours) — ${horsSujet} écartées (hors thèmes)`);
 
 if (OUT) { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(`${OUT}/appels_offres.json`, JSON.stringify(aos, null, 1)); fs.writeFileSync(`${OUT}/actualites.json`, JSON.stringify(listeActus, null, 1)); }
 if (AVEC_SUPABASE) {
@@ -265,6 +287,23 @@ if (AVEC_SUPABASE) {
     catch (e) { echec = true; log(`! écriture ${t}`, e.message); }
   }
   if (echec) { log('✗ Échec d’écriture dans Supabase (voir ci-dessus)'); process.exit(1); }
+  // reclassement des actualités déjà en base avec les règles actuelles : les hors-sujet sont masquées
+  try {
+    const existantes = await lireTable('actualites', 'id,titre,resume,categorie', '&source=eq.presse&masque=eq.false');
+    const masquer = [], parCat = new Map();
+    for (const a of existantes) {
+      const c = categoriser(a.titre + ' ' + (a.resume || ''));
+      if (!c) masquer.push(a.id);
+      else if (c !== a.categorie) (parCat.get(c) || parCat.set(c, []).get(c)).push(a.id);
+    }
+    const patch = async (ids, corps) => {
+      for (let i = 0; i < ids.length; i += 80)
+        await obtenir(`${SUPABASE_URL}/rest/v1/actualites?id=in.(${ids.slice(i, i + 80).map(encodeURIComponent).join(',')})`, { method: 'PATCH', body: JSON.stringify(corps), headers: { ...hSupa, prefer: 'return=minimal' } });
+    };
+    await patch(masquer, { masque: true, updated_by: 'veille (hors thèmes)' });
+    for (const [c, ids] of parCat) await patch(ids, { categorie: c });
+    log(`  reclassement : ${masquer.length} actualités hors thèmes masquées, ${[...parCat.values()].reduce((n, l) => n + l.length, 0)} recatégorisées`);
+  } catch (e) { log('! reclassement', e.message); }
   // ménage : appels d'offres clos depuis plus de 30 jours, actualités de plus de 90 jours
   const ao30 = new Date(Date.now() - 30 * 864e5).toISOString(), ac90 = new Date(Date.now() - 90 * 864e5).toISOString();
   await obtenir(`${SUPABASE_URL}/rest/v1/appels_offres?date_limite=lt.${encodeURIComponent(ao30)}&suivi=in.(nouveau,sans_suite)`, { method: 'DELETE', headers: hSupa }).catch(e => log('! ménage AO', e.message));
