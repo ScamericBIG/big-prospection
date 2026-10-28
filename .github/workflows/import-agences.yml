@@ -1,0 +1,24 @@
+name: Import agences Kiloutou
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/import-agences.mjs
+  schedule:
+    - cron: "41 3 3 * *"   # chaque mois : agences ouvertes / fermées
+
+jobs:
+  agences:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Import
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/import-agences.mjs
