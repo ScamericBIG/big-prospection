@@ -8,7 +8,7 @@
  * Belgique: OpenStreetMap (bâtiments warehouse / industrial ≥ SURFACE_MIN m²)
  *
  * Usage :
- *   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node import-opendata.mjs --dep 59,62 [--be] [--min 5000]
+ *   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=<clé secrète sb_secret_… ou ancienne service_role> node import-opendata.mjs --dep 59,62 [--be] [--min 5000]
  *   node import-opendata.mjs --dep 59 --out ./sortie        (sans Supabase : écrit un JSON importable dans l'appli)
  *   --dep all  → tous les départements métropolitains
  */
@@ -27,7 +27,8 @@ const AVEC_BE = !!opt('be', process.env.BELGIQUE === 'true');
 const SURFACE_MIN = Number(opt('min', process.env.SURFACE_MIN || 5000));
 const ENRICHIR = String(opt('enrichir', process.env.ENRICHIR ?? 'true')) !== 'false';
 const OUT = opt('out', process.env.OUT_DIR || '');
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+// accepte aussi une adresse copiée avec « /rest/v1/ » à la fin
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '').replace(/\/+$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!DEPARTEMENTS.length && !AVEC_BE) {
@@ -292,7 +293,11 @@ async function envoyer(lignes, etiquette) {
     for (let i = 0; i < lignes.length; i += 500) {
       const n = await getJson(`${SUPABASE_URL}/rest/v1/rpc/import_sites`, {
         method: 'POST', body: JSON.stringify({ rows: lignes.slice(i, i + 500) }),
-        headers: { apikey: SUPABASE_KEY, authorization: 'Bearer ' + SUPABASE_KEY, 'content-type': 'application/json' },
+        headers: {
+          apikey: SUPABASE_KEY, 'content-type': 'application/json',
+          // les nouvelles clés « sb_secret_… » passent uniquement par l'en-tête apikey ; les anciennes clés JWT aussi par Authorization
+          ...(SUPABASE_KEY.startsWith('eyJ') ? { authorization: 'Bearer ' + SUPABASE_KEY } : {}),
+        },
       });
       log(`  → Supabase : ${n} lignes (${i + Math.min(500, lignes.length - i)}/${lignes.length})`);
     }
