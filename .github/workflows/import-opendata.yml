@@ -1,0 +1,70 @@
+name: Import open data (sites)
+
+on:
+  workflow_dispatch:
+    inputs:
+      departements:
+        description: "Départements à importer (ex : 59,62,80) — ou all pour toute la France"
+        required: true
+        default: "59,62"
+      belgique:
+        description: "Importer aussi la Belgique (OpenStreetMap)"
+        type: boolean
+        default: false
+      surface_min:
+        description: "Surface minimale d'emprise au sol (m²)"
+        default: "5000"
+  schedule:
+    - cron: "17 2 1 */3 *"   # mise à jour trimestrielle : toute la France + Belgique
+
+jobs:
+  # Découpe le travail en lots de départements (chaque lot = une machine GitHub, 6 h max)
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      lots: ${{ steps.p.outputs.lots }}
+    steps:
+      - id: p
+        env:
+          DEPS: ${{ github.event.inputs.departements || 'all' }}
+          BE: ${{ github.event.inputs.belgique || 'true' }}
+        run: |
+          node -e '
+            const all = [...Array.from({length:95},(_,i)=>String(i+1).padStart(2,"0")).filter(d=>d!=="20"),"2A","2B"];
+            const deps = process.env.DEPS.trim().toLowerCase()==="all" ? all : process.env.DEPS.split(/[ ,;]+/).filter(Boolean);
+            const lots = [];
+            for (let i=0;i<deps.length;i+=6) lots.push(deps.slice(i,i+6).join(","));
+            if (process.env.BE==="true") lots.push("BE");
+            require("fs").appendFileSync(process.env.GITHUB_OUTPUT, "lots="+JSON.stringify(lots)+"\n");
+            console.log(lots);
+          '
+
+  import:
+    needs: plan
+    if: needs.plan.outputs.lots != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        lot: ${{ fromJson(needs.plan.outputs.lots) }}
+    name: Import ${{ matrix.lot }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --omit=dev
+      - name: Import
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SURFACE_MIN: ${{ github.event.inputs.surface_min || '5000' }}
+          LOT: ${{ matrix.lot }}
+        run: |
+          if [ "$LOT" = "BE" ]; then
+            node scripts/import-opendata.mjs --be
+          else
+            node scripts/import-opendata.mjs --dep "$LOT"
+          fi
