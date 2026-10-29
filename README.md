@@ -131,6 +131,16 @@ Collecte automatique chaque matin (vers 6 h, heure de Paris) par `scripts/veille
 - **Belgique** : chaque entrepôt ou bâtiment industriel est nommé d'après l'entreprise enregistrée dans OpenStreetMap à l'intérieur ou à proximité immédiate ; les bâtiments sans entreprise identifiable ne sont plus importés, et les anciens « Bâtiment industriel… » jamais travaillés (aucun statut, contact, historique ni rappel) sont retirés. L'état actif / fermé n'est pas disponible pour la Belgique.
 - **Actualités** : seuls les sujets bâtiment (construction, travaux, extension, ouverture), déménagement, rachat / fusion / reprise de site, santé financière, défaillance, fermeture et incendie sont conservés ; produits, magasins, sport, emploi… sont écartés, et les anciennes actualités hors thèmes sont masquées automatiquement.
 
+### Stratégie commerciale (v1.7)
+
+- **Onglet Stratégie** : « Mes missions » (avancement personnel, bouton « Mes sites à traiter » sur la carte ou en liste) et tableau de l'équipe en 3 colonnes (Brouillons, En cours, Terminées), visible par tous en lecture.
+- **Création** : 11 modèles (décideurs d'un groupe, développer une zone, patrimoine vieillissant, étendre un référencement, relance des devis, dossiers dormants, fidélisation, veille, campagne métier, tournée / salon, personnalisée) ou « Reprendre les filtres actuels de la carte ». Aperçu en direct du nombre de sites. Le périmètre est **vivant** : un nouveau site qui correspond aux critères entre automatiquement.
+- **Christophe** (directeur) : glisse les pastilles des chargés d'affaires sur une stratégie (sur téléphone : toucher la pastille puis la stratégie), glisse une stratégie d'une colonne à l'autre ; répartition par secteur, équitable (par zone) ou manuelle site par site.
+- **Chaque chargé d'affaires** peut créer ses propres stratégies (« Perso »), modifiables par lui et par le directeur.
+- **Avancement automatique** : un site est « fait » selon l'objectif (décideur renseigné, appel / email / RDV / visite enregistré depuis le début de la stratégie, devis…) ; correction possible depuis la fiche (« ✓ Fait », « Sans objet »). Les sites faits apparaissent grisés et cochés sur la carte.
+- **Filtre « 🎯 Stratégie »** en tête du panneau de filtres : « Ma stratégie » (tous mes sites en mission), mes sites d'une stratégie, ou toute une stratégie ; « À traiter seulement ». Le bouton « Site suivant ▶ » de la fiche reste dans la mission.
+- **Fiche site** : bandeau des missions en cours sur le site, et « Ajouter à une stratégie ».
+
 ### Agences Kiloutou
 
 Le bouton **🔧 Kiloutou** (en haut à gauche de la carte) affiche les agences du secteur et une liste triée par distance (au site ouvert, sinon au centre de la carte). Chaque fiche site indique aussi les 3 agences les plus proches, avec itinéraire depuis le site.

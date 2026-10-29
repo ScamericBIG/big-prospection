@@ -3,6 +3,7 @@ import { store } from './store.js';
 import { etat, sitesFiltres, sitesDuSecteur, infos, emettre, ecouter } from './etat.js';
 import { CATEGORIES, STATUTS, EMPRISES_SECTEURS, rayon, rappelEnRetard, fmtM2, fmtN, fmtM2court, esc, surfaceEstimee, anneeEstimee } from './metier.js';
 import { $, debounce } from './ui.js';
+import { faitDansFiltre } from './strategies-core.js';
 
 let carte, coucheAutour, coucheTournee, coucheSelection, fonds = {}, fondActif;
 let surClic = null;
@@ -102,7 +103,9 @@ const CoucheSites = L.Layer.extend({
     for (const v of pts) {
       const s = v.s, i = infos(s);
       ctx.beginPath(); ctx.arc(v.x, v.y, v.r, 0, 6.2832);
-      ctx.globalAlpha = 0.88; ctx.fillStyle = CATEGORIES[i.cat]?.couleur || '#8F9092'; ctx.fill();
+      const fait = faitDansFiltre(s);            // site déjà traité dans la stratégie filtrée : grisé
+      ctx.globalAlpha = fait ? 0.3 : 0.88; ctx.fillStyle = fait ? '#8F9092' : (CATEGORIES[i.cat]?.couleur || '#8F9092'); ctx.fill();
+      if (fait && v.r >= 5) { ctx.globalAlpha = 1; ctx.strokeStyle = '#1E8A4C'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(v.x - v.r * 0.45, v.y); ctx.lineTo(v.x - v.r * 0.1, v.y + v.r * 0.35); ctx.lineTo(v.x + v.r * 0.5, v.y - v.r * 0.35); ctx.stroke(); ctx.beginPath(); ctx.arc(v.x, v.y, v.r, 0, 6.2832); }
       let col = '#ffffff', lw = 1;
       if (s.statut === 'client') { col = ANNEAU.client; lw = 3; }
       else if (rappelEnRetard(s)) { col = ANNEAU.retard; lw = 3; }
@@ -210,7 +213,11 @@ export function initCarte() {
   ecouter('secteur', () => { maj(); cadrerSecteur(); });
   ecouter('tournee', dessinerTournee);
   ecouter('vue', v => { if (v === 'carte') setTimeout(() => { carte.invalidateSize(); couche.redessiner(); }, 50); });
-  store.on('change', d => { if (!d || d.table === 'sites') maj(); });
+  store.on('change', d => { if (!d || ['sites', 'strategies', 'strategie_sites'].includes(d.table) || (etat.filtres.strategie && ['activites', 'contacts'].includes(d.table))) maj(); });
+  ecouter('cadrer-filtres', () => {
+    const l = sitesFiltres().filter(s => s.lat != null);
+    if (l.length) carte.fitBounds(L.latLngBounds(l.map(s => [s.lat, s.lng])).pad(0.1), { maxZoom: 13 });
+  });
   dessinerSites();
   dessinerTournee();
 }

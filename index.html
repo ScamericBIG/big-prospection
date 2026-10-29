@@ -48,6 +48,7 @@
       <button role="tab" data-vue="carte" class="actif">Carte</button>
       <button role="tab" data-vue="liste">Liste</button>
       <button role="tab" data-vue="rappels">Rappels <span class="compteur" hidden></span></button>
+      <button role="tab" data-vue="strategie" title="Stratégie commerciale">Stratégie <span class="compteur info" hidden></span></button>
       <button role="tab" data-vue="ao" title="Appels d’offres en cours"><span class="lib-long">Appels d’offres</span><span class="lib-court">AO</span> <span class="compteur" hidden></span></button>
       <button role="tab" data-vue="actus" title="Actualités du secteur"><span class="lib-long">Actualités</span><span class="lib-court">Actus</span> <span class="compteur" hidden></span></button>
       <button role="tab" data-vue="groupes">Groupes</button>
@@ -96,6 +97,11 @@
         <div class="ligne-2">
           <input type="text" id="f-cp" placeholder="Code postal / dépt." inputmode="numeric">
           <input type="text" id="f-ville" placeholder="Ville">
+        </div>
+
+        <div class="filtre-strategie" id="f-strategie-bloc">
+          <label>🎯 Stratégie<select id="f-strategie"></select></label>
+          <button class="puce" id="f-strategie-afaire" title="Masquer les sites déjà traités dans la stratégie">À traiter seulement</button>
         </div>
 
         <details open><summary>Type de site</summary><div class="puces" id="f-categories"></div></details>
@@ -182,6 +188,7 @@
     </section>
 
     <section class="vue vue-rappels" id="vue-rappels"></section>
+    <section class="vue vue-strategie" id="vue-strategie"></section>
     <section class="vue vue-ao" id="vue-ao"></section>
     <section class="vue vue-actus" id="vue-actus"></section>
     <section class="vue vue-groupes" id="vue-groupes"></section>

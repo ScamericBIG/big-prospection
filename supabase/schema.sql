@@ -593,3 +593,70 @@ do $$ begin
   execute 'grant execute on function public.sites_a_verifier(integer, integer) to service_role';
   execute 'grant execute on function public.nettoyer_sites_sans_nom(text) to service_role';
 exception when undefined_object then null; end $$;
+
+-- ---------------------------------------------------------------------
+-- 11. v1.7 : stratégie commerciale (missions confiées à un ou plusieurs chargés d'affaires)
+--     Le périmètre est « vivant » (critères de filtre) ; l'avancement est calculé dans l'appli
+--     à partir des contacts / activités. strategie_sites ne contient que les exceptions
+--     (site attribué à la main, marqué fait ou sans objet).
+-- ---------------------------------------------------------------------
+create or replace function public.mon_email() returns text
+language sql stable security definer set search_path = public as $$
+  select email from public.profils where user_id = auth.uid() and actif limit 1;
+$$;
+
+create table if not exists public.strategies (
+  id           uuid primary key default gen_random_uuid(),
+  titre        text not null,
+  modele       text not null default 'perso',
+  consigne     text,
+  criteres     jsonb not null default '{}',
+  objectif     text not null default 'contacte',
+  cible        integer,
+  echeance     date,
+  debut        date not null default current_date,
+  statut       text not null default 'en_cours' check (statut in ('brouillon','en_cours','terminee')),
+  membres      text[] not null default '{}',
+  repartition  text not null default 'secteur' check (repartition in ('secteur','equitable','manuel')),
+  personnelle  boolean not null default false,
+  cree_par     text,
+  supprime     boolean not null default false,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
+  updated_by   text
+);
+create index if not exists strategies_upd_idx on public.strategies (updated_at);
+
+create table if not exists public.strategie_sites (
+  id            text primary key,                 -- '<strategie_id>:<site_id>'
+  strategie_id  uuid not null references public.strategies(id) on delete cascade,
+  site_id       uuid not null references public.sites(id) on delete cascade,
+  affecte_a     text,                             -- attribution manuelle à un chargé d'affaires
+  etat          text check (etat in ('fait','sans_objet')),
+  raison        text,
+  supprime      boolean not null default false,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  updated_by    text
+);
+create index if not exists strat_sites_upd_idx on public.strategie_sites (updated_at);
+create index if not exists strat_sites_strat_idx on public.strategie_sites (strategie_id);
+
+do $$ declare t text; begin
+  foreach t in array array['strategies','strategie_sites'] loop
+    execute format('drop trigger if exists trg_touch on public.%I', t);
+    execute format('create trigger trg_touch before insert or update on public.%I for each row execute function public.touch_updated_at()', t);
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists lecture on public.%I', t);
+    execute format('drop policy if exists ecriture on public.%I', t);
+    execute format('drop policy if exists modification on public.%I', t);
+    execute format('create policy lecture on public.%I for select to authenticated using (public.est_membre())', t);
+  end loop;
+end $$;
+-- stratégies : créées par tout membre ; modifiées par le directeur ou par leur auteur (stratégie personnelle)
+create policy ecriture on public.strategies for insert to authenticated with check (public.est_membre());
+create policy modification on public.strategies for update to authenticated
+  using (public.est_manager() or cree_par = public.mon_email()) with check (public.est_manager() or cree_par = public.mon_email());
+-- suivi site par site : tout membre (le chargé d'affaires coche ses sites)
+create policy ecriture on public.strategie_sites for insert to authenticated with check (public.est_membre());
+create policy modification on public.strategie_sites for update to authenticated using (public.est_membre()) with check (public.est_membre());

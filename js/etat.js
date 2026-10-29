@@ -10,6 +10,7 @@ export const FILTRES_VIDES = () => ({
   retard: false, semaine: false, reference: false, assigne: '', groupe: '', categoriesMasquees: new Set(),
   etats: new Set(['actif', 'inconnu']),   // établissements fermés masqués par défaut
   nomIdentifie: false,
+  strategie: '', strategieAFaire: false,  // '' | '_mes' (mes stratégies en cours) | id d'une stratégie
 });
 
 export const etat = {
@@ -73,41 +74,58 @@ export function prechauffer() {
 const memos = new Map();
 let version = 0;
 export const invalider = () => { version++; };
-store.on('change', d => { if (!d || ['sites', 'secteur_departements', 'groupes'].includes(d.table)) invalider(); });
+store.on('change', d => {
+  if (!d || ['sites', 'secteur_departements', 'groupes', 'strategies', 'strategie_sites'].includes(d.table)) invalider();
+  else if (etat.filtres.strategie && ['activites', 'contacts', 'actualites'].includes(d.table)) invalider();   // avancement des stratégies
+});
 
-export function sitesFiltres({ ignorerMasquees = false, secteur = etat.secteur } = {}) {
-  const f = etat.filtres;
-  const cle = version + '|' + secteur + '|' + JSON.stringify(f, (k, v) => v instanceof Set ? [...v] : v) + '|' + JSON.stringify(etat.autour) + '|' + ignorerMasquees;
-  if (memos.has(cle)) return memos.get(cle);
-  const txt = sansAccent(f.texte).trim().split(/\s+/).filter(Boolean);
-  const ville = sansAccent(f.ville).trim();
-  const cp = f.cp.trim();
+// Test d'un site selon un jeu de filtres (panneau de filtres, ou critères d'une stratégie)
+export function construireTest(f, autour = null) {
+  const txt = sansAccent(f.texte || '').trim().split(/\s+/).filter(Boolean);
+  const ville = sansAccent(f.ville || '').trim();
+  const cp = (f.cp || '').trim();
+  const cps = cp.split(/[ ,;]+/).filter(Boolean);
   const auj = aujourdhui();
   const dans7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
-  const res = sitesDuSecteur(secteur).filter(s => {
+  const vide = x => !x || !x.size;
+  return (s, ignorerMasquees = false) => {
     const i = infos(s);
     if (txt.length && !txt.every(t => i.recherche.includes(t))) return false;
-    if (cp && !(s.code_postal || '').startsWith(cp) && s.departement !== cp.toUpperCase()) return false;
+    if (cps.length && !cps.some(c => (s.code_postal || '').startsWith(c) || s.departement === c.toUpperCase())) return false;
     if (ville && !i.ville.includes(ville)) return false;
-    if (f.categories.size && !f.categories.has(i.cat)) return false;
-    if (!ignorerMasquees && f.categoriesMasquees.size && f.categoriesMasquees.has(i.cat)) return false;
+    if (!vide(f.categories) && !f.categories.has(i.cat)) return false;
+    if (!ignorerMasquees && !vide(f.categoriesMasquees) && f.categoriesMasquees.has(i.cat)) return false;
     if (f.surfMin && !(i.surface >= f.surfMin)) return false;
     if (f.surfMax && !(i.surface <= f.surfMax)) return false;
-    if (f.decennale.size && !f.decennale.has(i.dec)) return false;
+    if (!vide(f.decennale) && !f.decennale.has(i.dec)) return false;
     if (f.anneeMin && !(i.annee >= f.anneeMin)) return false;
     if (f.anneeMax && !(i.annee <= f.anneeMax)) return false;
-    if (f.statuts.size && !f.statuts.has(s.statut || 'a_qualifier')) return false;
-    if (f.priorites.size && !f.priorites.has(i.prio)) return false;
+    if (!vide(f.statuts) && !f.statuts.has(s.statut || 'a_qualifier')) return false;
+    if (!vide(f.priorites) && !f.priorites.has(i.prio)) return false;
     if (f.retard && !rappelEnRetard(s)) return false;
     if (f.reference && !(s.groupe_id && store.get('groupes', s.groupe_id)?.reference)) return false;
     if (f.semaine && !(s.date_prochain_rappel && s.date_prochain_rappel >= auj && s.date_prochain_rappel <= dans7)) return false;
     if (f.assigne && (f.assigne === '_aucun' ? s.assigne_a : s.assigne_a !== f.assigne)) return false;
     if (f.groupe && s.groupe_id !== f.groupe) return false;
-    if (f.etats.size && !f.etats.has(etatEtab(s))) return false;
+    if (!vide(f.etats) && !f.etats.has(etatEtab(s))) return false;
     if (f.nomIdentifie && nomGenerique(s.nom)) return false;
-    if (etat.autour && !(s.lat && distanceKm(etat.autour, s) <= etat.autour.rayon)) return false;
+    if (autour && !(s.lat && distanceKm(autour, s) <= autour.rayon)) return false;
     return true;
-  });
+  };
+}
+
+let filtreStrategie = null;   // fourni par strategies-core.js (évite une dépendance circulaire au chargement)
+export const brancherFiltreStrategie = fn => { filtreStrategie = fn; };
+
+export function sitesFiltres({ ignorerMasquees = false, secteur = etat.secteur } = {}) {
+  const f = etat.filtres;
+  const cle = version + '|' + secteur + '|' + JSON.stringify(f, (k, v) => v instanceof Set ? [...v] : v) + '|' + JSON.stringify(etat.autour) + '|' + ignorerMasquees;
+  if (memos.has(cle)) return memos.get(cle);
+  const test = construireTest(f, etat.autour);
+  // filtre « stratégie » : on part de toute la France (une mission peut déborder du secteur affiché)
+  const strat = f.strategie && filtreStrategie ? filtreStrategie(f.strategie, f.strategieAFaire) : null;
+  const base = strat ? sitesDuSecteur('national') : sitesDuSecteur(secteur);
+  const res = base.filter(s => (!strat || strat.has(s.id)) && test(s, ignorerMasquees));
   memos.set(cle, res); if (memos.size > 6) memos.delete(memos.keys().next().value);
   return res;
 }

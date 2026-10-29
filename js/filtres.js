@@ -4,6 +4,7 @@ import { etat, FILTRES_VIDES, emettre, ecouter, sitesFiltres, infos, nomCA } fro
 import { CATEGORIES, STATUTS, ETATS_ETAB, etatEtab, fmtN, fmtM2court, esc } from './metier.js';
 import { $, $$, debounce } from './ui.js';
 import { effacerItineraire } from './tournee.js';
+import { mesStrategies } from './strategies-core.js';
 
 const changer = () => { emettre('filtres'); majResultat(); };
 
@@ -24,6 +25,9 @@ export function initFiltres() {
   $('#f-etats').innerHTML = Object.entries(ETATS_ETAB).map(([k, e]) => `<button class="puce" data-v="${k}">${e.ico} ${esc(e.libelle)} <small data-ne="${k}"></small></button>`).join('');
   bascule($('#f-etats'), () => etat.filtres.etats);
   syncEtats();
+  $('#f-strategie').addEventListener('change', e => { etat.filtres.strategie = e.target.value; if (e.target.value && !etat.filtres.strategieAFaire) { etat.filtres.strategieAFaire = true; } syncStrategie(); changer(); });
+  $('#f-strategie-afaire').addEventListener('click', () => { etat.filtres.strategieAFaire = !etat.filtres.strategieAFaire; syncStrategie(); changer(); });
+  ecouter('filtres-externes', () => { syncStrategie(); majResultat(); });
   $('#f-nom-identifie').addEventListener('click', e => { etat.filtres.nomIdentifie = !etat.filtres.nomIdentifie; e.currentTarget.classList.toggle('actif', etat.filtres.nomIdentifie); changer(); });
   bascule($('#f-categories'), () => etat.filtres.categories);
   bascule($('#f-statuts'), () => etat.filtres.statuts);
@@ -48,7 +52,7 @@ export function initFiltres() {
     $$('#filtres input[type=search], #filtres input[type=text], #filtres input[type=number]').forEach(i => { if (i.id !== 'it-adresse') i.value = ''; });
     $$('#filtres select').forEach(s => s.value = '');
     $$('#filtres .puce.actif').forEach(p => p.classList.remove('actif'));
-    syncEtats();
+    syncEtats(); syncStrategie();
     if (etat.autour || etat.depart?.auto) effacerItineraire();
     changer();
   });
@@ -58,11 +62,30 @@ export function initFiltres() {
 
   majListes();
   const majResultatDiffere = debounce(majResultat, 200);
-  store.on('change', d => { if (['profils', 'groupes'].includes(d?.table)) majListes(); if (!d || d.table === 'sites') majResultatDiffere(); });
+  syncStrategie();
+  store.on('change', d => {
+    if (d?.table === 'strategies') syncStrategie();
+    if (['profils', 'groupes'].includes(d?.table)) majListes();
+    if (!d || ['sites', 'strategies', 'strategie_sites'].includes(d.table) || (etat.filtres.strategie && ['activites', 'contacts'].includes(d.table))) majResultatDiffere();
+  });
   ecouter('secteur', majResultat);
   ecouter('autour', majResultat);
 }
 
+function syncStrategie() {
+  const sel = $('#f-strategie'), moi = store.profil?.email;
+  const toutes = store.liste('strategies').filter(x => x.statut !== 'brouillon').sort((a, b) => a.titre.localeCompare(b.titre));
+  const mes = toutes.filter(x => x.statut === 'en_cours' && (x.membres || []).includes(moi)), autres = toutes.filter(x => !mes.includes(x));
+  const opt = x => `<option value="${x.id}">${esc(x.titre)}${x.statut === 'terminee' ? ' (terminée)' : ''}</option>`;
+  sel.innerHTML = '<option value="">Aucune (tous les sites)</option>' + (mes.length ? `<option value="_mes">⭐ Ma stratégie : tous mes sites en mission</option><optgroup label="Mes sites dans…">${mes.map(x => `<option value="moi:${x.id}">👤 ${esc(x.titre)} — mes sites</option>`).join('')}</optgroup><optgroup label="Toute l’équipe dans…">${mes.map(opt).join('')}</optgroup>` : '')
+    + (autres.length ? `<optgroup label="Équipe">${autres.map(opt).join('')}</optgroup>` : '');
+  if (etat.filtres.strategie && !sel.querySelector(`option[value="${etat.filtres.strategie}"]`)) etat.filtres.strategie = '';
+  sel.value = etat.filtres.strategie;
+  $('#f-strategie-afaire').hidden = !etat.filtres.strategie;
+  $('#f-strategie-afaire').classList.toggle('actif', etat.filtres.strategieAFaire);
+  $('#f-strategie-bloc').classList.toggle('actif', !!etat.filtres.strategie);
+  $('#f-strategie-bloc').hidden = !toutes.length && !etat.filtres.strategie;
+}
 const syncEtats = () => $$('#f-etats .puce').forEach(b => b.classList.toggle('actif', etat.filtres.etats.has(b.dataset.v)));
 
 export function majListes() {

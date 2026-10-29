@@ -14,8 +14,10 @@ const TABLES = {
   // veille (alimentée chaque matin par GitHub Actions) : l'équipe ne modifie que les colonnes de suivi
   appels_offres:        { key: 'id', veille: true, colonnes: ['suivi', 'responsable', 'note'] },
   actualites:           { key: 'id', veille: true, colonnes: ['masque'] },
+  strategies:           { key: 'id' },
+  strategie_sites:      { key: 'id' },
 };
-const OPTIONNELLES = ['agences', 'appels_offres', 'actualites'];   // tables récentes : l'appli fonctionne même si schema.sql n'a pas été relancé
+const OPTIONNELLES = ['agences', 'appels_offres', 'actualites', 'strategies', 'strategie_sites'];   // tables récentes : l'appli fonctionne même si schema.sql n'a pas été relancé
 
 export const PROFILS_DEMO = [
   { email: 'enieps@big-france.com', prenom: 'Emeric', nom: 'NIEPS', secteur: 'nord', role: 'ca', actif: true },
@@ -28,7 +30,7 @@ export const PROFILS_DEMO = [
 // ---------------------------------------------------------------- IndexedDB minimaliste
 function ouvrirIdb() {
   return new Promise((ok, ko) => {
-    const r = indexedDB.open('big-prospection', 3);
+    const r = indexedDB.open('big-prospection', 4);
     r.onupgradeneeded = () => {
       const db = r.result;
       for (const [t, c] of Object.entries(TABLES)) if (!db.objectStoreNames.contains(t)) db.createObjectStore(t, { keyPath: c.key });
@@ -204,6 +206,12 @@ class Store extends EventTarget {
       }
       await this.meta('demoVeille', jour);
     }
+    if (!(await this.meta('demoStrategies'))) {
+      const { strategiesDemo } = await import('./strategies-core.js');
+      const l = strategiesDemo(this);
+      await this.ecrireIdb('strategies', l); l.forEach(x => this.data.strategies.set(x.id, x));
+      await this.meta('demoStrategies', true);
+    }
   }
 
   // ---------------------------------------------------------- lecture
@@ -302,7 +310,7 @@ class Store extends EventTarget {
       const k = TABLES[it.table].key;
       (parTable[it.table] ||= new Map()).set(it.row[k], it);
     }
-    const ordre = ['groupes', 'sites', 'contacts', 'activites'];
+    const ordre = ['groupes', 'sites', 'contacts', 'activites', 'strategies', 'strategie_sites'];
     const faits = [], erreurs = [];
     // tables de veille : mise à jour des seules colonnes de suivi (le reste appartient au robot de veille)
     for (const t of Object.keys(parTable).filter(t => TABLES[t].colonnes)) {

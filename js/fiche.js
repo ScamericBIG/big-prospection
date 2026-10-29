@@ -9,6 +9,7 @@ import { marquerSelection, centrerSur, choisirPosition } from './carte.js';
 import { agencesProches, lienItineraire, lienInfos, fmtKm } from './loueurs.js';
 import { syntheseGroupe } from './strategie.js';
 import { actusDuSite, CATEGORIES_ACTU } from './actualites.js';
+import { strategiesDuSite, strategiesActives, OBJECTIFS, marquer, peutModifier } from './strategies-core.js';
 
 export const NIVEAUX_DECISION = { local: 'local', regional: 'régional', national: 'national' };
 
@@ -25,6 +26,7 @@ export function initFiche() {
     if (e.key === 'ArrowLeft') { e.preventDefault(); allerPrecedent(); }
   });
   store.on('change', d => {
+    if (etat.siteOuvert && ['strategie_sites', 'strategies'].includes(d?.table)) { rendre(); return; }
     if (!etat.siteOuvert || !d?.distant) return;
     if (['sites', 'contacts', 'activites'].includes(d.table) && !document.activeElement?.closest('#fiche')) rendre();
   });
@@ -144,6 +146,7 @@ function rendreFiche(corps, s) {
       ${o.possible ? '🔎 Entreprise trouvée à cette adresse' : '🔁 Nouvel occupant probable'} : <b>${esc(o.nom)}</b>
       <small>${o.siret ? 'SIRET ' + esc(o.siret) + ' · ' : ''}${o.distance_m != null ? 'à ' + o.distance_m + ' m · ' : ''}base SIRENE${o.le ? ', ' + fmtDate(o.le) : ''}</small>
       <div class="occupant-actions"><button class="btn btn-petit" id="fi-occupant">Renommer le site « ${esc(o.nom)} »</button>${o.siret ? ` <a class="btn btn-petit" target="_blank" rel="noopener" href="https://annuaire-entreprises.data.gouv.fr/etablissement/${esc(o.siret)}">🏢 Annuaire</a>` : ''}</div></div>`; })() : ''}
+    ${blocStrategies(s)}
     <details class="infos-repliables" ${infosOuvertes() ? 'open' : ''}>
     <summary>Informations du site <small>(adresse, activité, décennale, SIRET, groupe, source…)</small></summary>
     <dl class="infos">
@@ -234,6 +237,22 @@ function rendreFiche(corps, s) {
   $$('[data-edit-contact]', corps).forEach(b => b.onclick = () => editerContact(store.get('contacts', b.dataset.editContact), rendre));
   $('#fi-format-email').onclick = () => modifierFormatEmail(s, rendre);
   $$('[data-voir-groupe]', corps).forEach(b => b.onclick = () => emettre('voir-groupe', b.dataset.voirGroupe));
+  $$('[data-sf]', corps).forEach(b => b.onclick = async () => {
+    const [act, id] = b.dataset.sf.split('|'), st = store.get('strategies', id);
+    if (act === 'fait') await marquer(st, s.id, { etat: 'fait', raison: null });
+    if (act === 'annuler') await marquer(st, s.id, { etat: null, raison: null });
+    if (act === 'sans') {
+      const m = ouvrirModale(`<h3>Site sans objet pour « ${esc(st.titre)} »</h3><label>Raison<input type="text" id="sf-raison" placeholder="ex. site vendu, pas de dallage, déjà traité par le groupe"></label>
+        <div class="boutons"><button class="btn" data-fermer-modale>Annuler</button><button class="btn btn-primaire" id="sf-ok">Enregistrer</button></div>`);
+      $('#sf-ok', m).onclick = async () => { await marquer(st, s.id, { etat: 'sans_objet', raison: $('#sf-raison', m).value.trim() || null }); fermerModale(); };
+    }
+  });
+  $('#fi-strat-ajout')?.addEventListener('change', async e => {
+    const st = store.get('strategies', e.target.value); if (!st) return;
+    const moi = store.profil.email;
+    await marquer(st, s.id, { affecte_a: (st.membres || []).includes(moi) ? moi : (st.membres || [])[0] || moi });
+    toast(`Site ajouté à « ${st.titre} »`, 'ok');
+  });
   $('#fi-occupant')?.addEventListener('click', async () => {
     const od = s.infos_od || {}, o = od.nouvel_occupant;
     if (!(await confirmer(`Renommer « ${s.nom} » en « ${o.nom} » ? Le suivi, les contacts et l’historique du site sont conservés.`, { ok: 'Renommer' }))) return;
@@ -316,6 +335,18 @@ function blocContacts(s) {
 }
 
 // Agences de location de matériel les plus proches du site (préparation de chantier)
+// Missions en cours sur ce site : objectif, attribution, avancement (automatique ou coché à la main)
+function blocStrategies(s) {
+  const l = strategiesDuSite(s.id), moi = store.profil.email;
+  const ajoutables = strategiesActives().filter(st => !l.some(x => x.st.id === st.id) && ((st.membres || []).includes(moi) || peutModifier(st)));
+  if (!l.length && !ajoutables.length) return '';
+  return `<div class="strat-fiche">${l.map(({ st, o }) => `<div class="sf-ligne ${o.fait ? 'fait' : o.sansObjet ? 'sans-objet' : ''}">
+      <div>🎯 <b>${esc(st.titre)}</b><br><small>${o.sansObjet ? `Sans objet${o.raison ? ' — ' + esc(o.raison) : ''}` : o.fait ? `✓ ${esc(OBJECTIFS[st.objectif]?.fait || 'fait')}${o.manuel ? ' (coché à la main)' : ''}` : `À faire : ${esc(OBJECTIFS[st.objectif]?.libelle || '')}`}${o.resp ? ` · ${o.resp === moi ? 'vous' : esc(nomCA(o.resp))}` : ''}${st.echeance ? ` · avant le ${fmtDate(st.echeance)}` : ''}</small></div>
+      <div class="sf-actions">${o.manuel || o.sansObjet ? `<button class="btn btn-petit" data-sf="annuler|${st.id}">Annuler</button>` : o.fait ? '' : `<button class="btn btn-petit" data-sf="fait|${st.id}">✓ Fait</button><button class="btn btn-petit" data-sf="sans|${st.id}">Sans objet</button>`}</div>
+    </div>`).join('')}
+    ${ajoutables.length ? `<label class="sf-ajout">Ajouter à une stratégie <select id="fi-strat-ajout"><option value="">—</option>${ajoutables.map(st => `<option value="${st.id}">${esc(st.titre)}</option>`).join('')}</select></label>` : ''}</div>`;
+}
+
 // Dernières actualités sur ce site ou son groupe (santé financière, incendie, rachat…)
 function blocActus(s) {
   const l = actusDuSite(s);
