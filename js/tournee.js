@@ -10,13 +10,13 @@ export async function geocoder(q) {
   const res = [];
   try {
     const r = await (await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5`)).json();
-    for (const f of r.features || []) res.push({ libelle: f.properties.label, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] });
+    for (const f of r.features || []) res.push({ libelle: f.properties.label, ville: f.properties.city || f.properties.name, cp: f.properties.postcode || null, type: f.properties.type, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] });
   } catch { }
   // Belgique (et repli) : Nominatim / OpenStreetMap
   if (res.length < 2 || /belgi|bruxelles|brussel|anvers|antwerpen|li[eè]ge|gand|gent|charleroi|namur|mons\b/i.test(q)) {
     try {
       const r = await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=4&countrycodes=be,fr&accept-language=fr&q=${encodeURIComponent(q)}`)).json();
-      for (const x of r) res.push({ libelle: x.display_name.split(',').slice(0, 4).join(','), lat: +x.lat, lng: +x.lon });
+      for (const x of r) res.push({ libelle: x.display_name.split(',').slice(0, 4).join(','), ville: x.display_name.split(',')[0].trim(), lat: +x.lat, lng: +x.lon });
     } catch { }
   }
   return res;

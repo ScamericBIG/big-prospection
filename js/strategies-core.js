@@ -19,7 +19,7 @@ export const MODELES = {
   decideurs_groupe: { ico: '👔', libelle: 'Qualifier les décideurs d’un groupe', desc: 'Tous les sites d’un groupe : identifier le décideur de chaque site.',
     objectif: 'decideur', titre: c => `Décideurs ${nomGroupe(c.groupe) || 'du groupe'}`, criteres: { secteur: 'national' }, champs: ['groupe'] },
   zone: { ico: '📍', libelle: 'Développer une ville / une zone', desc: 'Sites non clients autour d’une adresse ou dans des codes postaux.',
-    objectif: 'qualifie', titre: c => `Développer ${c.autour?.libelle?.split(',')[0] || c.ville || c.cp || 'la zone'}`, criteres: { statuts: ['a_qualifier', 'prospect', 'en_contact'] }, champs: ['autour', 'cp', 'ville'] },
+    objectif: 'qualifie', titre: c => `Développer ${c.autour ? `${c.autour.ville || c.autour.libelle?.split(',')[0]} (${c.autour.rayon} km)` : c.ville || c.cp || 'la zone'}`, criteres: { statuts: ['a_qualifier', 'prospect', 'en_contact'] }, champs: ['autour', 'cp', 'ville'] },
   patrimoine: { ico: '🏚', libelle: 'Patrimoine vieillissant', desc: 'Grands sites hors décennale de plus de 20 ans : décrocher des RDV.',
     objectif: 'rdv', titre: () => 'Grands sites de plus de 20 ans', criteres: { decennale: ['hors'], anneeMax: ANNEE - 20, surfMin: 20000, statuts: ['a_qualifier', 'prospect', 'en_contact'] }, champs: ['surfMin', 'age'] },
   referencement: { ico: '✓', libelle: 'Étendre un référencement', desc: 'Sites des groupes où BIG est référencé, pas encore clients.',
@@ -35,7 +35,7 @@ export const MODELES = {
   metier: { ico: '🏭', libelle: 'Campagne par métier', desc: 'Un type de site (frigorifique, agroalimentaire, industrie…) dans un secteur.',
     objectif: 'rdv', titre: c => `Campagne ${(c.categories || []).join(', ') || 'métier'}`, criteres: { categories: ['FRIGO'], statuts: ['a_qualifier', 'prospect', 'en_contact'] }, champs: ['categories', 'surfMin'] },
   tournee: { ico: '🚗', libelle: 'Préparer une tournée / un salon', desc: 'Sites autour d’un lieu, pour planifier des RDV sur place.',
-    objectif: 'rdv', titre: c => `Tournée ${c.autour?.libelle?.split(',')[0] || ''}`.trim(), criteres: { statuts: ['a_qualifier', 'prospect', 'en_contact', 'rdv', 'devis'] }, champs: ['autour'] },
+    objectif: 'rdv', titre: c => `Tournée ${c.autour?.ville || c.autour?.libelle?.split(',')[0] || c.ville || ''}`.trim(), criteres: { statuts: ['a_qualifier', 'prospect', 'en_contact', 'rdv', 'devis'] }, champs: ['autour'] },
   perso: { ico: '✏️', libelle: 'Stratégie personnalisée', desc: 'Objectif et périmètre libres (ex. industriels des Hauts-de-France de plus de 10 000 m²).',
     objectif: 'qualifie', titre: () => '', criteres: {}, champs: [] },
 };

@@ -190,8 +190,11 @@ function editer(st, critDepart = null, enCours = null) {
       <label>Groupe<select id="se-groupe"><option value="">Tous</option>${groupes.map(g => `<option value="${g.id}" ${c().groupe === g.id ? 'selected' : ''}>${esc(g.nom)}${g.reference ? ' ✓' : ''}</option>`).join('')}</select></label>
       <label class="case"><input type="checkbox" id="se-reference" ${c().reference ? 'checked' : ''}> Seulement les groupes où BIG est référencé</label>
       <label>Codes postaux / départements<input type="text" id="se-cp" value="${esc(c().cp || '')}" placeholder="ex. 59, 62, 80"></label>
-      <label>Ville<input type="text" id="se-ville" value="${esc(c().ville || '')}"></label>
-      <label class="large">Autour d’une adresse<span class="ligne"><input type="text" id="se-adresse" value="${esc(c().autour?.libelle || '')}" placeholder="ex. Lyon Saint-Exupéry"><select id="se-rayon">${[5, 10, 20, 30, 50, 80].map(r => `<option ${(c().autour?.rayon || 30) === r ? 'selected' : ''} value="${r}">${r} km</option>`).join('')}</select><button class="btn btn-petit" id="se-geo">Chercher</button>${c().autour ? '<button class="btn btn-petit" id="se-geo-x">×</button>' : ''}</span></label>
+      <div class="large zone-strat"><small>Zone : ville ou adresse, et rayon autour</small>
+        <span class="ligne"><span class="champ-suggest"><input type="text" id="se-lieu" autocomplete="off" value="${esc(c().autour?.libelle || c().ville || '')}" placeholder="ex. Lille, Lyon Saint-Exupéry, 12 rue … 59000 Lille"><div class="suggestions" id="se-sugg" hidden></div></span>
+        <select id="se-rayon"><option value="0" ${c().ville && !c().autour ? 'selected' : ''}>Ville seule</option>${[5, 10, 20, 30, 50, 80, 100].map(r => `<option ${(c().autour?.rayon || (c().ville ? 0 : 20)) === r ? 'selected' : ''} value="${r}">${r} km autour</option>`).join('')}</select>
+        <button class="btn btn-petit" id="se-lieu-x" title="Retirer la zone" ${c().autour || c().ville ? '' : 'hidden'}>×</button></span>
+        <small class="zone-info" id="se-zone-info"></small></div>
       <label>Surface minimale (m²)<input type="number" id="se-surf" step="1000" value="${c().surfMin || ''}"></label>
       <label>Ancienneté minimale (ans)<input type="number" id="se-age" value="${c().anneeMax ? ANNEE - c().anneeMax : ''}"></label>
       <div class="large"><small>Types de site</small><div class="puces" id="se-cats">${Object.entries(CATEGORIES).map(([k, x]) => `<button class="puce ${(c().categories || []).includes(k) ? 'actif' : ''}" data-v="${k}"><span class="rond" style="background:${x.couleur}"></span>${esc(x.libelle)}</button>`).join('')}</div></div>
@@ -233,11 +236,10 @@ function editer(st, critDepart = null, enCours = null) {
   const lire = () => {
     const cr = c();
     cr.secteur = $('#se-secteur', m).value; cr.groupe = $('#se-groupe', m).value || undefined; cr.reference = $('#se-reference', m).checked || undefined;
-    cr.cp = $('#se-cp', m).value.trim() || undefined; cr.ville = $('#se-ville', m).value.trim() || undefined;
+    cr.cp = $('#se-cp', m).value.trim() || undefined;
     cr.surfMin = Number($('#se-surf', m).value) || undefined; const age = Number($('#se-age', m).value); cr.anneeMax = age ? ANNEE - age : undefined;
-    if (cr.autour) cr.autour.rayon = Number($('#se-rayon', m).value);
     s.objectif = $('#se-objectif', m).value;
-    apercu();
+    infoZone(); apercu();
   };
   $$('#se-modeles .modele', m).forEach(x => x.onclick = () => {
     const mod = MODELES[x.dataset.m];
@@ -247,26 +249,61 @@ function editer(st, critDepart = null, enCours = null) {
     titreAuto = true; reconstruire();
   });
   const reconstruire = () => { s.consigne = $('#se-consigne', m).value; s.echeance = $('#se-echeance', m).value || null; s.cible = Number($('#se-cible', m).value) || null; s.repartition = $('#se-repartition', m).value; const sauve = s; fermerModale(); setTimeout(() => editer(st, null, { s: sauve, titreAuto }), 0); };
-  ['#se-secteur', '#se-groupe', '#se-reference', '#se-objectif', '#se-rayon'].forEach(q => $(q, m).onchange = lire);
-  ['#se-cp', '#se-ville', '#se-surf', '#se-age'].forEach(q => $(q, m).oninput = lire);
+  ['#se-secteur', '#se-groupe', '#se-reference', '#se-objectif'].forEach(q => $(q, m).onchange = lire);
+  ['#se-cp', '#se-surf', '#se-age'].forEach(q => $(q, m).oninput = lire);
   $('#se-repartition', m).onchange = e => { s.repartition = e.target.value; apercu(); };
   $('#se-titre', m).oninput = e => { s.titre = e.target.value; titreAuto = false; };
   const puces = (q, cle) => $(q, m).addEventListener('click', e => { const b = e.target.closest('.puce'); if (!b) return; const l = new Set(c()[cle] || []); l.has(b.dataset.v) ? l.delete(b.dataset.v) : l.add(b.dataset.v); c()[cle] = [...l]; b.classList.toggle('actif'); apercu(); });
   puces('#se-cats', 'categories'); puces('#se-statuts', 'statuts');
   $('#se-membres', m).addEventListener('click', e => { const b = e.target.closest('.puce'); if (!b || !manager) return; const l = new Set(s.membres); l.has(b.dataset.v) ? l.delete(b.dataset.v) : l.add(b.dataset.v); s.membres = [...l]; b.classList.toggle('actif'); apercu(); });
-  $('#se-geo', m).onclick = async () => {
-    const q = $('#se-adresse', m).value; const r = (await geocoder(q))[0];
-    if (!r) return $('#se-err', m).textContent = 'Adresse introuvable';
-    $('#se-err', m).textContent = '';
-    c().autour = { lat: r.lat, lng: r.lng, rayon: Number($('#se-rayon', m).value), libelle: r.libelle }; $('#se-adresse', m).value = r.libelle; apercu();
+  // ---- zone : ville ou adresse + rayon (géocodage automatique, suggestions pendant la saisie)
+  let lieu = c().autour ? { ...c().autour } : c().ville ? { ville: c().ville, libelle: c().ville } : null;
+  const infoZone = () => {
+    const z = c();
+    $('#se-zone-info', m).innerHTML = z.autour ? `📍 Sites à moins de <b>${z.autour.rayon} km</b> de ${esc(z.autour.libelle)}${z.secteur && z.secteur !== 'national' ? ` · <span class="alerte-txt">limité au secteur ${esc(store.get('secteurs', z.secteur)?.libelle || z.secteur)}</span>` : ''}`
+      : z.ville ? `📍 Sites dont la ville est « ${esc(z.ville)} » (choisissez un rayon pour inclure les communes voisines)` : 'Aucune zone : tout le secteur choisi.';
+    $('#se-lieu-x', m).hidden = !z.autour && !z.ville;
   };
-  $('#se-geo-x', m)?.addEventListener('click', () => { delete c().autour; $('#se-adresse', m).value = ''; apercu(); });
+  const appliquerZone = () => {
+    const z = c(), rayon = Number($('#se-rayon', m).value);
+    delete z.autour; delete z.ville;
+    if (lieu && rayon > 0 && lieu.lat != null) {
+      z.autour = { lat: lieu.lat, lng: lieu.lng, rayon, libelle: lieu.libelle, ville: lieu.ville || null };
+      // une zone autour d'un point peut déborder du secteur : on cherche sur toute la France
+      if (z.secteur && z.secteur !== 'national') { z.secteur = 'national'; $('#se-secteur', m).value = 'national'; }
+    } else if (lieu && rayon === 0) z.ville = lieu.ville || lieu.libelle;
+    infoZone(); apercu();
+  };
+  const sugg = $('#se-sugg', m);
+  let propositions = [];
+  const choisir = r => { lieu = r; $('#se-lieu', m).value = r.libelle; sugg.hidden = true; $('#se-err', m).textContent = ''; appliquerZone(); };
+  const chercherLieu = async (auto = false) => {
+    const q = $('#se-lieu', m).value.trim();
+    if (q.length < 3) { sugg.hidden = true; return null; }
+    propositions = await geocoder(q);
+    if (auto) { if (propositions[0]) choisir(propositions[0]); else $('#se-err', m).textContent = `Lieu « ${q} » introuvable : vérifiez l’orthographe ou ajoutez le code postal.`; return propositions[0] || null; }
+    sugg.innerHTML = propositions.map((r, k) => `<button type="button" data-k="${k}">${esc(r.libelle)}${r.type === 'municipality' ? ' <small>commune</small>' : ''}</button>`).join('');
+    sugg.hidden = !propositions.length;
+    return null;
+  };
+  const saisie = debounce(() => chercherLieu(false), 300);
+  $('#se-lieu', m).oninput = () => { lieu = null; saisie(); };
+  $('#se-lieu', m).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); propositions[0] ? choisir(propositions[0]) : chercherLieu(true); } };
+  $('#se-lieu', m).onblur = () => setTimeout(() => { sugg.hidden = true; if (!lieu && $('#se-lieu', m).value.trim()) chercherLieu(true); }, 200);
+  sugg.onmousedown = e => { const b = e.target.closest('[data-k]'); if (b) { e.preventDefault(); choisir(propositions[+b.dataset.k]); } };
+  $('#se-rayon', m).onchange = async () => {
+    if (lieu && lieu.lat == null && Number($('#se-rayon', m).value) > 0) await chercherLieu(true);   // ancienne zone « ville » sans coordonnées
+    else appliquerZone();
+  };
+  $('#se-lieu-x', m).onclick = () => { lieu = null; $('#se-lieu', m).value = ''; appliquerZone(); };
+  infoZone();
   $('#se-depuis-carte', m).onclick = () => {
     s.criteres = { ...depuisFiltres(etat.filtres, etat.autour, etat.secteur), special: c().special };
     if (!s.criteres.special) delete s.criteres.special;
     reconstruire();
   };
   $('#se-ok', m).onclick = async () => {
+    if (!lieu && $('#se-lieu', m).value.trim() && !(await chercherLieu(true))) return;
     lire();
     s.titre = $('#se-titre', m).value.trim(); s.consigne = $('#se-consigne', m).value.trim() || null;
     s.echeance = $('#se-echeance', m).value || null; s.cible = Number($('#se-cible', m).value) || null;
