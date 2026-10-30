@@ -2,6 +2,7 @@
 import { store } from './store.js';
 import { etat, sitesDuSecteur, construireTest, brancherFiltreStrategie } from './etat.js';
 import { ANNEE, uuid } from './metier.js';
+import { DALLAGE, aAccesDallage } from './pole.js';
 
 // ------------------------------------------------------------------ objectifs (quand un site est-il « fait » ?)
 export const OBJECTIFS = {
@@ -15,7 +16,7 @@ export const OBJECTIFS = {
 };
 
 // ------------------------------------------------------------------ modèles prêts à l'emploi
-export const MODELES = {
+const MODELES_MAINTENANCE = {
   decideurs_groupe: { ico: '👔', libelle: 'Qualifier les décideurs d’un groupe', desc: 'Tous les sites d’un groupe : identifier le décideur de chaque site.',
     objectif: 'decideur', titre: c => `Décideurs ${nomGroupe(c.groupe) || 'du groupe'}`, criteres: { secteur: 'national' }, champs: ['groupe'] },
   zone: { ico: '📍', libelle: 'Développer une ville / une zone', desc: 'Sites non clients autour d’une adresse ou dans des codes postaux.',
@@ -39,6 +40,22 @@ export const MODELES = {
   perso: { ico: '✏️', libelle: 'Stratégie personnalisée', desc: 'Objectif et périmètre libres (ex. industriels des Hauts-de-France de plus de 10 000 m²).',
     objectif: 'qualifie', titre: () => '', criteres: {}, champs: [] },
 };
+// Pôle Dallage : modèles orientés construction neuve (projets, prescription, contractants)
+const MODELES_DALLAGE = {
+  projets_recents: { ico: '📝', libelle: 'Projets récents (permis)', desc: 'Permis accordés depuis moins de 6 mois : joindre le maître d’ouvrage avant la consultation dallage.',
+    objectif: 'contacte', titre: () => 'Projets récents : contacter les maîtres d’ouvrage', criteres: { secteur: 'nouvelle_aquitaine', categories: ['PROJET'], special: { permisMois: 6 } }, champs: ['permisMois', 'surfMin'] },
+  prescription: { ico: '📐', libelle: 'Prescription : architectes et AMO', desc: 'Présenter BIG aux architectes, AMO et bureaux d’études pour être prescrit dès la conception.',
+    objectif: 'rdv', titre: () => 'Prescription architectes / AMO', criteres: { secteur: 'nouvelle_aquitaine', categories: ['ARCHI', 'AMO', 'BET'], statuts: ['a_qualifier', 'prospect', 'en_contact'] }, champs: [] },
+  promoteurs: { ico: '🏢', libelle: 'Référencement promoteurs', desc: 'Promoteurs et investisseurs logistiques : entrer dans leur liste d’entreprises consultées.',
+    objectif: 'rdv', titre: () => 'Référencement chez les promoteurs', criteres: { secteur: 'national', categories: ['PROMOTEUR'] }, champs: [] },
+  contractants: { ico: '🏗', libelle: 'Contractants généraux et majors', desc: 'Agences régionales des contractants et des majors : devenir leur dalleur partenaire.',
+    objectif: 'rdv', titre: () => 'Partenariats contractants & majors', criteres: { secteur: 'national', categories: ['CONTRACTANT', 'MAJOR'] }, champs: [] },
+  sieges: { ico: '🏭', libelle: 'Sièges sociaux : projets d’extension', desc: 'Entreprises industrielles et logistiques de la région : détecter les projets d’extension en amont.',
+    objectif: 'decideur', titre: () => 'Sièges sociaux : identifier le responsable immobilier', criteres: { secteur: 'nouvelle_aquitaine', categories: ['SIEGE'] }, champs: [] },
+  zone: MODELES_MAINTENANCE.zone, veille: MODELES_MAINTENANCE.veille, devis: { ...MODELES_MAINTENANCE.devis, libelle: 'Relancer les chiffrages', titre: () => 'Relance des chiffrages en attente' },
+  dormants: MODELES_MAINTENANCE.dormants, tournee: MODELES_MAINTENANCE.tournee, perso: MODELES_MAINTENANCE.perso,
+};
+export const MODELES = DALLAGE ? MODELES_DALLAGE : MODELES_MAINTENANCE;
 const nomGroupe = id => id ? store.get('groupes', id)?.nom : null;
 
 // ------------------------------------------------------------------ version des données (pour les mémos)
@@ -99,6 +116,10 @@ function testSpecial(sp = {}) {
     const lim = ilYaJours(sp.chantierMois * 30.5);
     tests.push(s => !(acts.get(s.id) || []).some(a => ['visite', 'chantier'].includes(a.type) && (a.date || '') >= lim));
   }
+  if (sp.permisMois) {
+    const lim = ilYaJours(sp.permisMois * 30.5).slice(0, 10);
+    tests.push(s => (s.infos_od?.permis?.date || '') >= lim && s.infos_od?.permis?.etape !== 'livre');
+  }
   if (sp.actualiteJours || sp.nouvelOccupant) {
     const lim = ilYaJours(sp.actualiteJours || 30), sites = new Set(), groupes = new Set();
     for (const a of store.liste('actualites')) {
@@ -126,7 +147,7 @@ function atteint(strat, s, i) {
   }
 }
 
-export const caActifs = () => store.liste('profils').filter(p => p.actif !== false && p.role !== 'directeur' && p.secteur !== 'national');
+export const caActifs = () => store.liste('profils').filter(p => DALLAGE ? aAccesDallage(p) : (p.actif !== false && p.role !== 'directeur' && p.secteur !== 'national'));
 export const peutModifier = strat => ['directeur', 'admin'].includes(store.profil?.role) || strat.cree_par === store.profil?.email;
 export const estManager = () => ['directeur', 'admin'].includes(store.profil?.role);
 
@@ -222,6 +243,13 @@ export async function marquer(strat, siteId, champs) {
 
 // ------------------------------------------------------------------ démo
 export function strategiesDemo(st) {
+  if (DALLAGE) {
+    const now = new Date().toISOString(), j = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10), base = { supprime: false, created_at: now, updated_at: now, cree_par: 'cdragne@big-france.com', membres: ['cdragne@big-france.com'], repartition: 'secteur', personnelle: false, cible: null };
+    return [
+      { ...base, id: uuid(), titre: 'Projets récents : contacter les maîtres d’ouvrage', modele: 'projets_recents', consigne: 'Appeler sous 15 jours après l’obtention du permis.', criteres: MODELES_DALLAGE.projets_recents.criteres, objectif: 'contacte', echeance: j(30), debut: j(-10), statut: 'en_cours' },
+      { ...base, id: uuid(), titre: 'Prescription architectes / AMO', modele: 'prescription', consigne: 'Présenter les références plateformes logistiques et la variante fibres.', criteres: MODELES_DALLAGE.prescription.criteres, objectif: 'rdv', cible: 12, echeance: j(90), debut: j(-20), statut: 'en_cours' },
+    ];
+  }
   const fm = [...st.data.groupes.values()].find(g => !g.supprime);
   const now = new Date().toISOString(), j = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
   return [

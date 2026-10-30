@@ -1,6 +1,12 @@
 // Données : cache local IndexedDB (hors connexion) + synchronisation Supabase + file d'attente des modifications
 import { CONFIG, MODE_DEMO } from './config.js';
 import { SECTEURS_DEFAUT, DEPARTEMENTS_DEFAUT, deptDeCp, uuid } from './metier.js';
+import { DALLAGE } from './pole.js';
+
+// Pôle Dallage : mêmes écrans, tables Supabase « dal_* » et cache local séparé
+const TABLES_DALLAGE = new Set(['groupes', 'sites', 'contacts', 'activites', 'appels_offres', 'actualites', 'strategies', 'strategie_sites']);
+const distant = t => DALLAGE && TABLES_DALLAGE.has(t) ? 'dal_' + t : t;
+const FIXES_DALLAGE = new Set(['secteurs', 'secteur_departements']);   // secteur Nouvelle-Aquitaine défini dans pole.js
 
 const TABLES = {
   sites:                { key: 'id' },
@@ -30,7 +36,7 @@ export const PROFILS_DEMO = [
 // ---------------------------------------------------------------- IndexedDB minimaliste
 function ouvrirIdb() {
   return new Promise((ok, ko) => {
-    const r = indexedDB.open('big-prospection', 4);
+    const r = indexedDB.open(DALLAGE ? 'big-prospection-dallage' : 'big-prospection', 4);
     r.onupgradeneeded = () => {
       const db = r.result;
       for (const [t, c] of Object.entries(TABLES)) if (!db.objectStoreNames.contains(t)) db.createObjectStore(t, { keyPath: c.key });
@@ -79,6 +85,7 @@ class Store extends EventTarget {
       const m = new Map(); for (const r of rows) m.set(r[TABLES[t].key], r);
       this.data[t] = m;
     }
+    if (DALLAGE) { this.data.secteurs = new Map(); this.data.secteur_departements = new Map(); }
     if (!this.data.secteurs.size) SECTEURS_DEFAUT.forEach(s => this.data.secteurs.set(s.code, s));
     if (!this.data.secteur_departements.size) Object.entries(DEPARTEMENTS_DEFAUT).forEach(([d, s]) => this.data.secteur_departements.set(d, { departement: d, secteur: s }));
     this.enAttente = await req(this.db.transaction('outbox').objectStore('outbox').count());
@@ -174,7 +181,7 @@ class Store extends EventTarget {
     await this.chargerCache();
     if (MODE_DEMO) await this.initDemo();
     if (this.enLigne && !MODE_DEMO) {
-      try { await this.tirer(['profils', 'secteurs', 'secteur_departements']); } catch (e) { console.warn(e); }
+      try { await this.tirer(DALLAGE ? ['profils'] : ['profils', 'secteurs', 'secteur_departements']); } catch (e) { console.warn(e); }
     }
     this.profil = this.data.profils.get(email.toLowerCase()) || null;
     if (!this.profil) throw new Error('Votre compte n’est pas rattaché à un profil chargé d’affaires (table « profils »).');
@@ -185,8 +192,7 @@ class Store extends EventTarget {
   async initDemo() {
     if (!this.data.profils.size) { await this.ecrireIdb('profils', PROFILS_DEMO); PROFILS_DEMO.forEach(p => this.data.profils.set(p.email, p)); }
     if (!(await this.meta('demoCharge'))) {
-      const r = await fetch('data/demo-sites.json');
-      const j = await r.json();
+      const j = DALLAGE ? (await import('./dallage-demo.js')).genererDallageDemo() : await (await fetch('data/demo-sites.json')).json();
       for (const t of ['groupes', 'sites', 'contacts', 'activites']) {
         if (!j[t]) continue;
         await this.ecrireIdb(t, j[t]);
@@ -197,8 +203,8 @@ class Store extends EventTarget {
     // veille de démonstration : régénérée chaque jour (dates relatives à aujourd'hui)
     const jour = new Date().toISOString().slice(0, 10);
     if ((await this.meta('demoVeille')) !== jour) {
-      const { genererVeilleDemo } = await import('./veille-demo.js');
-      const v = genererVeilleDemo(this);
+      const vd = await import('./veille-demo.js');
+      const v = DALLAGE ? vd.genererVeilleDemoDallage(this) : vd.genererVeilleDemo(this);
       for (const t of ['appels_offres', 'actualites']) {
         const tx = this.db.transaction(t, 'readwrite'); tx.objectStore(t).clear(); await fin(tx);
         this.data[t] = new Map();
@@ -282,7 +288,7 @@ class Store extends EventTarget {
       this.emit('sync', { enCours: true });
       try {
         await this.pousser();
-        await this.tirer(Object.keys(TABLES).filter(t => !OPTIONNELLES.includes(t)));
+        await this.tirer(Object.keys(TABLES).filter(t => !OPTIONNELLES.includes(t) && !(DALLAGE && FIXES_DALLAGE.has(t))));
         for (const t of OPTIONNELLES) {
           try { await this.tirer([t]); } catch (e) { console.warn(`Table « ${t} » indisponible (relancer supabase/schema.sql)`, e.message); }
         }
@@ -317,7 +323,7 @@ class Store extends EventTarget {
       for (const it of parTable[t].values()) {
         const maj = { updated_by: it.row.updated_by || null };
         for (const c of TABLES[t].colonnes) maj[c] = it.row[c] ?? null;
-        const { error } = await this.sb.from(t).update(maj).eq('id', it.row.id);
+        const { error } = await this.sb.from(distant(t)).update(maj).eq('id', it.row.id);
         if (error) {
           if (/fetch|network/i.test(error.message)) throw error;
           erreurs.push({ table: t, id: it.row.id, message: error.message });
@@ -330,14 +336,14 @@ class Store extends EventTarget {
       for (let i = 0; i < lots.length; i += 200) {
         const part = lots.slice(i, i + 200);
         const rows = part.map(it => { const r = { ...it.row }; delete r.updated_at; for (const c of Object.keys(r)) if (c.startsWith('_')) delete r[c]; return r; });
-        const { error } = await this.sb.from(t).upsert(rows, { onConflict: TABLES[t].key, defaultToNull: false });
+        const { error } = await this.sb.from(distant(t)).upsert(rows, { onConflict: TABLES[t].key, defaultToNull: false });
         if (error) {
           if (/fetch|network/i.test(error.message)) throw error;
           erreurs.push({ table: t, message: error.message });
           // on retente ligne par ligne pour isoler la ligne fautive
           for (const it of part) {
             const r = { ...it.row }; delete r.updated_at;
-            const { error: e2 } = await this.sb.from(t).upsert(r, { onConflict: TABLES[t].key, defaultToNull: false });
+            const { error: e2 } = await this.sb.from(distant(t)).upsert(r, { onConflict: TABLES[t].key, defaultToNull: false });
             if (!e2) faits.push(it);
             else erreurs.push({ table: t, id: r[TABLES[t].key], message: e2.message });
           }
@@ -362,7 +368,7 @@ class Store extends EventTarget {
       let from = 0, max = curseurs[t] || null, total = 0;
       const recu = [];
       for (; ;) {
-        let q = this.sb.from(t).select('*');
+        let q = this.sb.from(distant(t)).select('*');
         if (!c.complet) { if (curseurs[t]) q = q.gt('updated_at', curseurs[t]); q = q.order('updated_at').order(c.key); }
         const { data, error } = await q.range(from, from + 999);
         if (error) throw error;

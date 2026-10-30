@@ -78,3 +78,37 @@ export function genererVeilleDemo(store) {
   ajouter('Article ancien de plus de 30 jours (filtre de période)', 'autre', 45, { departements: ['59'] });
   return { appels_offres, actualites: items };
 }
+
+// ------------------------------------------------------------------ pôle Dallage (Nouvelle-Aquitaine)
+const AO_DALLAGE = [
+  ['Construction d’une plateforme logistique de 18 000 m² — lot gros œuvre / dallage', 'Port de Bordeaux (démo)', ['33'], 16, ['Dallage', 'Plateforme logistique'], 95],
+  ['Construction d’un bâtiment d’activités — lot dallage béton fibré', 'Communauté d’agglomération du Pays Basque (démo)', ['64'], 9, ['Dallage', 'Bâtiment d’activités'], 90],
+  ['Extension de l’atelier de maintenance des bus — gros œuvre', 'Bordeaux Métropole (démo)', ['33'], 22, ['Gros œuvre', 'Extension'], 70],
+  ['Construction d’un hôtel d’entreprises (3 cellules) — macro-lot clos couvert', 'Grand Poitiers (démo)', ['86'], 12, ['Bâtiment d’activités'], 66],
+  ['Réalisation d’un entrepôt frigorifique — conception-réalisation', 'Syndicat mixte du MIN de Brive (démo)', ['19'], 30, ['Entrepôt', 'Conception-réalisation'], 84],
+  ['Construction d’un centre technique municipal — lot dallage / sols industriels', 'Ville de Niort (démo)', ['79'], 6, ['Dallage', 'Sol industriel'], 88],
+  ['Aménagement d’une zone d’activités — VRD et plateformes', 'Communauté de communes du Seignanx (démo)', ['40'], 19, ['Plateforme', 'VRD'], 55],
+  ['Construction d’un hangar de stockage — dallage industriel 4 500 m²', 'Département de la Charente-Maritime (démo)', ['17'], 3, ['Dallage', 'Hangar'], 92],
+];
+export function genererVeilleDemoDallage(store) {
+  const appels_offres = AO_DALLAGE.map(([titre, acheteur, departements, j, mots, pertinence], i) => ({
+    id: 'demo-dal-ao:' + (i + 1), source: 'boamp', titre, acheteur, description: mots.join(', '), departements, lieu: departements.join(', '), type_marche: 'TRAVAUX', procedure: 'Procédure adaptée',
+    date_publication: jour(-5 - i), date_limite: dans(j, 12), url: 'https://www.boamp.fr/', mots_cles: mots, categorie: mots[0], pertinence, suivi: 'nouveau', responsable: null, note: null,
+    maj: dans(0, 6), created_at: dans(-1, 6), updated_at: dans(0, 6), updated_by: null,
+  }));
+  const groupes = [...store.data.groupes.values()];
+  const items = [];
+  const ajouter = (titre, categorie, j, o = {}) => items.push({ id: 'demo-dal-actu:' + (items.length + 1), titre, url: 'https://news.google.com/', media: o.media || 'Sud Ouest (démo)', date_publication: dans(-j, 9),
+    categorie, resume: null, departements: o.departements || [], groupes: o.groupes || [], sites: [], requete: 'démo', pertinence: 60, source: 'presse', masque: false, maj: dans(0, 6), created_at: dans(-Math.min(j, 3), 6), updated_at: dans(0, 6), updated_by: null });
+  ajouter('Permis de construire accordé pour une plateforme logistique de 42 000 m² à Saint-Jean-d’Illac', 'permis', 2, { departements: ['33'] });
+  ajouter('Un industriel de l’aéronautique va agrandir son usine de Mérignac de 8 000 m²', 'travaux', 4, { departements: ['33'] });
+  ajouter('Landes : un nouveau parc d’activités de 30 hectares à Saint-Geours-de-Maremne', 'ouverture', 6, { departements: ['40'] });
+  ajouter('Poitiers : le permis de construire du futur entrepôt e-commerce déposé', 'permis', 8, { departements: ['86'] });
+  ajouter('Un promoteur logistique rachète un portefeuille d’entrepôts en Charente', 'rachat', 10, { departements: ['16'] });
+  ajouter('La Rochelle : une entreprise de négoce déménage dans un bâtiment neuf de 6 000 m²', 'demenagement', 12, { departements: ['17'], media: 'Sud Ouest (démo)' });
+  ajouter('Pau : lancement des travaux d’une usine de 12 000 m²', 'travaux', 15, { departements: ['64'] });
+  ajouter('Incendie d’un entrepôt à Agen : le site sera reconstruit', 'incendie', 20, { departements: ['47'] });
+  if (groupes[0]) ajouter(`${groupes[0].nom} lance trois nouveaux programmes logistiques`, 'ouverture', 5, { groupes: [groupes[0].id] });
+  ajouter('Immobilier logistique : les mises en chantier repartent en Nouvelle-Aquitaine', 'resultats', 7, { media: 'Business Immo (démo)' });
+  return { appels_offres, actualites: items };
+}

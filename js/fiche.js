@@ -9,6 +9,7 @@ import { marquerSelection, centrerSur, choisirPosition } from './carte.js';
 import { agencesProches, lienItineraire, lienInfos, fmtKm } from './loueurs.js';
 import { syntheseGroupe } from './strategie.js';
 import { actusDuSite, CATEGORIES_ACTU } from './actualites.js';
+import { DALLAGE, ETAPES_PROJET, POSTES_LINKEDIN, lienLinkedIn } from './pole.js';
 import { strategiesDuSite, strategiesActives, OBJECTIFS, marquer, peutModifier } from './strategies-core.js';
 
 export const NIVEAUX_DECISION = { local: 'local', regional: 'régional', national: 'national' };
@@ -88,7 +89,7 @@ function rendre() {
         <span class="badge"><span class="rond" style="background:${cat.couleur}"></span>${esc(cat.libelle)}</span>
         <span class="badge prio-${i.prio}" title="Score de potentiel : surface, ancienneté, activité">Priorité ${i.prio} · ${i.score}/100</span>
         <span class="badge"><span class="rond" style="background:${st.couleur}"></span>${esc(st.libelle)}</span>
-        <span class="badge ${dec.classe}">${esc(dec.court || dec.libelle)}</span>
+        ${DALLAGE ? '' : `<span class="badge ${dec.classe}">${esc(dec.court || dec.libelle)}</span>`}
         ${etatEtab(s) === 'ferme' ? `<span class="badge alerte" title="Établissement fermé d'après la base SIRENE">⛔ Établissement fermé${s.date_fermeture ? ' le ' + fmtDate(s.date_fermeture) : ''}</span>` : etatEtab(s) === 'actif' ? '<span class="badge ok" title="Établissement actif d’après la base SIRENE">✅ Actif</span>' : ''}
         ${(() => { const g = s.groupe_id && store.get('groupes', s.groupe_id); return g?.reference ? `<span class="badge ok" title="BIG est référencé chez ${esc(g.nom)}">✓ Référencé ${esc(g.nom)}</span>` : ''; })()}
       </div>
@@ -146,6 +147,7 @@ function rendreFiche(corps, s) {
       ${o.possible ? '🔎 Entreprise trouvée à cette adresse' : '🔁 Nouvel occupant probable'} : <b>${esc(o.nom)}</b>
       <small>${o.siret ? 'SIRET ' + esc(o.siret) + ' · ' : ''}${o.distance_m != null ? 'à ' + o.distance_m + ' m · ' : ''}base SIRENE${o.le ? ', ' + fmtDate(o.le) : ''}</small>
       <div class="occupant-actions"><button class="btn btn-petit" id="fi-occupant">Renommer le site « ${esc(o.nom)} »</button>${o.siret ? ` <a class="btn btn-petit" target="_blank" rel="noopener" href="https://annuaire-entreprises.data.gouv.fr/etablissement/${esc(o.siret)}">🏢 Annuaire</a>` : ''}</div></div>`; })() : ''}
+    ${DALLAGE ? blocDallage(s) : ''}
     ${blocStrategies(s)}
     <details class="infos-repliables" ${infosOuvertes() ? 'open' : ''}>
     <summary>Informations du site <small>(adresse, activité, décennale, SIRET, groupe, source…)</small></summary>
@@ -335,6 +337,23 @@ function blocContacts(s) {
 }
 
 // Agences de location de matériel les plus proches du site (préparation de chantier)
+// Pôle Dallage : détail du permis de construire + recherches LinkedIn des bons interlocuteurs
+const TRANCHES = { '01': '1-2 salariés', '02': '3-5', '03': '6-9', '11': '10-19', '12': '20-49', '21': '50-99', '22': '100-199', '31': '200-249', '32': '250-499', '41': '500-999', '42': '1 000-1 999', '51': '2 000-4 999', '52': '5 000-9 999', '53': '10 000 et +' };
+const DESTINATIONS = { entrepot: 'Entrepôt', industrie: 'Industrie', artisanat: 'Artisanat', commerce: 'Commerce', bureaux: 'Bureaux', agricole: 'Agricole', service_public: 'Service public' };
+function blocDallage(s) {
+  const od = s.infos_od || {}, pm = od.permis, cat = infos(s).cat;
+  const entreprise = cat === 'PROJET' ? (pm?.demandeur || s.proprietaire || '') : (s.enseigne || s.nom).replace(/\s*\(démo\)|\s+—.*$/g, '');
+  const postes = POSTES_LINKEDIN[cat] || POSTES_LINKEDIN.AUTRE;
+  return `${pm ? `<div class="dal-projet"><h4>📝 Permis de construire${pm.num ? ' ' + esc(pm.num) : ''}</h4><dl>
+      <dt>Étape</dt><dd><b>${esc(ETAPES_PROJET[pm.etape] || pm.etape || '—')}</b>${pm.date ? ` · autorisé le ${fmtDate(pm.date)}` : ''}${pm.date_chantier ? ` · chantier ouvert le ${fmtDate(pm.date_chantier)}` : ''}</dd>
+      ${pm.nature ? `<dt>Nature</dt><dd>${esc(pm.nature)}</dd>` : ''}
+      ${pm.surfaces ? `<dt>Surfaces créées</dt><dd>${Object.entries(pm.surfaces).filter(([, v]) => v).map(([k, v]) => `${esc(DESTINATIONS[k] || k)} ${fmtM2(v)}`).join(' · ')}</dd>` : ''}
+      ${pm.terrain_m2 ? `<dt>Terrain</dt><dd>${fmtM2(pm.terrain_m2)}</dd>` : ''}
+      <dt>Maître d’ouvrage</dt><dd>${esc(pm.demandeur || s.proprietaire || 'non communiqué (particulier)')}${pm.siren_demandeur ? ` · <a target="_blank" rel="noopener" href="https://annuaire-entreprises.data.gouv.fr/entreprise/${esc(pm.siren_demandeur)}">SIREN ${esc(pm.siren_demandeur)}</a>` : ''}</dd>
+    </dl></div>` : od.effectif || od.dirigeants?.length || od.nb_projets ? `<p class="vide" style="font-size:12.5px">${od.raison_sociale ? esc(od.raison_sociale) + ' · ' : ''}${od.effectif ? 'effectif : ' + esc(TRANCHES[od.effectif] || od.effectif) : ''}${od.dirigeants?.length ? '<br>Dirigeants : ' + od.dirigeants.map(esc).join(' · ') : ''}${od.nb_projets ? `<br><b>${od.nb_projets} permis de construire</b> déposé(s) récemment en Nouvelle-Aquitaine` : ''}</p>` : ''}
+    ${entreprise ? `<div class="liens-linkedin" title="Recherche ouverte dans LinkedIn avec votre propre compte">in LinkedIn : ${postes.map(p => `<a target="_blank" rel="noopener" href="${lienLinkedIn(p, entreprise)}">${esc(p)}</a>`).join('')}</div>` : ''}`;
+}
+
 // Missions en cours sur ce site : objectif, attribution, avancement (automatique ou coché à la main)
 function blocStrategies(s) {
   const l = strategiesDuSite(s.id), moi = store.profil.email;

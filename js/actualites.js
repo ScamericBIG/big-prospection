@@ -2,10 +2,22 @@
 import { store } from './store.js';
 import { etat, ecouter, emettre } from './etat.js';
 import { esc } from './metier.js';
+import { DALLAGE } from './pole.js';
 import { $, $$, debounce, toast } from './ui.js';
 import { secteursDeDepts, secteursDesGroupes, repondants, prenomNom, SECTIONS_ORDRE, ilYa, libDept, correspond, lienSur } from './veille-commun.js';
 
-export const CATEGORIES_ACTU = {
+export const CATEGORIES_ACTU = DALLAGE ? {
+  permis:       { libelle: 'Permis de construire',   ico: '📝', classe: 'travaux' },
+  travaux:      { libelle: 'Construction / extension', ico: '🏗️', classe: 'travaux' },
+  ouverture:    { libelle: 'Projet / implantation',  ico: '📍', classe: 'ouverture' },
+  demenagement: { libelle: 'Déménagement',           ico: '🚚', classe: 'demenagement' },
+  rachat:       { libelle: 'Rachat / fusion',        ico: '🤝', classe: 'rachat' },
+  resultats:    { libelle: 'Santé financière',       ico: '📈', classe: 'resultats' },
+  defaillance:  { libelle: 'Défaillance',            ico: '⚠️', classe: 'defaillance' },
+  incendie:     { libelle: 'Incendie (reconstruction)', ico: '🔥', classe: 'incendie' },
+  fermeture:    { libelle: 'Fermeture',              ico: '🚫', classe: 'fermeture' },
+  autre:        { libelle: 'Autre',                  ico: '📰', classe: 'autre', cache: true },
+} : {
   rachat:       { libelle: 'Rachat / fusion',        ico: '🤝', classe: 'rachat' },
   defaillance:  { libelle: 'Défaillance',            ico: '⚠️', classe: 'defaillance' },
   resultats:    { libelle: 'Santé financière',       ico: '📈', classe: 'resultats' },
@@ -96,7 +108,7 @@ function rendre() {
       </div>
     </div>
     <div class="veille-defile">
-    <p class="veille-source">Sources : presse en ligne (Google Actualités) et BODACC (procédures collectives des sites suivis), collectées chaque matin. Les liens ouvrent l’article d’origine.</p>`;
+    <p class="veille-source">${DALLAGE ? 'Pôle Dallage — projets de construction, extensions, permis de construire et implantations en Nouvelle-Aquitaine, actualités des acteurs suivis. ' : ''}Sources : presse en ligne (Google Actualités) et BODACC (procédures collectives des sites suivis), collectées chaque matin. Les liens ouvrent l’article d’origine.</p>`;
 
   for (const sec of sections) {
     const l = liste.filter(sec.test);

@@ -660,3 +660,87 @@ create policy modification on public.strategies for update to authenticated
 -- suivi site par site : tout membre (le chargé d'affaires coche ses sites)
 create policy ecriture on public.strategie_sites for insert to authenticated with check (public.est_membre());
 create policy modification on public.strategie_sites for update to authenticated using (public.est_membre()) with check (public.est_membre());
+
+-- ---------------------------------------------------------------------
+-- 12. v1.8 : pôle DALLAGE (accès réservé : directeur / admin, ou profils.acces_dallage)
+--     Tables séparées « dal_* » : la partie Maintenance n'est pas touchée.
+--     Secteur unique « nouvelle_aquitaine » (12 départements).
+-- ---------------------------------------------------------------------
+alter table public.profils add column if not exists acces_dallage boolean not null default false;
+
+create or replace function public.est_dallage() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.profils where user_id = auth.uid() and actif and (role in ('directeur','admin') or acces_dallage));
+$$;
+
+do $$ declare t text; begin
+  foreach t in array array['groupes','sites','contacts','activites','appels_offres','actualites','strategies','strategie_sites'] loop
+    execute format('create table if not exists public.%I (like public.%I including defaults including constraints including indexes)', 'dal_' || t, t);
+  end loop;
+end $$;
+-- quelques valeurs par défaut propres au dallage
+alter table public.dal_sites alter column source set default 'manuel';
+
+create or replace function public.dal_departements() returns text[]
+language sql immutable as $$
+  select array['16','17','19','23','24','33','40','47','64','79','86','87']   -- Nouvelle-Aquitaine
+$$;
+create or replace function public.dal_sites_derive() returns trigger language plpgsql as $$
+begin
+  if (new.departement is null or new.departement = '') and new.code_postal ~ '^\d{5}$' then
+    new.departement := case when left(new.code_postal,2) = '20' then (case when new.code_postal < '20200' then '2A' else '2B' end)
+                            when left(new.code_postal,2) in ('97','98') then left(new.code_postal,3) else left(new.code_postal,2) end;
+  end if;
+  new.secteur := case when new.departement = any(public.dal_departements()) then 'nouvelle_aquitaine' else null end;
+  return new;
+end $$;
+drop trigger if exists trg_dal_sites_derive on public.dal_sites;
+create trigger trg_dal_sites_derive before insert or update on public.dal_sites for each row execute function public.dal_sites_derive();
+
+do $$ declare t text; begin
+  foreach t in array array['dal_groupes','dal_sites','dal_contacts','dal_activites','dal_appels_offres','dal_actualites','dal_strategies','dal_strategie_sites'] loop
+    execute format('drop trigger if exists trg_touch on public.%I', t);
+    execute format('create trigger trg_touch before insert or update on public.%I for each row execute function public.touch_updated_at()', t);
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists lecture on public.%I', t);
+    execute format('drop policy if exists ecriture on public.%I', t);
+    execute format('drop policy if exists modification on public.%I', t);
+    execute format('drop policy if exists suppression on public.%I', t);
+    execute format('create policy lecture on public.%I for select to authenticated using (public.est_dallage())', t);
+    execute format('create policy ecriture on public.%I for insert to authenticated with check (public.est_dallage())', t);
+    execute format('create policy modification on public.%I for update to authenticated using (public.est_dallage()) with check (public.est_dallage())', t);
+  end loop;
+end $$;
+
+-- import des acteurs et projets (scripts/import-dallage.mjs) : les champs commerciaux ne sont jamais écrasés
+create or replace function public.dal_import(rows jsonb) returns integer
+language plpgsql security definer set search_path = public as $$
+declare r record; n integer := 0;
+begin
+  for r in select * from jsonb_to_recordset(rows) as x(nom text, enseigne text, proprietaire text, siren text, siret text,
+         naf text, naf_libelle text, adresse text, code_postal text, ville text, departement text, pays text,
+         lat double precision, lng double precision, categorie_auto text, surface_auto integer, annee_auto integer,
+         standard_tel text, site_web text, source text, source_id text, infos_od jsonb)
+  loop
+    insert into public.dal_sites as s (nom, enseigne, proprietaire, siren, siret, naf, naf_libelle, adresse, code_postal, ville, departement, pays,
+                                       lat, lng, categorie_auto, surface_auto, annee_auto, standard_tel, site_web, statut, source, source_id, infos_od, updated_by)
+    values (r.nom, r.enseigne, r.proprietaire, r.siren, r.siret, r.naf, r.naf_libelle, r.adresse, r.code_postal, r.ville, r.departement, coalesce(r.pays, 'FR'),
+            r.lat, r.lng, r.categorie_auto, r.surface_auto, r.annee_auto, r.standard_tel, r.site_web, 'a_qualifier', r.source, r.source_id, coalesce(r.infos_od, '{}'::jsonb), 'import-dallage')
+    on conflict (source, source_id) do update set
+      nom = case when s.updated_by in ('import-dallage') or s.nom is null then excluded.nom else s.nom end,
+      enseigne = coalesce(s.enseigne, excluded.enseigne), proprietaire = coalesce(excluded.proprietaire, s.proprietaire),
+      siren = coalesce(s.siren, excluded.siren), siret = coalesce(s.siret, excluded.siret), naf = coalesce(s.naf, excluded.naf),
+      naf_libelle = coalesce(s.naf_libelle, excluded.naf_libelle), adresse = coalesce(s.adresse, excluded.adresse),
+      code_postal = coalesce(s.code_postal, excluded.code_postal), ville = coalesce(s.ville, excluded.ville),
+      lat = coalesce(s.lat, excluded.lat), lng = coalesce(s.lng, excluded.lng),
+      categorie_auto = excluded.categorie_auto, surface_auto = coalesce(excluded.surface_auto, s.surface_auto), annee_auto = coalesce(excluded.annee_auto, s.annee_auto),
+      standard_tel = coalesce(s.standard_tel, excluded.standard_tel), site_web = coalesce(s.site_web, excluded.site_web),
+      infos_od = coalesce(s.infos_od, '{}'::jsonb) || coalesce(excluded.infos_od, '{}'::jsonb)
+    where s.infos_od is distinct from coalesce(s.infos_od, '{}'::jsonb) || coalesce(excluded.infos_od, '{}'::jsonb)
+       or s.categorie_auto is distinct from excluded.categorie_auto or s.lat is null;
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+revoke all on function public.dal_import(jsonb) from public, anon, authenticated;
+do $$ begin execute 'grant execute on function public.dal_import(jsonb) to service_role'; exception when undefined_object then null; end $$;

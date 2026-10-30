@@ -4,10 +4,12 @@ import { etat, ecouter, emettre, nomCA } from './etat.js';
 import { CATEGORIES, STATUTS, ANNEE, esc, fmtN, fmtDate, fmtM2court, aujourdhui, uuid } from './metier.js';
 import { $, $$, debounce, toast, ouvrirModale, fermerModale, confirmer } from './ui.js';
 import { geocoder } from './tournee.js';
+import { DALLAGE } from './pole.js';
 import { OBJECTIFS, MODELES, bilan, versFiltres, depuisFiltres, caActifs, peutModifier, estManager, mesStrategies, marquer } from './strategies-core.js';
 import { infos } from './etat.js';
 
 let visible = false, choixTactile = null;
+const MODELE_DEFAUT = DALLAGE ? 'projets_recents' : 'decideurs_groupe';
 const COLONNES = { brouillon: 'Brouillons', en_cours: 'En cours', terminee: 'Terminées' };
 const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
 const prenom = e => store.get('profils', e)?.prenom || e;
@@ -171,7 +173,7 @@ function detail(id) {
 function editer(st, critDepart = null, enCours = null) {
   const manager = estManager(), moi = store.profil.email;
   const nouveau = !st;
-  let s = st ? structuredClone(st) : { id: uuid(), titre: '', modele: critDepart ? 'perso' : 'decideurs_groupe', consigne: '', criteres: critDepart || { ...MODELES.decideurs_groupe.criteres }, objectif: critDepart ? 'qualifie' : 'decideur',
+  let s = st ? structuredClone(st) : { id: uuid(), titre: '', modele: critDepart ? 'perso' : MODELE_DEFAUT, consigne: '', criteres: critDepart || structuredClone(MODELES[MODELE_DEFAUT].criteres), objectif: critDepart ? 'qualifie' : MODELES[MODELE_DEFAUT].objectif,
     cible: null, echeance: null, debut: aujourdhui(), statut: 'en_cours', membres: manager ? [] : [moi], repartition: 'secteur', personnelle: !manager, cree_par: moi, supprime: false };
   if (nouveau && !critDepart && !manager) { s.modele = 'perso'; s.criteres = { secteur: store.profil.secteur }; s.objectif = 'qualifie'; }
   let titreAuto = nouveau;
@@ -217,7 +219,7 @@ function editer(st, critDepart = null, enCours = null) {
 
   const champSpecial = () => {
     const sp = c().special || {};
-    const champs = [['devisJours', 'Devis sans réponse depuis (jours)'], ['sansContactMois', 'Sans échange depuis (mois)'], ['chantierMois', 'Sans visite ni chantier depuis (mois)'], ['actualiteJours', 'Actualité de moins de (jours)']]
+    const champs = [['devisJours', 'Devis sans réponse depuis (jours)'], ['sansContactMois', 'Sans échange depuis (mois)'], ['chantierMois', 'Sans visite ni chantier depuis (mois)'], ['actualiteJours', 'Actualité de moins de (jours)'], ['permisMois', 'Permis accordé depuis moins de (mois)']]
       .filter(([k]) => sp[k] != null);
     $('#se-special', m).innerHTML = champs.map(([k, l]) => `<label style="display:inline-block;margin-right:12px">${l}<input type="number" data-sp="${k}" value="${sp[k]}" style="width:90px"></label>`).join('')
       + (sp.nouvelOccupant != null ? `<label class="case"><input type="checkbox" data-spb="nouvelOccupant" ${sp.nouvelOccupant ? 'checked' : ''}> Inclure les sites ayant un nouvel occupant</label>` : '');

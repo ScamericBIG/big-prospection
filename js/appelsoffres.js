@@ -2,6 +2,7 @@
 import { store } from './store.js';
 import { etat, ecouter } from './etat.js';
 import { esc, fmtDate, fmtDateHeure } from './metier.js';
+import { DALLAGE } from './pole.js';
 import { $, $$, debounce, toast, ouvrirModale, fermerModale } from './ui.js';
 import { secteursDeDepts, repondants, prenomNom, SECTIONS_ORDRE, echeance, libDept, correspond, lienSur } from './veille-commun.js';
 
@@ -77,7 +78,7 @@ function rendre() {
       </div>
     </div>
     <div class="veille-defile">
-    <p class="veille-source">Source : BOAMP (marchés publics français), mis à jour chaque matin${majVeille ? ` — dernière collecte ${fmtDateHeure(majVeille)}` : ''}. Seuls les avis dont la date limite n’est pas dépassée sont affichés.</p>`;
+    <p class="veille-source">${DALLAGE ? 'Pôle Dallage — construction de bâtiments d’activité, entrepôts, usines, lots gros œuvre / dallage en Nouvelle-Aquitaine. ' : ''}Source : BOAMP (marchés publics français), mis à jour chaque matin${majVeille ? ` — dernière collecte ${fmtDateHeure(majVeille)}` : ''}. Seuls les avis dont la date limite n’est pas dépassée sont affichés.</p>`;
 
   let total = 0;
   for (const sec of sections) {

@@ -141,6 +141,20 @@ Collecte automatique chaque matin (vers 6 h, heure de Paris) par `scripts/veille
 - **Filtre « 🎯 Stratégie »** en tête du panneau de filtres : « Ma stratégie » (tous mes sites en mission), mes sites d'une stratégie, ou toute une stratégie ; « À traiter seulement ». Le bouton « Site suivant ▶ » de la fiche reste dans la mission.
 - **Fiche site** : bandeau des missions en cours sur le site, et « Ajouter à une stratégie ».
 
+### Pôle Dallage (v1.8)
+
+Réservé au directeur (et aux profils dont la case `acces_dallage` est cochée dans la table `profils`). Le bouton **Maintenance | Dallage** à côté du logo bascule d'une partie à l'autre ; la partie Maintenance n'est pas modifiée.
+
+- **Données séparées** : tables `dal_*` dans Supabase (schema.sql §12) et cache local distinct sur l'appareil. Secteur unique : **Nouvelle-Aquitaine** (16, 17, 19, 23, 24, 33, 40, 47, 64, 79, 86, 87) + vue « Toute la France » pour les acteurs nationaux.
+- **Types d'acteurs** : projets (permis de construire), promoteurs / investisseurs, contractants généraux / constructeurs, majors du BTP, architectes, AMO / maîtres d'œuvre, bureaux d'études, sièges sociaux / donneurs d'ordre.
+- **Base** (`scripts/import-dallage.mjs`, chaque mois) : permis de construire de locaux d'activité (entrepôt, industrie, artisanat, agricole, commerce) ≥ 500 m² autorisés depuis 36 mois (Sitadel, data.gouv.fr), géocodés par la Base Adresse Nationale ; acteurs SIRENE (architectes ≥ 3 salariés, ingénierie ≥ 10, promoteurs, constructeurs ≥ 20, sièges industriels / logistiques ≥ 50) ; agences régionales des majors (Vinci, Eiffage, Bouygues, Spie batignolles, Fayat, NGE, Léon Grosse, Demathieu Bard…) et des contractants / promoteurs logistiques nationaux. Dirigeants, effectif et nombre de permis récents sur chaque fiche.
+- **Fiche** : détail du permis (étape, surfaces créées, terrain, maître d'ouvrage), recherches LinkedIn pré-remplies selon le type d'acteur (responsable immobilier, directeur travaux, directeur d'agence…), ouvertes avec votre propre compte.
+- **Score** : projet = surface créée + fraîcheur du permis ; acteur = rôle dans l'acte de construire + taille + permis récents.
+- **Appels d'offres** : construction de bâtiments d'activité, entrepôts, usines, lots gros œuvre / dallage en Nouvelle-Aquitaine (pas de réparation).
+- **Actualités** : permis de construire, constructions et extensions, implantations, déménagements, rachats, santé financière des acteurs suivis — localisées en Nouvelle-Aquitaine.
+- **Stratégies** : modèles « Projets récents », « Prescription architectes / AMO », « Référencement promoteurs », « Contractants et majors », « Sièges sociaux : projets d'extension »…
+- **Automatisation** : **Actions → Dallage (base et veille Nouvelle-Aquitaine) → Run workflow** (veille chaque matin, base chaque mois).
+
 ### Agences Kiloutou
 
 Le bouton **🔧 Kiloutou** (en haut à gauche de la carte) affiche les agences du secteur et une liste triée par distance (au site ouvert, sinon au centre de la carte). Chaque fiche site indique aussi les 3 agences les plus proches, avec itinéraire depuis le site.
@@ -184,11 +198,12 @@ js/fiche.js           fiche site, qualification, contacts, historique
 js/filtres.js · js/liste.js · js/groupes.js · js/perfs.js · js/tournee.js · js/importer.js
 js/rappels.js · js/strategie.js · js/segmentation.js · js/loueurs.js
 js/appelsoffres.js · js/actualites.js · js/veille-commun.js   onglets de veille (js/veille-demo.js : données fictives du mode démo)
+js/pole.js            pôle Maintenance / Dallage (tables, catégories, secteur) — js/dallage-demo.js : données fictives Dallage
 js/metier.js          secteurs, statuts, score, décennale
 js/categories.js      catégories + classement NAF / ICPE (partagé avec le script d'import)
 sw.js                 service worker (hors connexion)
 supabase/schema.sql   base de données
-scripts/              import open data, agences, veille (AO + actualités), vérification des établissements, générateur des données de démo
+scripts/              import open data, agences, veille (AO + actualités ; --pole dallage), vérification des établissements, import Dallage, générateur des données de démo
 .github/workflows/    import automatisé
 vendor/               bibliothèques (Leaflet, Supercluster, Supabase, SheetJS) embarquées pour le hors connexion
 ```

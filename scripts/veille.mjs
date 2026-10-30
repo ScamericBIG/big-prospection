@@ -20,6 +20,10 @@ const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '')
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const AVEC_SUPABASE = SUPABASE_URL && KEY && !args.includes('--sans-supabase');
 const JOURS_ACTU = 45;
+// --pole dallage : veille du pôle Dallage (construction neuve, Nouvelle-Aquitaine), tables dal_*
+const DALLAGE = args.includes('--pole') && args[args.indexOf('--pole') + 1] === 'dallage';
+const T = t => DALLAGE ? 'dal_' + t : t;
+const DEPTS_NA = ['16', '17', '19', '23', '24', '33', '40', '47', '64', '79', '86', '87'];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -77,27 +81,44 @@ function departementsDe(texte) {
 
 // ------------------------------------------------------------------ 1. appels d'offres (BOAMP)
 const BOAMP = 'https://boamp-datadila.opendatasoft.com/api/explore/v2.1/catalog/datasets/boamp/records';
-const RECHERCHES_AO = ['dallage', 'sol industriel', 'sols industriels', 'résine', 'resine', 'revêtement de sol', 'revêtements de sols', 'revetement de sol',
+let RECHERCHES_AO = ['dallage', 'sol industriel', 'sols industriels', 'résine', 'resine', 'revêtement de sol', 'revêtements de sols', 'revetement de sol',
   'ragréage', 'ragreage', 'réfection des sols', 'réfection de sol', 'reprise de sol', 'fissure', 'réparation de béton', 'réparation béton', 'réparations béton',
   'chape', 'peinture de sol', 'sol béton', 'traitement de sol', 'joints de dallage', 'entrepôt', 'plateforme logistique'];
-const POIDS = [
+let POIDS = [
   [/dallage/, 40, 'Dallage'], [/sols? industriels?/, 40, 'Sol industriel'], [/(revetements?|reprises?|refections?|renovations?) (des |de |du )?sols?/, 30, 'Revêtement / réfection de sol'],
   [/resine/, 25, 'Résine'], [/ragreage/, 25, 'Ragréage'], [/fissur/, 25, 'Fissures'], [/(reparations?|reprises?) (de |des |du )?betons?|betons? (degrade|endommage)/, 25, 'Réparation béton'],
   [/joints? (de )?(dallage|dilatation|sol)/, 25, 'Joints'], [/peinture (de |des )?sols?/, 20, 'Peinture de sol'], [/chape/, 15, 'Chape'], [/traitement (de |des )?sols?/, 15, 'Traitement de sol'],
   [/entrepots?|plate-?formes? logistiques?|logistique/, 12, 'Entrepôt / logistique'], [/(atelier|usine|industriel|hangar|quai)/, 8, 'Site industriel'],
 ];
-const EXCLUSIONS = [/sportif|gymnase|terrain de (sport|foot)|gazon|tartan|aire de jeux|piscine|cour d.ecole|chaussee|voirie|enrobe|route departementale/];
+let EXCLUSIONS = [/sportif|gymnase|terrain de (sport|foot)|gazon|tartan|aire de jeux|piscine|cour d.ecole|chaussee|voirie|enrobe|route departementale/];
+let SEUIL_AO = 25;
+if (DALLAGE) {
+  // construction neuve de bâtiments d'activité / lots gros œuvre et dallage (pas de réparation)
+  RECHERCHES_AO = ['dallage', 'gros oeuvre', 'gros œuvre', 'construction d%entrep', 'plateforme logistique', 'plate-forme logistique', 'batiment d%activit', 'bâtiment d%activit',
+    'batiment industriel', 'bâtiment industriel', 'construction d%usine', 'construction d%un atelier', 'construction d%un hangar', 'hangar', 'hôtel d%entreprises', 'pépinière d%entreprises',
+    'centre technique', 'conception-réalisation', 'conception réalisation', 'entrepôt frigorifique', 'centre de tri', 'halle', 'extension d%un bâtiment', 'zone d%activit'];
+  POIDS = [
+    [/dallage/, 40, 'Dallage'], [/gros (oe|œ)uvre/, 30, 'Gros œuvre'],
+    [/(construction|realisation|edification|creation) (d.un |d.une |de |des |du )?(nouv\w* )?(entrepots?|plate-?formes? logistiques?|batiments? (d.activites?|industriels?|logistiques?|de stockage)|usines?|hangars?|ateliers?|halles?|centres? (techniques?|de tri)|hotels? d.entreprises|pepinieres? d.entreprises)/, 45, 'Construction bâtiment d’activité'],
+    [/entrepots?|plate-?formes? logistiques?/, 20, 'Entrepôt / logistique'], [/batiments? (d.activites?|industriels?)|usines?|hangars?|ateliers?/, 15, 'Bâtiment d’activité'],
+    [/extension/, 10, 'Extension'], [/conception.realisation/, 10, 'Conception-réalisation'], [/sols? industriels?|beton/, 10, 'Béton / sol industriel'],
+    [/zones? d.activites?|parcs? d.activites?/, 8, 'Zone d’activités'], [/frigorifique/, 10, 'Frigorifique'],
+  ];
+  EXCLUSIONS = [/logements?|ecole|college|lycee|creche|gymnase|salle (de sport|polyvalente|des fetes)|ehpad|piscine|voirie|chaussee|enrobe|assainissement|eau potable|eclairage public|espaces verts|mediatheque|reparation|refection|entretien|maintenance|renovation energetique|desamiantage/];
+  SEUIL_AO = 30;
+}
 function evaluerAO(texte) {
   const t = sansAccent(texte); let score = 0; const mots = [];
   for (const [re, p, lib] of POIDS) if (re.test(t)) { score += p; mots.push(lib); }
-  if (EXCLUSIONS.some(re => re.test(t)) && !/dallage|sols? industriels?/.test(t)) score -= 40;
+  if (EXCLUSIONS.some(re => re.test(t)) && !(DALLAGE ? /dallage|construction d.(un |une )?(entrepot|usine|batiment d.activit)/ : /dallage|sols? industriels?/).test(t)) score -= 40;
   return { score, mots };
 }
 async function appelsOffres() {
   const res = new Map();
   for (const mot of RECHERCHES_AO) {
     for (let offset = 0; offset < 300; offset += 100) {
-      const where = `(objet LIKE '%${mot}%' OR descripteur_libelle LIKE '%${mot}%') AND datelimitereponse >= date'${aujourdhui}'`;
+      const where = `(objet LIKE '%${mot}%' OR descripteur_libelle LIKE '%${mot}%') AND datelimitereponse >= date'${aujourdhui}'`
+        + (DALLAGE ? ` AND (${DEPTS_NA.map(d => `code_departement="${d}"`).join(' OR ')})` : '');
       let j;
       try { j = await obtenir(`${BOAMP}?where=${encodeURIComponent(where)}&order_by=${encodeURIComponent('datelimitereponse ASC')}&limit=100&offset=${offset}`); }
       catch (e) { log(`  ! BOAMP « ${mot} »`, e.message); break; }
@@ -106,7 +127,7 @@ async function appelsOffres() {
         if (!r.idweb || res.has(r.idweb)) continue;
         const desc = [].concat(r.descripteur_libelle || []).join(', ');
         const { score, mots } = evaluerAO(`${r.objet || ''} ${desc}`);
-        if (score < 25) continue;
+        if (score < SEUIL_AO) continue;
         const deps = [].concat(r.code_departement || []).map(String).filter(Boolean);
         res.set(r.idweb, {
           id: 'boamp:' + r.idweb, source: 'boamp', titre: (r.objet || '').slice(0, 500) || 'Avis ' + r.idweb, acheteur: r.nomacheteur || null,
@@ -129,7 +150,7 @@ async function appelsOffres() {
 // <classement>
 // Thèmes recherchés : bâtiments (construction, rénovation, extension), déménagements, rachats / fusions,
 // santé financière, fermetures, incendies. Tout le reste (produits, marketing, sport, magasins…) est écarté.
-const THEMES = [
+let THEMES = [
   'incendie entrepôt', 'incendie plateforme logistique', 'incendie usine', 'incendie site industriel',
   'liquidation judiciaire logistique', 'redressement judiciaire transporteur', 'redressement judiciaire usine', 'liquidation judiciaire usine', 'procédure de sauvegarde industriel',
   'fermeture usine', 'fermeture entrepôt', 'fermeture site logistique', 'plan social usine',
@@ -142,7 +163,7 @@ const THEMES = [
   'entrepôt Belgique incendie', 'nouvel entrepôt Belgique', 'rachat logistique Belgique',
 ];
 const BATI = /entrepots?|plate-?formes?|logisti|usines?|sites? (industriel|logistique|de production)|ateliers?|hangars?|batiments?|zones? (d.activites?|industrielle|logistique)|parcs? (d.activites?|logistique)|centres? (de distribution|logistique)|data ?centers?|\bhub\b|messagerie|frigorifique|industriel|siege|locaux|surface|m2|m²/;
-const CATEGORIES_ACTU = [
+let CATEGORIES_ACTU = [
   ['incendie',     /incendie|\bfeu\b(?! vert)|ravage|brule|flammes|sinistre|fumee|pompiers|explosion/, true],
   ['defaillance',  /liquidation|redressement judiciaire|procedure de sauvegarde|plan de sauvegarde|placee? en sauvegarde|faillite|cessation de paiements?|tribunal de commerce|procedure collective|depot de bilan|difficultes financieres|en difficulte|conciliation|mandat ad hoc|surendett/, false],
   ['fermeture',    /fermeture|ferme (ses portes|son site|son usine|son entrepot|l.usine|l.entrepot|le site)|plan social|\bpse\b|licenciements?|suppressions? (de|d.)? ?postes|delocalis|cessation d.activite|arret de (la )?production/, false],
@@ -153,8 +174,18 @@ const CATEGORIES_ACTU = [
   ['resultats',    /chiffre d.affaires|\bca\b (en|de)|resultats?\b|benefices?|pertes?\b|deficit|croissance|levee de fonds|leve \d|rentabilite|ebitda|\bmarges?\b|endette|dettes?\b|notation|avertissement|tresorerie|recapitalis|augmentation de capital/, false],
 ];
 // sujets hors cible, même si un mot-clé apparaît (produits, commerce de détail, sport, people, emploi…)
-const HORS_SUJET = /nouveaux? produits?|nouvelle (gamme|collection)|\bcollection\b|\bgamme\b|soldes|promo|black friday|bon plan|code promo|\btest\b|\bavis\b|velo|trottinette|chaussure|sneaker|maillot|vetement|textile|jouet|recette|sponsor|\bmatch\b|ligue|championnat|footbal|rugby|marathon|course a pied|influenceu|publicite|campagne (publicitaire|de pub)|offre d.emploi|recrute|recrutement|salon de |rachat de credits?|rachat de trimestres|assurance.vie|appartement|maison individuelle|logement|immobilier residentiel|magasin|boutique|supermarche|hypermarche|galerie commerciale|\bmeteo\b|faits divers/;
+let HORS_SUJET = /nouveaux? produits?|nouvelle (gamme|collection)|\bcollection\b|\bgamme\b|soldes|promo|black friday|bon plan|code promo|\btest\b|\bavis\b|velo|trottinette|chaussure|sneaker|maillot|vetement|textile|jouet|recette|sponsor|\bmatch\b|ligue|championnat|footbal|rugby|marathon|course a pied|influenceu|publicite|campagne (publicitaire|de pub)|offre d.emploi|recrute|recrutement|salon de |rachat de credits?|rachat de trimestres|assurance.vie|appartement|maison individuelle|logement|immobilier residentiel|magasin|boutique|supermarche|hypermarche|galerie commerciale|\bmeteo\b|faits divers/;
 const HORS_SUJET_SAUF = /entrepot|plate-?forme logistique|usine|site logistique|siege|centre de distribution/;
+if (DALLAGE) {
+  THEMES = ['permis de construire entrepôt Gironde', 'permis de construire usine Nouvelle-Aquitaine', 'permis de construire plateforme logistique Nouvelle-Aquitaine',
+    'plateforme logistique Bordeaux', 'entrepôt logistique Gironde', 'construction usine Nouvelle-Aquitaine', 'extension usine Gironde', 'extension usine Landes',
+    'extension usine Vienne', 'extension usine Charente', 'zone d’activités Nouvelle-Aquitaine projet', 'implantation entreprise Bordeaux Métropole', 'implantation usine Poitiers',
+    'entrepôt Pau construction', 'nouvelle plateforme logistique Charente-Maritime', 'parc logistique Nouvelle-Aquitaine', 'bâtiment d’activités construction Landes',
+    'promoteur logistique Bordeaux', 'investissement industriel Nouvelle-Aquitaine', 'usine Limoges projet', 'entrepôt La Rochelle construction', 'Agen plateforme logistique',
+    'Niort entrepôt construction', 'Bayonne zone d’activités entreprise', 'Dordogne usine extension', 'Corrèze usine investissement', 'Deux-Sèvres usine extension', 'Haute-Vienne entrepôt projet'];
+  HORS_SUJET = new RegExp(HORS_SUJET.source.replace('|promo|', '|\\bpromo\\b|'));   // « promotion immobilière » ne doit pas être écarté
+  CATEGORIES_ACTU = [['permis', /permis de construire|depot (du|d.un|de son) permis|permis (accorde|delivre|depose)/, true], ...CATEGORIES_ACTU];
+}
 function categoriser(texte) {
   const s = sansAccent(texte);
   if (HORS_SUJET.test(s) && !HORS_SUJET_SAUF.test(s)) return null;
@@ -226,8 +257,11 @@ async function ecrire(table, lignes) {
 let groupes = [], suivis = [];
 if (AVEC_SUPABASE) {
   try {
-    groupes = (await lireTable('groupes', 'id,nom,reference', '&supprime=eq.false'));
-    suivis = await lireTable('sites', 'id,nom,enseigne,siret,siren,groupe_id,statut', '&supprime=eq.false&statut=in.(client,en_contact,rdv,devis)');
+    groupes = (await lireTable(T('groupes'), 'id,nom,reference', '&supprime=eq.false'));
+    suivis = await lireTable(T('sites'), 'id,nom,enseigne,siret,siren,groupe_id,statut' + (DALLAGE ? ',categorie_auto,categorie' : ''), '&supprime=eq.false&statut=in.(client,en_contact,rdv,devis)');
+    // Dallage : les promoteurs, contractants, majors et sièges suivis sont aussi recherchés dans la presse
+    if (DALLAGE) for (const s of suivis.filter(x => ['PROMOTEUR', 'CONTRACTANT', 'MAJOR', 'SIEGE'].includes(x.categorie || x.categorie_auto)).slice(0, 80))
+      groupes.push({ id: null, site: s.id, nom: (s.enseigne || s.nom).replace(/\s+—.*$/, ''), reference: s.statut === 'client' });
     log(`Base : ${groupes.length} groupes, ${suivis.length} sites suivis (client / en contact / RDV / devis)`);
   } catch (e) { log('! lecture de la base', e.message); }
 }
@@ -250,7 +284,10 @@ const ajouter = (it, extra) => {
     groupes: extra.groupes || [], sites: extra.sites || [], requete: extra.requete, source: it.source || 'presse', pertinence: extra.pertinence || 50, maj: new Date().toISOString() });
 };
 for (const q of THEMES) {
-  try { for (const it of await googleActus(q, /belgique/i.test(q) ? 'BE' : 'FR')) ajouter(it, { requete: q, pertinence: 50 }); }
+  try { for (const it of await googleActus(q, /belgique/i.test(q) ? 'BE' : 'FR')) {
+    if (DALLAGE && !departementsDe(it.titre + ' ' + (it.resume || '')).some(d => DEPTS_NA.includes(d))) { horsSujet++; continue; }   // hors Nouvelle-Aquitaine
+    ajouter(it, { requete: q, pertinence: 50 });
+  } }
   catch (e) { log(`  ! « ${q} »`, e.message); }
   await sleep(1200);
 }
@@ -261,7 +298,7 @@ for (const g of groupes) {
   try {
     for (const it of await googleActus(`"${nom}" (entrepôt OR usine OR site OR plateforme OR rachat OR rachète OR acquisition OR fusion OR cession OR reprise OR déménagement OR construction OR extension OR travaux OR fermeture OR liquidation OR redressement OR sauvegarde OR résultats OR "chiffre d'affaires" OR incendie)`)) {
       if (!sansAccent(it.titre + ' ' + (it.resume || '')).includes(sansAccent(nom))) continue;
-      ajouter(it, { groupes: [g.id], requete: 'groupe ' + nom, pertinence: g.reference ? 90 : 75 });
+      ajouter(it, { groupes: g.id ? [g.id] : [], sites: g.site ? [g.site] : [], requete: 'groupe ' + nom, pertinence: g.reference ? 90 : 75 });
     }
   } catch (e) { log(`  ! groupe ${nom}`, e.message); }
   await sleep(1200);
@@ -282,14 +319,14 @@ log(`  ${listeActus.length} actualités retenues (${JOURS_ACTU} derniers jours) 
 if (OUT) { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(`${OUT}/appels_offres.json`, JSON.stringify(aos, null, 1)); fs.writeFileSync(`${OUT}/actualites.json`, JSON.stringify(listeActus, null, 1)); }
 if (AVEC_SUPABASE) {
   let echec = false;
-  for (const [t, l] of [['appels_offres', aos], ['actualites', listeActus]]) {
+  for (const [t, l] of [[T('appels_offres'), aos], [T('actualites'), listeActus]]) {
     try { await ecrire(t, l); log(`  ${t} : ${l.length} lignes enregistrées`); }
     catch (e) { echec = true; log(`! écriture ${t}`, e.message); }
   }
   if (echec) { log('✗ Échec d’écriture dans Supabase (voir ci-dessus)'); process.exit(1); }
   // reclassement des actualités déjà en base avec les règles actuelles : les hors-sujet sont masquées
   try {
-    const existantes = await lireTable('actualites', 'id,titre,resume,categorie', '&source=eq.presse&masque=eq.false');
+    const existantes = await lireTable(T('actualites'), 'id,titre,resume,categorie', '&source=eq.presse&masque=eq.false');
     const masquer = [], parCat = new Map();
     for (const a of existantes) {
       const c = categoriser(a.titre + ' ' + (a.resume || ''));
@@ -298,7 +335,7 @@ if (AVEC_SUPABASE) {
     }
     const patch = async (ids, corps) => {
       for (let i = 0; i < ids.length; i += 80)
-        await obtenir(`${SUPABASE_URL}/rest/v1/actualites?id=in.(${ids.slice(i, i + 80).map(encodeURIComponent).join(',')})`, { method: 'PATCH', body: JSON.stringify(corps), headers: { ...hSupa, prefer: 'return=minimal' } });
+        await obtenir(`${SUPABASE_URL}/rest/v1/${T('actualites')}?id=in.(${ids.slice(i, i + 80).map(encodeURIComponent).join(',')})`, { method: 'PATCH', body: JSON.stringify(corps), headers: { ...hSupa, prefer: 'return=minimal' } });
     };
     await patch(masquer, { masque: true, updated_by: 'veille (hors thèmes)' });
     for (const [c, ids] of parCat) await patch(ids, { categorie: c });
@@ -306,7 +343,7 @@ if (AVEC_SUPABASE) {
   } catch (e) { log('! reclassement', e.message); }
   // ménage : appels d'offres clos depuis plus de 30 jours, actualités de plus de 90 jours
   const ao30 = new Date(Date.now() - 30 * 864e5).toISOString(), ac90 = new Date(Date.now() - 90 * 864e5).toISOString();
-  await obtenir(`${SUPABASE_URL}/rest/v1/appels_offres?date_limite=lt.${encodeURIComponent(ao30)}&suivi=in.(nouveau,sans_suite)`, { method: 'DELETE', headers: hSupa }).catch(e => log('! ménage AO', e.message));
-  await obtenir(`${SUPABASE_URL}/rest/v1/actualites?date_publication=lt.${encodeURIComponent(ac90)}`, { method: 'DELETE', headers: hSupa }).catch(e => log('! ménage actus', e.message));
+  await obtenir(`${SUPABASE_URL}/rest/v1/${T('appels_offres')}?date_limite=lt.${encodeURIComponent(ao30)}&suivi=in.(nouveau,sans_suite)`, { method: 'DELETE', headers: hSupa }).catch(e => log('! ménage AO', e.message));
+  await obtenir(`${SUPABASE_URL}/rest/v1/${T('actualites')}?date_publication=lt.${encodeURIComponent(ac90)}`, { method: 'DELETE', headers: hSupa }).catch(e => log('! ménage actus', e.message));
   log('→ Supabase à jour');
 }

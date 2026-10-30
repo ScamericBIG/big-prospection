@@ -18,6 +18,9 @@ import { initSegmentation } from './segmentation.js';
 import { initAppelsOffres } from './appelsoffres.js';
 import { initActualites } from './actualites.js';
 import { initStrategies } from './strategies.js';
+import { DALLAGE, aAccesDallage, changerPole } from './pole.js';
+const CLE_SECTEUR = DALLAGE ? 'big_secteur_dal_' : 'big_secteur_';
+if (DALLAGE) document.body.classList.add('pole-dallage');
 
 // ------------------------------------------------------------------ service worker (hors connexion)
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
@@ -70,7 +73,7 @@ $('#form-connexion').onsubmit = async e => {
   try {
     const s = await store.connexion(email, mdp);
     localStorage.setItem('big_dernier_email', email);
-    localStorage.removeItem('big_secteur_' + email);   // à la connexion : on affiche son propre secteur
+    localStorage.removeItem(CLE_SECTEUR + email);   // à la connexion : on affiche son propre secteur
     await entrer(s.email);
     $('#cx-mdp').value = '';
   } catch (err) {
@@ -90,10 +93,12 @@ let initialise = false;
 async function entrer(email) {
   chargement('Chargement de vos données…');
   const profil = await store.demarrerSession(email);
+  if (DALLAGE && !aAccesDallage(profil)) { changerPole('maintenance'); return; }   // pôle Dallage réservé
   $('#ecran-connexion').hidden = true;
   $('#appli').hidden = false;
-  etat.secteur = localStorage.getItem('big_secteur_' + profil.email) || profil.secteur;
-  if (!store.get('secteurs', etat.secteur)) etat.secteur = profil.secteur;
+  const secteurDefaut = DALLAGE ? 'nouvelle_aquitaine' : profil.secteur;
+  etat.secteur = localStorage.getItem(CLE_SECTEUR + profil.email) || secteurDefaut;
+  if (!store.get('secteurs', etat.secteur)) etat.secteur = secteurDefaut;
   if (!initialise) {
     initialise = true;
     initFiltres(); initCarte(); initLoueurs(); initSegmentation(); initFiche(); initRappels(); initStrategies(); initAppelsOffres(); initActualites(); initListe(); initGroupes(); initPerfs(); initTournee();
@@ -119,6 +124,7 @@ async function entrer(email) {
 }
 
 function bienvenue(p) {
+  if (DALLAGE) return toast(`Pôle Dallage — ${fmtN(sitesDuSecteur('nouvelle_aquitaine').length)} acteurs et projets en Nouvelle-Aquitaine`);
   const sites = sitesDuSecteur(p.secteur === 'national' ? 'national' : p.secteur);
   const retard = sites.filter(s => rappelEnRetard(s) && (!s.assigne_a || s.assigne_a === p.email)).length;
   toast(`Bonjour ${p.prenom} — ${fmtN(sites.length)} sites dans votre secteur${retard ? `, ${retard} rappel(s) en retard` : ''}`);
@@ -128,30 +134,37 @@ function rendreEntete() {
   const p = store.profil;
   $('#btn-utilisateur').textContent = (p.prenom[0] + p.nom[0]).toUpperCase();
   const sp = store.get('secteurs', p.secteur);
-  $('#menu-identite').innerHTML = `<b>${esc(p.prenom)} ${esc(p.nom)}</b>${esc(p.email)}<br>${p.role === 'directeur' ? 'Directeur national' : 'Chargé d’affaires'} — secteur ${esc(sp?.libelle || p.secteur)}${MODE_DEMO ? '<br><b style="color:var(--orange)">Mode démo (données fictives)</b>' : ''}`;
+  $('#menu-identite').innerHTML = `<b>${esc(p.prenom)} ${esc(p.nom)}</b>${esc(p.email)}<br>${p.role === 'directeur' ? 'Directeur national' : 'Chargé d’affaires'} — ${DALLAGE ? 'pôle Dallage' : 'secteur ' + esc(sp?.libelle || p.secteur)}${MODE_DEMO ? '<br><b style="color:var(--orange)">Mode démo (données fictives)</b>' : ''}`;
+  // bascule Maintenance / Dallage (directeur et profils autorisés uniquement)
+  const pc = $('#pole-choix');
+  pc.hidden = !aAccesDallage(p);
+  pc.innerHTML = `<button class="${DALLAGE ? '' : 'actif'}" data-pole="maintenance" title="Partie Maintenance (réparation des sols)">Maintenance</button><button class="${DALLAGE ? 'actif' : ''}" data-pole="dallage" title="Partie Dallage (construction neuve)">Dallage</button>`;
+  pc.onclick = e => { const b = e.target.closest('[data-pole]'); if (b && b.dataset.pole !== (DALLAGE ? 'dallage' : 'maintenance')) { chargement(b.dataset.pole === 'dallage' ? 'Ouverture du pôle Dallage…' : 'Retour à la Maintenance…'); changerPole(b.dataset.pole); } };
 }
 
 function rendreSecteur() {
   const secteurs = store.liste('secteurs').sort((a, b) => a.ordre - b.ordre);
   const s = store.get('secteurs', etat.secteur);
-  const resp = store.liste('profils').filter(p => p.secteur === etat.secteur && p.actif !== false);
-  const moi = etat.secteur === store.profil.secteur;
+  const resp = DALLAGE ? store.liste('profils').filter(aAccesDallage) : store.liste('profils').filter(p => p.secteur === etat.secteur && p.actif !== false);
+  const moi = DALLAGE ? resp.some(p => p.email === store.profil.email) : etat.secteur === store.profil.secteur;
   $('#secteur-titre').innerHTML = `Secteur ${esc(s?.libelle || etat.secteur)} <span style="font-weight:400;opacity:.85">— ${resp.map(p => esc(p.prenom + ' ' + p.nom)).join(', ') || '—'}${moi ? ' (vous)' : ''}</span>`;
   $('#secteur-zones').textContent = s?.zones || '';
   $('#secteur-pastille').style.background = s?.couleur || '#fff';
   $('#secteur-choix').innerHTML = secteurs.map(x => {
-    const r = store.liste('profils').find(p => p.secteur === x.code);
+    const r = DALLAGE ? null : store.liste('profils').find(p => p.secteur === x.code);
     return `<button role="radio" aria-checked="${x.code === etat.secteur}" class="${x.code === etat.secteur ? 'actif' : ''}" data-s="${x.code}" title="${esc(x.zones)}">${esc(x.libelle)}${r && x.code !== 'national' ? ` <small>${esc(r.prenom)}</small>` : ''}</button>`;
   }).join('');
   const sites = sitesDuSecteur();
   let surf = 0, retard = 0, clients = 0;
   for (const x of sites) { surf += infos(x).surface || 0; if (rappelEnRetard(x)) retard++; if (x.statut === 'client') clients++; }
-  $('#secteur-stats').innerHTML = `<div><b>${fmtN(sites.length)}</b>sites</div><div><b>${fmtM2court(surf)}</b>de dallage</div><div><b>${fmtN(clients)}</b>clients</div><div><b>${fmtN(retard)}</b>rappels en retard</div>`;
+  $('#secteur-stats').innerHTML = DALLAGE
+    ? `<div><b>${fmtN(sites.filter(x => infos(x).cat === 'PROJET').length)}</b>projets</div><div><b>${fmtN(sites.filter(x => infos(x).cat !== 'PROJET').length)}</b>acteurs</div><div><b>${fmtM2court(surf)}</b>en projet</div><div><b>${fmtN(clients)}</b>gagnés</div><div><b>${fmtN(retard)}</b>rappels en retard</div>`
+    : `<div><b>${fmtN(sites.length)}</b>sites</div><div><b>${fmtM2court(surf)}</b>de dallage</div><div><b>${fmtN(clients)}</b>clients</div><div><b>${fmtN(retard)}</b>rappels en retard</div>`;
 }
 
 function changerSecteur(code) {
   etat.secteur = code;
-  localStorage.setItem('big_secteur_' + store.profil.email, code);
+  localStorage.setItem(CLE_SECTEUR + store.profil.email, code);
   rendreSecteur(); emettre('secteur');
 }
 

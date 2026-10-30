@@ -1,9 +1,10 @@
 // Règles métier : secteurs, statuts, score de priorité, garantie décennale, formats
-import { CATEGORIES } from './categories.js';
-export { CATEGORIES };
+import { CATEGORIES as CATEGORIES_MAINTENANCE } from './categories.js';
+import { DALLAGE, CATEGORIES_DALLAGE, SECTEURS_DALLAGE, DEPARTEMENTS_DALLAGE, EMPRISE_DALLAGE } from './pole.js';
+export const CATEGORIES = DALLAGE ? CATEGORIES_DALLAGE : CATEGORIES_MAINTENANCE;
 
 // Valeurs par défaut (écrasées par les tables Supabase `secteurs` / `secteur_departements`)
-export const SECTEURS_DEFAUT = [
+const SECTEURS_MAINTENANCE = [
   { code: 'nord', libelle: 'Nord', zones: 'Hauts-de-France, Grand Est, Belgique', couleur: '#505EB6', ordre: 1 },
   { code: 'idf', libelle: 'IDF', zones: 'Île-de-France', couleur: '#D4549B', ordre: 2 },
   { code: 'est', libelle: 'Est', zones: 'Auvergne-Rhône-Alpes, PACA', couleur: '#C9772B', ordre: 3 },
@@ -11,13 +12,16 @@ export const SECTEURS_DEFAUT = [
   { code: 'national', libelle: 'National', zones: 'Tous secteurs', couleur: '#3B4796', ordre: 5 },
 ];
 const D = (s, list) => Object.fromEntries(list.split(' ').map(d => [d, s]));
-export const DEPARTEMENTS_DEFAUT = {
+const DEPARTEMENTS_MAINTENANCE = {
   ...D('nord', '02 59 60 62 80 08 10 51 52 54 55 57 67 68 88 BE'),
   ...D('idf', '75 77 78 91 92 93 94 95'),
   ...D('est', '01 03 07 15 26 38 42 43 63 69 73 74 04 05 06 13 83 84 2A 2B 21 25 39 58 70 71 89 90 30 34 48'),
   ...D('ouest', '14 27 50 61 76 22 29 35 56 44 49 53 72 85 18 28 36 37 41 45 16 17 19 23 24 33 40 47 64 79 86 87 09 11 12 31 32 46 65 66 81 82'),
 };
+export const SECTEURS_DEFAUT = DALLAGE ? SECTEURS_DALLAGE : SECTEURS_MAINTENANCE;
+export const DEPARTEMENTS_DEFAUT = DALLAGE ? DEPARTEMENTS_DALLAGE : DEPARTEMENTS_MAINTENANCE;
 export const EMPRISES_SECTEURS = {             // cadrage carte si le secteur n'a pas encore de sites
+  nouvelle_aquitaine: EMPRISE_DALLAGE,
   nord: [[48.0, 1.4], [51.6, 8.3]], idf: [[48.1, 1.4], [49.25, 3.6]], est: [[42.9, 2.9], [48.4, 7.8]],
   ouest: [[42.3, -5.2], [50.1, 3.2]], national: [[41.3, -5.3], [51.6, 9.6]],
 };
@@ -32,6 +36,7 @@ export const STATUTS = {
   perdu:         { libelle: 'Perdu',           couleur: '#B23A48', ordre: 6 },
   non_pertinent: { libelle: 'Non pertinent',   couleur: '#5D5E61', ordre: 7 },
 };
+if (DALLAGE) Object.assign(STATUTS.prospect, { libelle: 'Identifié' }), Object.assign(STATUTS.devis, { libelle: 'Chiffrage remis' }), Object.assign(STATUTS.client, { libelle: 'Gagné / partenaire' });
 export const ENTONNOIR = ['prospect', 'en_contact', 'rdv', 'devis', 'client'];
 
 export const TYPES_ACTIVITE = {
@@ -72,7 +77,22 @@ export function decennale(s) {
 
 // Score de potentiel (0-100) : surface (50 pts) + ancienneté (40 pts) + activité (10 pts)
 const BONUS_CAT = { LOG: 10, FRIGO: 10, AGRO: 8, TRANSPORT: 7, IND: 6, PHARMA: 6, CHIMIE: 6, COMMERCE: 6, AUTRE: 3 };
+// Dallage : projet = surface créée + fraîcheur du permis ; acteur = rôle dans l'acte de construire + taille
+const POIDS_ACTEUR = { MAJOR: 62, CONTRACTANT: 60, PROMOTEUR: 62, ARCHI: 48, AMO: 48, BET: 42, SIEGE: 45, AUTRE: 25 };
+const POIDS_EFFECTIF = { '01': 1, '02': 2, '03': 3, '11': 6, '12': 9, '21': 13, '22': 16, '31': 20, '32': 22, '41': 25, '42': 27, '51': 30, '52': 32, '53': 35 };
+function scoreDallage(s) {
+  const cat = catDe(s);
+  if (cat === 'PROJET') {
+    const surf = surfaceDe(s), d = s.infos_od?.permis?.date;
+    const ps = surf ? Math.max(5, Math.min(60, 15 + 11 * Math.log2(surf / 500))) : 10;
+    const mois = d ? (Date.now() - new Date(d)) / (30.5 * 864e5) : 99;
+    const pf = mois < 3 ? 40 : mois < 6 ? 32 : mois < 12 ? 22 : mois < 24 ? 10 : 3;
+    return Math.round(Math.min(100, ps + pf - (s.infos_od?.permis?.etape === 'livre' ? 20 : 0)));
+  }
+  return Math.round(Math.min(100, (POIDS_ACTEUR[cat] ?? 25) + (POIDS_EFFECTIF[s.infos_od?.effectif] || 0) + (s.infos_od?.nb_projets ? Math.min(15, s.infos_od.nb_projets * 5) : 0)));
+}
 export function score(s) {
+  if (DALLAGE) return scoreDallage(s);
   const surf = surfaceDe(s), age = ageDe(s);
   const ps = surf ? Math.max(0, Math.min(50, 10 + 12 * Math.log2(surf / 5000))) : 10;
   const pa = age == null ? 20 : age < 10 ? age : Math.min(40, 10 + (age - 10) * 1.5);
