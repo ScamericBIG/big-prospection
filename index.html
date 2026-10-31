@@ -105,6 +105,19 @@
           <button class="puce" id="f-strategie-afaire" title="Masquer les sites déjà traités dans la stratégie">À traiter seulement</button>
         </div>
 
+        <details open id="f-bloc-permis" hidden><summary>Permis de construire</summary>
+          <div class="puces" id="f-permis">
+            <button class="puce" data-p="semaine">Cette semaine</button><button class="puce" data-p="mois">Ce mois</button><button class="puce" data-p="30j">30 derniers jours</button>
+            <button class="puce" data-p="annee">Cette année</button><button class="puce" data-p="anterieur">Années précédentes</button>
+          </div>
+          <div class="ligne-2" style="margin-top:6px"><label>Du<input type="date" id="f-permis-du"></label><label>Au<input type="date" id="f-permis-au"></label></div>
+          <div class="puces" id="f-etapes" style="margin-top:6px"></div>
+          <div class="puces" style="margin-top:6px">
+            <button class="puce" id="f-nouveaux" title="Projets arrivés dans la base ces 7 derniers jours">🆕 Nouveaux dans la base (7 j)</button>
+            <button class="puce" id="f-np" title="Les sites marqués « Non pertinent » sont masqués">🚫 Masquer les non pertinents</button>
+          </div>
+        </details>
+
         <details open><summary>Type de site</summary><div class="puces" id="f-categories"></div></details>
 
         <details open><summary>Surface du site</summary>

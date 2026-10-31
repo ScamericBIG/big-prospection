@@ -620,3 +620,20 @@ body.pole-dallage .bandeau-secteur { background: linear-gradient(90deg, #1F5F49,
 .liens-linkedin { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0 12px; font-size: 12px; }
 .liens-linkedin a { text-decoration: none; border: 1px solid #C9D9EC; background: #F1F6FB; color: #0A66C2; border-radius: 999px; padding: 2px 9px; font-weight: 600; }
 @media (max-width: 860px) { .pole-choix button { padding: 4px 8px; font-size: 11.5px; } }
+
+/* ------------------------------------------------ v1.9 : fiche en blocs dépliables */
+.fiche-bloc { border: 1px solid var(--gris-clair); border-radius: 10px; margin: 8px 0; background: var(--surface); }
+.fiche-bloc > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 8px; padding: 9px 12px; font-weight: 700; color: var(--bleu-tres-fonce); font-size: 13.5px; }
+.fiche-bloc > summary::-webkit-details-marker { display: none; }
+.fiche-bloc > summary::before { content: '▸'; color: var(--texte-3); transition: transform .15s; display: inline-block; }
+.fiche-bloc[open] > summary::before { transform: rotate(90deg); }
+.fiche-bloc > summary small { margin-left: auto; font-weight: 400; color: var(--texte-3); font-size: 12px; text-align: right; }
+.fiche-bloc > summary:hover { background: var(--bleu-pale); border-radius: 10px; }
+.fiche-bloc-corps, .fiche-bloc > .infos, .fiche-bloc > .acteur-infos { padding: 0 12px 10px; }
+.fiche-bloc-corps > .strategie, .fiche-bloc-corps > .strat-fiche, .fiche-bloc-corps > .dal-projet { margin: 0; border: 0; background: none; padding: 0; }
+.fiche-bloc-corps > .strategie > h4 > span { display: none; }
+.fiche-bloc-corps > .strategie > h4 { justify-content: flex-end; margin: 0; }
+.acteur-infos { font-size: 12.5px; color: var(--texte-2); margin: 0 0 6px; }
+.dal-projet h4 { font-size: 12.5px !important; }
+.infos-repliables.fiche-bloc > summary { flex-wrap: nowrap; padding: 9px 12px; }
+.infos-repliables.fiche-bloc > summary small { flex-basis: auto; padding-left: 0; }

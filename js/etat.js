@@ -3,6 +3,7 @@ import { store } from './store.js';
 import {
   catDe, surfaceDe, anneeDe, decennale, score, priorite, rappelEnRetard, sansAccent, distanceKm, aujourdhui, etatEtab, nomGenerique,
 } from './metier.js';
+import { DALLAGE } from './pole.js';
 
 export const FILTRES_VIDES = () => ({
   texte: '', cp: '', ville: '', categories: new Set(), surfMin: null, surfMax: null,
@@ -11,6 +12,8 @@ export const FILTRES_VIDES = () => ({
   etats: new Set(['actif', 'inconnu']),   // établissements fermés masqués par défaut
   nomIdentifie: false,
   strategie: '', strategieAFaire: false,  // '' | '_mes' (mes stratégies en cours) | id d'une stratégie
+  // pôle Dallage : permis de construire
+  permis: '', permisDu: '', permisAu: '', etapes: new Set(), nouveaux: false, masquerNonPertinents: DALLAGE,
 });
 
 export const etat = {
@@ -79,6 +82,18 @@ store.on('change', d => {
   else if (etat.filtres.strategie && ['activites', 'contacts', 'actualites'].includes(d.table)) invalider();   // avancement des stratégies
 });
 
+// Période du filtre « Permis de construire » → bornes de dates (AAAA-MM-JJ)
+const jourLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export function bornesPermis(f) {
+  const a = new Date();
+  if (f.permis === 'semaine') { const l = new Date(a); l.setDate(a.getDate() - ((a.getDay() + 6) % 7)); return [jourLocal(l), null]; }
+  if (f.permis === 'mois') return [jourLocal(new Date(a.getFullYear(), a.getMonth(), 1)), null];
+  if (f.permis === 'annee') return [jourLocal(new Date(a.getFullYear(), 0, 1)), null];
+  if (f.permis === 'anterieur') return [null, jourLocal(new Date(a.getFullYear() - 1, 11, 31))];
+  if (f.permis === '30j') return [jourLocal(new Date(Date.now() - 30 * 864e5)), null];
+  return [f.permisDu || null, f.permisAu || null];
+}
+
 // Test d'un site selon un jeu de filtres (panneau de filtres, ou critères d'une stratégie)
 export function construireTest(f, autour = null) {
   const txt = sansAccent(f.texte || '').trim().split(/\s+/).filter(Boolean);
@@ -88,7 +103,14 @@ export function construireTest(f, autour = null) {
   const auj = aujourdhui();
   const dans7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
   const vide = x => !x || !x.size;
+  const [pDu, pAu] = bornesPermis(f);
+  const recents = new Date(Date.now() - 7 * 864e5).toISOString();
+  const masquerNP = f.masquerNonPertinents && !(f.statuts && f.statuts.has('non_pertinent'));
   return (s, ignorerMasquees = false) => {
+    if (pDu || pAu) { const d = s.infos_od?.permis?.date; if (!d || (pDu && d < pDu) || (pAu && d > pAu)) return false; }
+    if (!vide(f.etapes) && !f.etapes.has(s.infos_od?.permis?.etape)) return false;
+    if (f.nouveaux && !((s.created_at || '') >= recents)) return false;
+    if (masquerNP && s.statut === 'non_pertinent') return false;
     const i = infos(s);
     if (txt.length && !txt.every(t => i.recherche.includes(t))) return false;
     if (cps.length && !cps.some(c => (s.code_postal || '').startsWith(c) || s.departement === c.toUpperCase())) return false;

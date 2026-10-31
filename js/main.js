@@ -124,7 +124,12 @@ async function entrer(email) {
 }
 
 function bienvenue(p) {
-  if (DALLAGE) return toast(`Pôle Dallage — ${fmtN(sitesDuSecteur('nouvelle_aquitaine').length)} acteurs et projets en Nouvelle-Aquitaine`);
+  if (DALLAGE) {
+    // nouveaux permis arrivés depuis la dernière visite (import automatique chaque matin)
+    let vu = null; try { vu = localStorage.getItem('big_dal_vu_' + p.email); localStorage.setItem('big_dal_vu_' + p.email, new Date().toISOString()); } catch { }
+    const nouveaux = vu ? sitesDuSecteur('national').filter(s => infos(s).cat === 'PROJET' && (s.created_at || '') > vu).length : 0;
+    return toast(`Pôle Dallage — ${fmtN(sitesDuSecteur('nouvelle_aquitaine').length)} acteurs et projets en Nouvelle-Aquitaine${nouveaux ? ` · ${nouveaux} nouveau(x) permis depuis votre dernière visite` : ''}`, nouveaux ? 'ok' : '');
+  }
   const sites = sitesDuSecteur(p.secteur === 'national' ? 'national' : p.secteur);
   const retard = sites.filter(s => rappelEnRetard(s) && (!s.assigne_a || s.assigne_a === p.email)).length;
   toast(`Bonjour ${p.prenom} — ${fmtN(sites.length)} sites dans votre secteur${retard ? `, ${retard} rappel(s) en retard` : ''}`);

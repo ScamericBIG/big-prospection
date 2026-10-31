@@ -153,7 +153,12 @@ Réservé au directeur (et aux profils dont la case `acces_dallage` est cochée 
 - **Appels d'offres** : construction de bâtiments d'activité, entrepôts, usines, lots gros œuvre / dallage en Nouvelle-Aquitaine (pas de réparation).
 - **Actualités** : permis de construire, constructions et extensions, implantations, déménagements, rachats, santé financière des acteurs suivis — localisées en Nouvelle-Aquitaine.
 - **Stratégies** : modèles « Projets récents », « Prescription architectes / AMO », « Référencement promoteurs », « Contractants et majors », « Sièges sociaux : projets d'extension »…
-- **Automatisation** : **Actions → Dallage (base et veille Nouvelle-Aquitaine) → Run workflow** (veille chaque matin, base chaque mois).
+- **Automatisation** : **Actions → Dallage (base et veille Nouvelle-Aquitaine) → Run workflow** : chaque matin avant 6 h, nouveaux permis de construire puis appels d'offres et actualités ; chaque mois, acteurs (SIRENE). La base nationale des permis (Sitadel) est publiée par l'État une fois par mois : les nouveaux permis apparaissent donc le matin qui suit sa publication.
+- **Filtres Dallage (v1.9)** : date du permis (cette semaine, ce mois, 30 derniers jours, cette année, années précédentes, ou du… au…), étape (permis accordé, chantier ouvert, achevé), « Nouveaux dans la base (7 j) », « Masquer les non pertinents » (actif par défaut). Liste triée par date de permis, avec étape, maître d'ouvrage et bouton 🚫 « Non pertinent » ; bouton identique sur la fiche.
+
+### Fiche en blocs dépliables (v1.9)
+
+Les rubriques de la fiche (permis, missions, informations, contacts, LinkedIn, stratégie groupe, actualités, location Kiloutou, qualification, caractéristiques) se déplient d'un clic ; chaque bloc fermé affiche un résumé (ex. « la plus proche à 4 km »). L'appli mémorise sur l'appareil les blocs que vous ouvrez ou fermez.
 
 ### Agences Kiloutou
 

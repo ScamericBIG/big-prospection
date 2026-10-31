@@ -140,17 +140,19 @@ function rendreFiche(corps, s) {
   corps.innerHTML = `
     <div class="chiffres">
       <div class="chiffre"><span>Surface${surfaceEstimee(s) ? ' (estimée)' : ''}</span><b>${surfaceEstimee(s) ? '≈ ' : ''}${fmtM2(i.surface)}</b></div>
-      <div class="chiffre"><span>Construit en${anneeEstimee(s) ? ' (estimé)' : ''}</span><b>${anneeEstimee(s) && i.annee ? '≈ ' : ''}${i.annee || '—'}</b>${age != null ? `<span>${age} an${age > 1 ? 's' : ''}</span>` : ''}</div>
+      ${DALLAGE ? `<div class="chiffre"><span>Permis</span><b>${od.permis?.date ? fmtDate(od.permis.date) : '—'}</b>${od.permis?.etape ? `<span>${esc(ETAPES_PROJET[od.permis.etape] || '')}</span>` : ''}</div>`
+        : `<div class="chiffre"><span>Construit en${anneeEstimee(s) ? ' (estimé)' : ''}</span><b>${anneeEstimee(s) && i.annee ? '≈ ' : ''}${i.annee || '—'}</b>${age != null ? `<span>${age} an${age > 1 ? 's' : ''}</span>` : ''}</div>`}
       <div class="chiffre"><span>Score</span><b>${i.score}/100</b><span>Priorité ${i.prio}</span></div>
     </div>
     ${od.nouvel_occupant ? (() => { const o = od.nouvel_occupant; return `<div class="occupant ${o.possible ? 'possible' : ''}">
       ${o.possible ? '🔎 Entreprise trouvée à cette adresse' : '🔁 Nouvel occupant probable'} : <b>${esc(o.nom)}</b>
       <small>${o.siret ? 'SIRET ' + esc(o.siret) + ' · ' : ''}${o.distance_m != null ? 'à ' + o.distance_m + ' m · ' : ''}base SIRENE${o.le ? ', ' + fmtDate(o.le) : ''}</small>
       <div class="occupant-actions"><button class="btn btn-petit" id="fi-occupant">Renommer le site « ${esc(o.nom)} »</button>${o.siret ? ` <a class="btn btn-petit" target="_blank" rel="noopener" href="https://annuaire-entreprises.data.gouv.fr/etablissement/${esc(o.siret)}">🏢 Annuaire</a>` : ''}</div></div>`; })() : ''}
-    ${DALLAGE ? blocDallage(s) : ''}
-    ${blocStrategies(s)}
-    <details class="infos-repliables" ${infosOuvertes() ? 'open' : ''}>
-    <summary>Informations du site <small>(adresse, activité, décennale, SIRET, groupe, source…)</small></summary>
+    ${DALLAGE && od.permis ? bloc('permis', '📝 Permis de construire', blocPermis(s), { ouvert: true, resume: `${esc(ETAPES_PROJET[od.permis.etape] || '')}${od.permis.date ? ' · ' + fmtDate(od.permis.date) : ''}` }) : ''}
+    ${(() => { const h = blocStrategies(s), n = strategiesDuSite(s.id).length; return bloc('missions', '🎯 Missions', h, { ouvert: n > 0, resume: n ? `${n} en cours` : 'aucune' }); })()}
+    <details class="infos-repliables fiche-bloc" data-bloc="infos" ${(etatBlocs.infos ?? infosOuvertes()) ? 'open' : ''}>
+    <summary><span>ℹ️ Informations du site</span><small>adresse, activité, ${DALLAGE ? 'dirigeants, ' : 'décennale, '}SIRET, groupe, source</small></summary>
+    ${DALLAGE ? blocActeur(s) : ''}
     <dl class="infos">
       <dt>Adresse postale</dt><dd>${esc(s.adresse || '—')}<br>${esc([s.code_postal, s.ville].filter(Boolean).join(' '))}${s.pays === 'BE' ? ', Belgique' : ''}</dd>
       <dt>Type d'entreprise</dt><dd>${esc(CATEGORIES[i.cat].libelle)}${s.naf ? `<br><small>NAF ${esc(s.naf)}${s.naf_libelle ? ' — ' + esc(s.naf_libelle) : ''}</small>` : ''}</dd>
@@ -177,20 +179,21 @@ function rendreFiche(corps, s) {
       <button class="btn" data-rapide="appel">📞 Appel passé</button>
       <button class="btn" data-rapide="rdv">📅 Planifier un RDV</button>
       <button class="btn" data-rapide="note">📝 Note</button>
+      ${DALLAGE ? `<button class="btn" id="fi-np">${s.statut === 'non_pertinent' ? '↺ Pertinent' : '🚫 Non pertinent'}</button>` : ''}
     </div>
 
-    <div class="section-titre">Contacts sur site</div>
-    ${blocContacts(s)}
-    <button class="btn btn-primaire btn-petit" id="fi-contact-plus">+ Ajouter un contact</button>
+    ${(() => { const n = store.liste('contacts').filter(c => c.site_id === s.id).length; return bloc('contacts', '👥 Contacts sur site', `${blocContacts(s)}<button class="btn btn-primaire btn-petit" id="fi-contact-plus">+ Ajouter un contact</button>`, { ouvert: true, resume: n ? `${n} contact${n > 1 ? 's' : ''}` : 'aucun contact' }); })()}
 
-    ${s.groupe_id ? syntheseGroupe(s.groupe_id, { exclureSite: s.id }) : '<p class="vide" style="font-size:12.5px">🤝 Rattachez ce site à un groupe (section Caractéristiques) pour voir ce que l’équipe sait de ce groupe.</p>'}
+    ${DALLAGE ? bloc('linkedin', '🔗 Trouver les interlocuteurs (LinkedIn)', blocLinkedIn(s), { resume: 'recherches pré-remplies' }) : ''}
 
-    ${blocActus(s)}
+    ${bloc('groupe', '🤝 Stratégie groupe', s.groupe_id ? syntheseGroupe(s.groupe_id, { exclureSite: s.id }) : '<p class="vide" style="font-size:12.5px">Rattachez ce site à un groupe (section Caractéristiques) pour voir ce que l’équipe sait de ce groupe.</p>', { resume: s.groupe_id ? esc(store.get('groupes', s.groupe_id)?.nom || '') : 'aucun groupe' })}
 
-    ${blocAgences(s)}
+    ${(() => { const n = actusDuSite(s, 99).length; return n ? bloc('actus', '📰 Actualités du site et du groupe', blocActus(s), { resume: `${n} actualité${n > 1 ? 's' : ''}` }) : ''; })()}
+
+    ${(() => { const l = agencesProches(s, 3); return l.length ? bloc('agences', '🔧 Location de matériel (Kiloutou)', blocAgences(s), { resume: `la plus proche à ${fmtKm(l[0].d)}` }) : ''; })()}
 
     <form id="fi-form" autocomplete="off">
-      <div class="section-titre">Qualification</div>
+      <details class="fiche-bloc" data-bloc="qualif" ${(etatBlocs.qualif ?? true) ? 'open' : ''}><summary><span>✅ Qualification</span><small>${esc(STATUTS[s.statut]?.libelle || '')}${s.date_prochain_rappel ? ' · rappel ' + fmtDate(s.date_prochain_rappel) : ''}</small></summary><div class="fiche-bloc-corps">
       <div class="grille-form">
         <label>Statut<select name="statut">${Object.entries(STATUTS).map(([k, v]) => `<option value="${k}" ${s.statut === k ? 'selected' : ''}>${v.libelle}</option>`).join('')}</select></label>
         <label>Chargé d'affaires<select name="assigne_a"><option value="">— Non assigné —</option>${profils.map(p => `<option value="${esc(p.email)}" ${s.assigne_a === p.email ? 'selected' : ''}>${esc(p.prenom + ' ' + p.nom)}</option>`).join('')}</select></label>
@@ -201,7 +204,8 @@ function rendreFiche(corps, s) {
         <label class="plein">Date du rendez-vous<input type="datetime-local" name="date_rdv" value="${versDatetimeLocal(s.date_rdv)}"></label>
         <label class="plein">Commentaire<textarea name="commentaire" rows="4" placeholder="État du dallage, besoins, interlocuteurs, concurrence…">${esc(s.commentaire || '')}</textarea></label>
       </div>
-      <div class="section-titre">Caractéristiques du site</div>
+      </div></details>
+      <details class="fiche-bloc" data-bloc="caract" ${etatBlocs.caract ? 'open' : ''}><summary><span>🏷 Caractéristiques du site</span><small>type, groupe, surface${DALLAGE ? '' : ', année'}, nom et adresse</small></summary><div class="fiche-bloc-corps">
       <div class="grille-form">
         <label>Type de site<select name="categorie"><option value="">Auto : ${esc(CATEGORIES[s.categorie_auto || 'AUTRE'].libelle)}</option>${Object.entries(CATEGORIES).map(([k, v]) => `<option value="${k}" ${s.categorie === k ? 'selected' : ''}>${v.libelle}</option>`).join('')}</select></label>
         <label>Groupe<select name="groupe_id"><option value="">— Aucun —</option>${groupes.map(g => `<option value="${g.id}" ${s.groupe_id === g.id ? 'selected' : ''}>${esc(g.nom)}</option>`).join('')}<option value="_nouveau">+ Nouveau groupe…</option></select></label>
@@ -216,9 +220,11 @@ function rendreFiche(corps, s) {
           <label>Ville<input type="text" name="ville" value="${esc(s.ville || '')}"></label>
         </div>
       </details>
+      </div></details>
     </form>`;
+  // mémorise uniquement les ouvertures / fermetures faites par l'utilisateur
+  $$('details.fiche-bloc', corps).forEach(d => d.querySelector(':scope > summary').addEventListener('click', () => setTimeout(() => { etatBlocs[d.dataset.bloc] = d.open; try { localStorage.setItem('big_fiche_blocs', JSON.stringify(etatBlocs)); } catch { } }, 0)));
 
-  corps.querySelector('.infos-repliables').addEventListener('toggle', e => { try { localStorage.setItem('big_infos_site', e.target.open ? '1' : '0'); } catch { } });
   $('#fi-zoom')?.addEventListener('click', () => { centrerSur(s, 17); emettre('aller-vue', 'carte'); });
   $('#fi-position').onclick = () => {
     emettre('aller-vue', 'carte');
@@ -254,6 +260,12 @@ function rendreFiche(corps, s) {
     const moi = store.profil.email;
     await marquer(st, s.id, { affecte_a: (st.membres || []).includes(moi) ? moi : (st.membres || [])[0] || moi });
     toast(`Site ajouté à « ${st.titre} »`, 'ok');
+  });
+  $('#fi-np')?.addEventListener('click', async () => {
+    const np = s.statut !== 'non_pertinent';
+    await store.enregistrer('sites', { ...s, statut: np ? 'non_pertinent' : 'a_qualifier' });
+    toast(np ? 'Marqué non pertinent : il n’apparaîtra plus sur la carte ni dans la liste' : 'Remis « À qualifier »', 'ok');
+    if (np && etat.filtres.masquerNonPertinents) allerSuivant(); else rendre();
   });
   $('#fi-occupant')?.addEventListener('click', async () => {
     const od = s.infos_od || {}, o = od.nouvel_occupant;
@@ -340,18 +352,33 @@ function blocContacts(s) {
 // Pôle Dallage : détail du permis de construire + recherches LinkedIn des bons interlocuteurs
 const TRANCHES = { '01': '1-2 salariés', '02': '3-5', '03': '6-9', '11': '10-19', '12': '20-49', '21': '50-99', '22': '100-199', '31': '200-249', '32': '250-499', '41': '500-999', '42': '1 000-1 999', '51': '2 000-4 999', '52': '5 000-9 999', '53': '10 000 et +' };
 const DESTINATIONS = { entrepot: 'Entrepôt', industrie: 'Industrie', artisanat: 'Artisanat', commerce: 'Commerce', bureaux: 'Bureaux', agricole: 'Agricole', service_public: 'Service public' };
-function blocDallage(s) {
-  const od = s.infos_od || {}, pm = od.permis, cat = infos(s).cat;
-  const entreprise = cat === 'PROJET' ? (pm?.demandeur || s.proprietaire || '') : (s.enseigne || s.nom).replace(/\s*\(démo\)|\s+—.*$/g, '');
-  const postes = POSTES_LINKEDIN[cat] || POSTES_LINKEDIN.AUTRE;
-  return `${pm ? `<div class="dal-projet"><h4>📝 Permis de construire${pm.num ? ' ' + esc(pm.num) : ''}</h4><dl>
+function blocPermis(s) {
+  const pm = s.infos_od?.permis; if (!pm) return '';
+  return `<div class="dal-projet"><h4>${pm.num ? 'N° ' + esc(pm.num) : 'Permis de construire'}</h4><dl>
       <dt>Étape</dt><dd><b>${esc(ETAPES_PROJET[pm.etape] || pm.etape || '—')}</b>${pm.date ? ` · autorisé le ${fmtDate(pm.date)}` : ''}${pm.date_chantier ? ` · chantier ouvert le ${fmtDate(pm.date_chantier)}` : ''}</dd>
       ${pm.nature ? `<dt>Nature</dt><dd>${esc(pm.nature)}</dd>` : ''}
       ${pm.surfaces ? `<dt>Surfaces créées</dt><dd>${Object.entries(pm.surfaces).filter(([, v]) => v).map(([k, v]) => `${esc(DESTINATIONS[k] || k)} ${fmtM2(v)}`).join(' · ')}</dd>` : ''}
       ${pm.terrain_m2 ? `<dt>Terrain</dt><dd>${fmtM2(pm.terrain_m2)}</dd>` : ''}
       <dt>Maître d’ouvrage</dt><dd>${esc(pm.demandeur || s.proprietaire || 'non communiqué (particulier)')}${pm.siren_demandeur ? ` · <a target="_blank" rel="noopener" href="https://annuaire-entreprises.data.gouv.fr/entreprise/${esc(pm.siren_demandeur)}">SIREN ${esc(pm.siren_demandeur)}</a>` : ''}</dd>
-    </dl></div>` : od.effectif || od.dirigeants?.length || od.nb_projets ? `<p class="vide" style="font-size:12.5px">${od.raison_sociale ? esc(od.raison_sociale) + ' · ' : ''}${od.effectif ? 'effectif : ' + esc(TRANCHES[od.effectif] || od.effectif) : ''}${od.dirigeants?.length ? '<br>Dirigeants : ' + od.dirigeants.map(esc).join(' · ') : ''}${od.nb_projets ? `<br><b>${od.nb_projets} permis de construire</b> déposé(s) récemment en Nouvelle-Aquitaine` : ''}</p>` : ''}
-    ${entreprise ? `<div class="liens-linkedin" title="Recherche ouverte dans LinkedIn avec votre propre compte">in LinkedIn : ${postes.map(p => `<a target="_blank" rel="noopener" href="${lienLinkedIn(p, entreprise)}">${esc(p)}</a>`).join('')}</div>` : ''}`;
+    </dl></div>`;
+}
+function blocActeur(s) {
+  const od = s.infos_od || {};
+  if (od.permis || !(od.effectif || od.dirigeants?.length || od.nb_projets)) return '';
+  return `<p class="acteur-infos">${od.raison_sociale ? esc(od.raison_sociale) + ' · ' : ''}${od.effectif ? 'effectif : ' + esc(TRANCHES[od.effectif] || od.effectif) : ''}${od.dirigeants?.length ? '<br>Dirigeants : ' + od.dirigeants.map(esc).join(' · ') : ''}${od.nb_projets ? `<br><b>${od.nb_projets} permis de construire</b> déposé(s) récemment en Nouvelle-Aquitaine` : ''}</p>`;
+}
+function blocLinkedIn(s) {
+  const cat = infos(s).cat, pm = s.infos_od?.permis;
+  const entreprise = cat === 'PROJET' ? (pm?.demandeur || s.proprietaire || '') : (s.enseigne || s.nom).replace(/\s*\(démo\)|\s+—.*$/g, '');
+  if (!entreprise) return '';
+  return `<div class="liens-linkedin" title="Recherche ouverte dans LinkedIn avec votre propre compte">${(POSTES_LINKEDIN[cat] || POSTES_LINKEDIN.AUTRE).map(p => `<a target="_blank" rel="noopener" href="${lienLinkedIn(p, entreprise)}">${esc(p)}</a>`).join('')}</div><small class="vide">Ouvre LinkedIn avec votre compte, sur « ${esc(entreprise)} ».</small>`;
+}
+
+// Bloc dépliable de la fiche (état ouvert / fermé mémorisé sur l'appareil)
+const etatBlocs = (() => { try { return JSON.parse(localStorage.getItem('big_fiche_blocs') || '{}'); } catch { return {}; } })();
+function bloc(id, titre, contenu, { ouvert = false, resume = '' } = {}) {
+  if (!contenu) return '';
+  return `<details class="fiche-bloc" data-bloc="${id}" ${(etatBlocs[id] ?? ouvert) ? 'open' : ''}><summary><span>${titre}</span>${resume ? `<small>${resume}</small>` : ''}</summary><div class="fiche-bloc-corps">${contenu}</div></details>`;
 }
 
 // Missions en cours sur ce site : objectif, attribution, avancement (automatique ou coché à la main)
@@ -370,18 +397,17 @@ function blocStrategies(s) {
 function blocActus(s) {
   const l = actusDuSite(s);
   if (!l.length) return '';
-  return `<div class="strategie actus-fiche"><h4>📰 Actualités du site et du groupe <a href="#" data-aller-actus>tout voir</a></h4><ul>${l.map(a => {
+  return `<div class="strategie actus-fiche"><ul>${l.map(a => {
     const c = CATEGORIES_ACTU[a.categorie] || CATEGORIES_ACTU.autre;
     const u = /^https?:\/\//.test(a.url || '') ? a.url : null;
     return `<li>${c.ico} <b>${esc(c.libelle)}</b> · <span class="quand">${fmtDate(a.date_publication)}</span><br>${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(a.titre)}</a>` : esc(a.titre)}</li>`;
-  }).join('')}</ul></div>`;
+  }).join('')}</ul><a href="#" data-aller-actus>Voir toutes les actualités</a></div>`;
 }
 
 function blocAgences(s) {
   const l = agencesProches(s, 3);
   if (!l.length) return '';
-  return `<div class="section-titre">Location de matériel à proximité</div>
-    <div class="agences-fiche">${l.map(({ a, d }) => `<div class="contact-ligne">
+  return `<div class="agences-fiche">${l.map(({ a, d }) => `<div class="contact-ligne">
       <div><b>${esc(a.nom)}</b><br><small>${esc([a.adresse, a.code_postal, a.ville].filter(Boolean).join(' '))}</small></div>
       <div><b>${fmtKm(d)}</b><br><small>à vol d'oiseau</small></div>
       <div class="liens">${a.telephone ? `<a class="btn-icone" href="tel:${esc(a.telephone.replace(/\s/g, ''))}" title="Appeler">📞</a>` : ''}<a class="btn-icone" target="_blank" rel="noopener" href="${lienItineraire(a, s)}" title="Itinéraire depuis le site">🧭</a><a class="btn-icone" target="_blank" rel="noopener" href="${lienInfos(a)}" title="Horaires et téléphone">🔎</a></div>

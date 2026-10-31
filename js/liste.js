@@ -3,11 +3,12 @@ import { store } from './store.js';
 import { sitesFiltres, infos, ecouter, emettre, nomCA } from './etat.js';
 import { CATEGORIES, STATUTS, decennale, surfaceEstimee, anneeEstimee, ETATS_ETAB, etatEtab, fmtN, fmtDate, esc, rappelEnRetard } from './metier.js';
 import { $, $$, debounce, toast } from './ui.js';
+import { DALLAGE, ETAPES_PROJET } from './pole.js';
 
 const PAGE = 100;
 let page = 0, tri = { col: 'score', sens: -1 }, visible = false;
 
-const COLONNES = [
+const COLONNES_MAINTENANCE = [
   { k: 'nom', t: 'Site', v: s => s.nom, cls: 'nom' },
   { k: 'ville', t: 'Ville', v: s => s.ville || '' },
   { k: 'cp', t: 'CP', v: s => s.code_postal || '' },
@@ -22,6 +23,19 @@ const COLONNES = [
   { k: 'rappel', t: 'Prochain rappel', v: s => s.date_prochain_rappel || '9999', h: s => s.date_prochain_rappel ? `<span class="${rappelEnRetard(s) ? 'badge alerte' : ''}">${fmtDate(s.date_prochain_rappel)}</span>` : '—' },
   { k: 'ca', t: 'Chargé d\'affaires', v: s => s.assigne_a ? nomCA(s.assigne_a) : '', h: s => esc(s.assigne_a ? nomCA(s.assigne_a) : '—') },
 ];
+
+// Pôle Dallage : date et étape du permis, maître d'ouvrage, bouton de tri rapide « Non pertinent »
+const pm = s => s.infos_od?.permis || {};
+const COLONNES_DALLAGE = [
+  COLONNES_MAINTENANCE[0], COLONNES_MAINTENANCE[1], COLONNES_MAINTENANCE[2], COLONNES_MAINTENANCE[3], COLONNES_MAINTENANCE[4],
+  { k: 'permis', t: 'Permis du', v: s => pm(s).date || '', h: s => pm(s).date ? `${fmtDate(pm(s).date)}${s.created_at && Date.now() - new Date(s.created_at) < 7 * 864e5 ? ' <span class="badge-nouveau">Nouveau</span>' : ''}` : '—' },
+  { k: 'etape', t: 'Étape', v: s => pm(s).etape || '', h: s => esc(ETAPES_PROJET[pm(s).etape] || '—') },
+  { k: 'mo', t: 'Maître d’ouvrage', v: s => pm(s).demandeur || s.proprietaire || '', h: s => esc(pm(s).demandeur || s.proprietaire || '—') },
+  COLONNES_MAINTENANCE.find(c => c.k === 'score'), COLONNES_MAINTENANCE.find(c => c.k === 'statut'), COLONNES_MAINTENANCE.find(c => c.k === 'rappel'),
+  { k: 'np', t: '', v: s => s.statut === 'non_pertinent' ? 1 : 0, h: s => `<button class="btn btn-petit np" data-np="${s.id}" title="${s.statut === 'non_pertinent' ? 'Remettre « À qualifier »' : 'Marquer non pertinent (masqué ensuite)'}">${s.statut === 'non_pertinent' ? '↺' : '🚫'}</button>` },
+];
+const COLONNES = DALLAGE ? COLONNES_DALLAGE : COLONNES_MAINTENANCE;
+if (DALLAGE) tri = { col: 'permis', sens: -1 };
 
 export function initListe() {
   const re = debounce(() => { page = 0; if (visible) rendre(); }, 80);
@@ -55,6 +69,13 @@ function rendre() {
     <tbody>${l.slice(page * PAGE, (page + 1) * PAGE).map(s => `<tr data-id="${s.id}">${COLONNES.map(c => `<td class="${c.cls || ''}">${c.h ? c.h(s) : esc(c.v(s))}</td>`).join('')}</tr>`).join('')}</tbody>`;
   $$('th', t).forEach(th => th.onclick = () => { const k = th.dataset.k; tri = { col: k, sens: tri.col === k ? -tri.sens : (['nom', 'ville', 'cp', 'rappel'].includes(k) ? 1 : -1) }; rendre(); });
   $$('tbody tr', t).forEach(tr => tr.onclick = () => emettre('ouvrir-site', tr.dataset.id));
+  $$('[data-np]', t).forEach(b => b.onclick = async e => {
+    e.stopPropagation();
+    const s = store.get('sites', b.dataset.np); if (!s) return;
+    const np = s.statut !== 'non_pertinent';
+    await store.enregistrer('sites', { ...s, statut: np ? 'non_pertinent' : 'a_qualifier' });
+    toast(np ? `« ${s.nom} » marqué non pertinent` : 'Remis « À qualifier »', 'ok');
+  });
   $('#liste-pagination').innerHTML = nbPages > 1 ? `<button class="btn btn-petit" id="lp-prec" ${page ? '' : 'disabled'}>‹ Précédent</button> Page ${page + 1} / ${nbPages} <button class="btn btn-petit" id="lp-suiv" ${page < nbPages - 1 ? '' : 'disabled'}>Suivant ›</button>` : '';
   $('#lp-prec')?.addEventListener('click', () => { page--; rendre(); $('.table-defile').scrollTop = 0; });
   $('#lp-suiv')?.addEventListener('click', () => { page++; rendre(); $('.table-defile').scrollTop = 0; });
@@ -69,6 +90,7 @@ function lignesExport() {
       'Score': i.score, 'Priorité': i.prio, 'Statut': STATUTS[s.statut]?.libelle || '', 'Standard': s.standard_tel || '',
       'Dernier appel': s.date_dernier_appel || '', 'Prochain rappel': s.date_prochain_rappel || '', 'RDV': s.date_rdv ? new Date(s.date_rdv).toLocaleString('fr-FR') : '',
       "Chargé d'affaires": s.assigne_a ? nomCA(s.assigne_a) : '', 'Commentaire': s.commentaire || '', 'SIRET': s.siret || s.siren || '', 'NAF': s.naf || '', 'Établissement': ETATS_ETAB[etatEtab(s)].libelle.replace(/s$/, ''), 'Date de fermeture': s.date_fermeture || '',
+      ...(DALLAGE ? { 'N° permis': pm(s).num || '', 'Permis autorisé le': pm(s).date || '', 'Étape': ETAPES_PROJET[pm(s).etape] || '', "Maître d'ouvrage": pm(s).demandeur || s.proprietaire || '', 'Surface créée m²': s.surface_auto ?? '' } : {}),
       'Latitude': s.lat ?? '', 'Longitude': s.lng ?? '',
     };
   });

@@ -5,6 +5,7 @@ import { CATEGORIES, STATUTS, ETATS_ETAB, etatEtab, fmtN, fmtM2court, esc } from
 import { $, $$, debounce } from './ui.js';
 import { effacerItineraire } from './tournee.js';
 import { mesStrategies } from './strategies-core.js';
+import { DALLAGE, ETAPES_PROJET } from './pole.js';
 
 const changer = () => { emettre('filtres'); majResultat(); };
 
@@ -28,6 +29,22 @@ export function initFiltres() {
   $('#f-strategie').addEventListener('change', e => { etat.filtres.strategie = e.target.value; if (e.target.value && !etat.filtres.strategieAFaire) { etat.filtres.strategieAFaire = true; } syncStrategie(); changer(); });
   $('#f-strategie-afaire').addEventListener('click', () => { etat.filtres.strategieAFaire = !etat.filtres.strategieAFaire; syncStrategie(); changer(); });
   ecouter('filtres-externes', () => { syncStrategie(); majResultat(); });
+  // pôle Dallage : période / étape du permis, nouveaux, non pertinents
+  if (DALLAGE) {
+    $('#f-bloc-permis').hidden = false;
+    $('#f-etapes').innerHTML = ['permis_accorde', 'travaux', 'livre'].map(k => `<button class="puce" data-v="${k}">${esc(ETAPES_PROJET[k])}</button>`).join('');
+    bascule($('#f-etapes'), () => etat.filtres.etapes);
+    $('#f-permis').addEventListener('click', e => {
+      const b = e.target.closest('[data-p]'); if (!b) return;
+      etat.filtres.permis = etat.filtres.permis === b.dataset.p ? '' : b.dataset.p;
+      etat.filtres.permisDu = etat.filtres.permisAu = ''; $('#f-permis-du').value = $('#f-permis-au').value = '';
+      syncPermis(); changer();
+    });
+    for (const [id, k] of [['#f-permis-du', 'permisDu'], ['#f-permis-au', 'permisAu']]) $(id).addEventListener('change', e => { etat.filtres[k] = e.target.value; etat.filtres.permis = ''; syncPermis(); changer(); });
+    $('#f-nouveaux').addEventListener('click', () => { etat.filtres.nouveaux = !etat.filtres.nouveaux; syncPermis(); changer(); });
+    $('#f-np').addEventListener('click', () => { etat.filtres.masquerNonPertinents = !etat.filtres.masquerNonPertinents; syncPermis(); changer(); });
+    syncPermis();
+  }
   $('#f-nom-identifie').addEventListener('click', e => { etat.filtres.nomIdentifie = !etat.filtres.nomIdentifie; e.currentTarget.classList.toggle('actif', etat.filtres.nomIdentifie); changer(); });
   bascule($('#f-categories'), () => etat.filtres.categories);
   bascule($('#f-statuts'), () => etat.filtres.statuts);
@@ -49,10 +66,10 @@ export function initFiltres() {
   $('#f-reset').addEventListener('click', () => {
     const masq = etat.filtres.categoriesMasquees;
     etat.filtres = FILTRES_VIDES(); etat.filtres.categoriesMasquees = masq;
-    $$('#filtres input[type=search], #filtres input[type=text], #filtres input[type=number]').forEach(i => { if (i.id !== 'it-adresse') i.value = ''; });
+    $$('#filtres input[type=search], #filtres input[type=text], #filtres input[type=number], #filtres input[type=date]').forEach(i => { if (i.id !== 'it-adresse') i.value = ''; });
     $$('#filtres select').forEach(s => s.value = '');
     $$('#filtres .puce.actif').forEach(p => p.classList.remove('actif'));
-    syncEtats(); syncStrategie();
+    syncEtats(); syncStrategie(); if (DALLAGE) syncPermis();
     if (etat.autour || etat.depart?.auto) effacerItineraire();
     changer();
   });
@@ -85,6 +102,11 @@ function syncStrategie() {
   $('#f-strategie-afaire').classList.toggle('actif', etat.filtres.strategieAFaire);
   $('#f-strategie-bloc').classList.toggle('actif', !!etat.filtres.strategie);
   $('#f-strategie-bloc').hidden = !toutes.length && !etat.filtres.strategie;
+}
+function syncPermis() {
+  $$('#f-permis [data-p]').forEach(b => b.classList.toggle('actif', etat.filtres.permis === b.dataset.p));
+  $('#f-nouveaux').classList.toggle('actif', etat.filtres.nouveaux);
+  $('#f-np').classList.toggle('actif', etat.filtres.masquerNonPertinents);
 }
 const syncEtats = () => $$('#f-etats .puce').forEach(b => b.classList.toggle('actif', etat.filtres.etats.has(b.dataset.v)));
 
