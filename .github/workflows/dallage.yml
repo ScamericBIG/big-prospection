@@ -4,17 +4,33 @@ on:
   workflow_dispatch:
     inputs:
       quoi:
-        description: "veille = appels d'offres et actualités ; base = projets (permis) et acteurs ; tout = les deux"
+        description: "tout ; veille = appels d'offres et actualités ; projets = permis de construire ; acteurs = architectes, promoteurs, majors..."
         type: choice
-        options: [tout, veille, base]
+        options: [tout, veille, projets, acteurs]
         default: tout
   schedule:
-    - cron: "13 5 * * *"    # veille chaque matin
-    - cron: "37 2 3 * *"    # base chaque mois (nouveaux permis de construire publiés mensuellement)
+    - cron: "23 3 * * *"    # chaque matin avant 6 h (heure de Paris) : nouveaux permis de construire
+    - cron: "47 3 * * *"    # chaque matin avant 6 h : appels d'offres et actualités
+    - cron: "37 2 3 * *"    # chaque mois : acteurs (base SIRENE)
 
 jobs:
+  projets:
+    if: (github.event_name == 'workflow_dispatch' && (inputs.quoi == 'tout' || inputs.quoi == 'projets')) || github.event.schedule == '23 3 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Nouveaux permis de construire
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SURFACE_MIN: "500"
+        run: node scripts/import-dallage.mjs --sans-acteurs
   veille:
-    if: github.event_name == 'workflow_dispatch' && inputs.quoi != 'base' || github.event.schedule == '13 5 * * *'
+    if: (github.event_name == 'workflow_dispatch' && (inputs.quoi == 'tout' || inputs.quoi == 'veille')) || github.event.schedule == '47 3 * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -28,8 +44,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/veille.mjs --pole dallage
-  base:
-    if: github.event_name == 'workflow_dispatch' && inputs.quoi != 'veille' || github.event.schedule == '37 2 3 * *'
+  acteurs:
+    if: (github.event_name == 'workflow_dispatch' && (inputs.quoi == 'tout' || inputs.quoi == 'acteurs')) || github.event.schedule == '37 2 3 * *'
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -37,9 +53,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Import projets et acteurs
+      - name: Acteurs (architectes, AMO, promoteurs, contractants, majors, sièges)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SURFACE_MIN: "500"
-        run: node scripts/import-dallage.mjs
+        run: node scripts/import-dallage.mjs --sans-projets
